@@ -161,6 +161,70 @@ def short_name(name: str) -> str:
     return re.sub(r"\s+Zone \d+$", "", name)
 
 
+def social_card(cells, open_pts, closed_pts, boros, avg_min: float, out: Path) -> None:
+    """Single-panel 1080x1350 (4:5) image for LinkedIn/Instagram feeds: all restrooms only,
+    with type sized to stay legible on a phone."""
+    W_IN, H_IN, DPI = 5.4, 6.75, 200
+    fig = plt.figure(figsize=(W_IN, H_IN), dpi=DPI)
+    fig.text(0.06, 0.955, "On average, the nearest public\nbathroom in NYC is "
+             f"{'an' if round(avg_min) in (8, 11, 18) else 'a'} {round(avg_min)}-minute walk",
+             ha="left", va="top", fontsize=17, fontweight="bold", color=INK, fontfamily=S.HEAD_FONT,
+             linespacing=1.15)
+    fig.text(0.06, 0.858, f"Each polygon is the area closest to one of the city's {len(open_pts):,} public\n"
+             "restrooms, colored by the longest walk from anywhere inside it.",
+             ha="left", va="top", fontsize=8.3, color=MUTED, linespacing=1.35)
+
+    ax = fig.add_axes([0.02, 0.135, 0.96, 0.68])
+    xmin, ymin, xmax, ymax = boros.total_bounds
+    ax.set_xlim(xmin - 800, xmax + 800)
+    ax.set_ylim(ymin - 800, ymax + 800)
+    cells.plot(ax=ax, color=cells.color, edgecolor="white", linewidth=0.25)
+    boros.boundary.plot(ax=ax, color=INK, linewidth=0.35)
+    open_pts.plot(ax=ax, color=INK, markersize=0.6, linewidth=0)
+    closed_pts.plot(ax=ax, color=CLOSED_GREY, markersize=5, edgecolor="white", linewidth=0.4, zorder=5)
+    ax.set_axis_off()
+    ax.set_aspect("equal")
+
+    best = cells.loc[cells.max_walk_min.idxmin()]
+    worst = cells.loc[cells.max_walk_min.idxmax()]
+    bxy = anchor_point(best.geometry)
+    by = (ax.transData + ax.transAxes.inverted()).transform(bxy)[1]
+    for xy, txt_xy, head, detail, ha, geom in [
+        (bxy, (0.0, by), f"Shortest: under {best.max_walk_min:.0f} min",
+         "East River Esplanade,\nManhattan", "left", best.geometry),
+        (anchor_point(worst.geometry), (1.0, 0.075), f"Longest: up to {worst.max_walk_min:.0f} min",
+         "Seaside Library, Queens", "right", worst.geometry),
+    ]:
+        S.callout(ax, xy, txt_xy, head, detail, ha=ha, outline=geom)
+
+    cax = fig.add_axes([0.06, 0.085, 0.56, 0.016])
+    grid = np.linspace(0, SCALE_MAX, 301)
+    sm = ScalarMappable(norm=Normalize(0, SCALE_MAX), cmap=ListedColormap([walk_color(m) for m in grid]))
+    cb = fig.colorbar(sm, cax=cax, orientation="horizontal", ticks=TICKS)
+    cb.ax.set_xticklabels(["0", f"{CENTER:g} avg", f"{SCALE_MAX:g}+ min"], fontsize=7.5, color=INK)
+    cb.outline.set_visible(False)
+    cb.ax.tick_params(length=0, pad=2)
+    cb.ax.set_title("Longest walk to the nearest restroom", fontsize=7.8, color=INK, pad=4, loc="left")
+    fig.legend(handles=[Line2D([], [], marker="o", ls="", color=INK, markersize=1.8, label="Restroom"),
+                        Line2D([], [], marker="o", ls="", color=CLOSED_GREY, markeredgecolor="white",
+                               markersize=4, label="Closed")],
+               loc="lower left", bbox_to_anchor=(0.66, 0.068), frameon=False, fontsize=7.5,
+               labelcolor=INK, handletextpad=0.3, borderaxespad=0)
+    fig.text(0.06, 0.025, "Walk = straight-line distance × 1.3 at 80 m/min. Data: NYC Open Data (Nov 2026)\n"
+             "#30DayMapChallenge Day 3: Polygons  ·  daniellecarrick.github.io/30-day-map-challenge",
+             ha="left", va="bottom", fontsize=6.3, color=MUTED, linespacing=1.4)
+    fig.savefig(out, dpi=DPI)
+    plt.close(fig)
+    print("wrote", out)
+
+
+def anchor_point(geom):
+    """A point inside the polygon's largest piece (for callout leader lines)."""
+    part = max(geom.geoms, key=lambda g: g.area) if geom.geom_type == "MultiPolygon" else geom
+    p = part.representative_point()
+    return p.x, p.y
+
+
 def main():
     S.apply()
     pts, boros = load()
@@ -212,6 +276,7 @@ def main():
     fig.subplots_adjust(left=0.01, right=0.99, top=0.93, bottom=0.12, wspace=0.02)
     fig.savefig(OUT / "nyc_restrooms_voronoi.png", dpi=S.MAP["png_dpi"])
     print("wrote", OUT / "nyc_restrooms_voronoi.png")
+    social_card(cells_all, open_all, closed, boros, avg["all"], OUT / "linkedin_all_restrooms.png")
 
     # ---- interactive page: data in projected metres, inlined into one HTML file ----
     cols = ["facility_name", "operator", "boroname", "max_walk_min", "color"]
