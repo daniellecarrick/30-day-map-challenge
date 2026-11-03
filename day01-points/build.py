@@ -102,28 +102,101 @@ def bullet(ax, x, y, route, r, fs):
             fontsize=fs * (0.62 if route == "SIR" else 1), fontweight="bold", zorder=4)
 
 
-def pictogram(ax, st, routes):
+def pictogram(ax, st, routes, fs=None, notes=True, row_gap=2.0):
     """One row per route, sorted by % fully accessible. Each dot is one station on that route:
     filled first, then one-direction, then rings."""
-    ROW, R, RING = 2.0, 0.40, 0.13
+    fs = fs or S.SIZE["legend"]
+    ROW, R, RING = row_gap, 0.40, 0.13
     X0 = 5.4  # first dot
     for i, (route, row) in enumerate(routes.iterrows()):
         y = -i * ROW
-        bullet(ax, 0.55, y, route, 0.55, 9)
-        ax.text(4.5, y, f"{row.pct:.0f}%", ha="right", va="center", fontsize=S.SIZE["legend"],
+        bullet(ax, 0.55, y, route, 0.55 * ROW / 2.0 + 0.1, fs * 0.95)
+        ax.text(4.5, y, f"{row.pct:.0f}%", ha="right", va="center", fontsize=fs,
                 fontweight="semibold", color=INK)
         seq = [1] * row.full + [2] * row.part + [0] * row.none
         for j, a in enumerate(seq):
             draw_marker(ax, X0 + j, y, [row.trunk], a, R, RING)
     # call out the most and least accessible lines
     best, worst = routes.iloc[0], routes.iloc[-1]
-    for k, (route, row) in [(0, (routes.index[0], best)), (len(routes) - 1, (routes.index[-1], worst))]:
+    for k, (route, row) in [] if not notes else [(0, (routes.index[0], best)), (len(routes) - 1, (routes.index[-1], worst))]:
         ax.text(X0 + row.n + 0.6, -k * ROW, f"{route}: {row.full} of {row.n} stations",
                 ha="left", va="center", fontsize=S.SIZE["annotation"], color=MUTED)
-    ax.set_xlim(-0.2, X0 + routes.n.max() + 0.6)
+    ax.set_xlim(-0.2, X0 + routes.n.max() + (0.6 if notes else 0.2))
     ax.set_ylim(-(len(routes) - 1) * ROW - 0.9, 0.9)
     ax.set_aspect("equal")
     ax.set_axis_off()
+
+
+def draw_map(ax, st, boros, r, ring, pad=600):
+    xmin, ymin, xmax, ymax = boros.total_bounds
+    ax.set_xlim(xmin - pad, xmax + pad)
+    ax.set_ylim(ymin - pad, ymax + pad)
+    boros.plot(ax=ax, color=S.TOKENS["color"]["light"]["ctl"], edgecolor="none")
+    boros.boundary.plot(ax=ax, color=INK, linewidth=S.MAP["boundary_width"] * 0.6, alpha=0.5)
+    # draw inaccessible first so filled dots sit on top
+    for _, s in st.sort_values("ada", key=lambda a: a.map({0: 0, 2: 1, 1: 2})).iterrows():
+        draw_marker(ax, s.geometry.x, s.geometry.y, s.trunks, s.ada, r, ring)
+    ax.set_aspect("equal")
+    ax.set_axis_off()
+
+
+def wrapped_pictogram(ax, routes, wrap=25, fs=6.5):
+    """Card version of the pictogram: each line's dots wrap onto two rows of `wrap`, so dots
+    can be bigger in a narrow column. Filled dots first, so the filled share reads left to right."""
+    ROW = 2.75  # two dot rows + gap
+    X0 = 6.6
+    for i, (route, row) in enumerate(routes.iterrows()):
+        y0 = -i * ROW
+        bullet(ax, 0.9, y0 - 0.5, route, 0.9, fs)
+        ax.text(X0 - 0.7, y0 - 0.5, f"{row.pct:.0f}%", ha="right", va="center", fontsize=fs,
+                fontweight="semibold", color=INK)
+        seq = [1] * row.full + [2] * row.part + [0] * row.none
+        for j, a in enumerate(seq):
+            draw_marker(ax, X0 + (j % wrap), y0 - (j // wrap), [row.trunk], a, 0.42, 0.13)
+    ax.set_xlim(-0.1, X0 + wrap - 0.4)
+    ax.set_ylim(-(len(routes) - 1) * ROW - 1.6, 0.6)
+    ax.set_aspect("equal")
+    ax.set_axis_off()
+
+
+def social_card(st, boros, routes, full, n, out: Path) -> None:
+    """1080x1350 (4:5) image for LinkedIn/Instagram feeds, type sized for a phone."""
+    W_IN, H_IN, DPI = 5.4, 6.75, 200
+    fig = plt.figure(figsize=(W_IN, H_IN), dpi=DPI)
+    fig.text(0.06, 0.955, "Only a third of NYC subway stations\ncan be used without stairs",
+             ha="left", va="top", fontsize=17, fontweight="bold", color=INK, fontfamily=S.HEAD_FONT,
+             linespacing=1.15)
+    best, worst = routes.iloc[0], routes.iloc[-1]
+    fig.text(0.06, 0.858, f"{full} of {n} stations are fully accessible. By line, that ranges\n"
+             f"from {best.pct:.0f}% on the {routes.index[0]} to {worst.pct:.0f}% on the {routes.index[-1]}.",
+             ha="left", va="top", fontsize=8.3, color=MUTED, linespacing=1.35)
+
+    ax = fig.add_axes([0.0, 0.17, 0.585, 0.62])
+    draw_map(ax, st, boros, 330, 100, pad=300)
+
+    pax = fig.add_axes([0.6, 0.155, 0.37, 0.615])
+    wrapped_pictogram(pax, routes)
+    pax.apply_aspect()
+    top = pax.get_position().y1
+    fig.text(0.6, top + 0.012, "% fully accessible, by line", fontsize=8, fontweight="semibold", color=INK)
+
+    # legend: one row along the bottom
+    keys = [(["456"], 1, "Fully accessible"), (["456"], 2, "One direction only"),
+            (["456"], 0, "Stairs only"), (["123", "456"], 1, "Several lines")]
+    lax = fig.add_axes([0.06, 0.098, 0.90, 0.03])
+    lax.set_xlim(0, 90); lax.set_ylim(-1.5, 1.5); lax.set_aspect("equal"); lax.set_axis_off()
+    x = 0.8
+    for trunks, ada, label in keys:
+        draw_marker(lax, x, 0, trunks, ada, 0.8, 0.26)
+        lax.text(x + 1.6, 0, label, va="center", fontsize=7.5, color=INK)
+        x += 1.6 + len(label) * 0.98 + 3.2
+    fig.text(0.06, 0.025, "Accessible = ADA accessible per MTA; each dot is a station in its line's color.\n"
+             "Data: MTA Subway Stations via NYC Open Data (Nov 2026)\n"
+             "#30DayMapChallenge Day 1: Points  ·  daniellecarrick.github.io/30-day-map-challenge",
+             ha="left", va="bottom", fontsize=6.3, color=MUTED, linespacing=1.4)
+    fig.savefig(out, dpi=DPI)
+    plt.close(fig)
+    print("wrote", out)
 
 
 def main():
@@ -189,6 +262,7 @@ def main():
     fig.savefig(OUT / "nyc_subway_accessible.png", dpi=S.MAP["png_dpi"])
     plt.close(fig)
     print("wrote", OUT / "nyc_subway_accessible.png")
+    social_card(st, boros, routes, full, n, OUT / "linkedin_subway_accessible.png")
 
     # ---- interactive page: data in projected metres, inlined into one HTML file ----
     b = boros.copy()
