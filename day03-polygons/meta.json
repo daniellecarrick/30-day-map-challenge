@@ -1,0 +1,9 @@
+{
+  "day": 3,
+  "theme": "Polygons",
+  "title": "On average, the nearest public bathroom in NYC is an 11-minute walk",
+  "description": "Voronoi polygons around every public restroom in New York City, colored by the longest walk from anywhere inside each one. Toggle to see accessible restrooms only.",
+  "html": "out/nyc_restrooms_voronoi.html",
+  "png": "out/nyc_restrooms_voronoi.png",
+  "published": "2026-11-03"
+}

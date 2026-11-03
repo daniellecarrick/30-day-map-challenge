@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>30 Day Map Challenge 2026</title>
+<meta name="description" content="One map a day through November, made for the #30DayMapChallenge.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="30 Day Map Challenge 2026">
+<meta property="og:description" content="One map a day through November, made for the #30DayMapChallenge.">
+<meta property="og:url" content="https://daniellecarrick.github.io/30-day-map-challenge/">
+<meta property="og:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day03/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="30 Day Map Challenge 2026">
+<meta name="twitter:description" content="One map a day through November, made for the #30DayMapChallenge.">
+<meta name="twitter:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day03/preview.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Shared web theme for the #30DayMapChallenge series.
+   Values mirror shared/tokens.json; change both together.
+   Pages load Bitter (headlines) + Raleway (body) from Google Fonts (tokens.json font.web_css). */
+
+:root {
+  --bg: #ffffff; --ink: #2b2b28; --muted: #6b6b66; --edge: #ffffff; --closed: #8a8a86;
+  --ctl: #f0efec; --ctl-on: #ffffff; --accent: #3987e5;
+  --font: "Raleway", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-head: "Bitter", Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
+    --ctl: #2c2c29; --ctl-on: #45453f;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
+  --ctl: #2c2c29; --ctl-on: #45453f;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 14px/1.45 var(--font); -webkit-font-smoothing: antialiased;
+       font-variant-numeric: lining-nums; }
+
+/* ---- page layout: header / map that fills the rest of the viewport / footer ---- */
+.page { height: 100dvh; display: flex; flex-direction: column;
+        max-width: 1100px; margin: 0 auto; padding: 16px 16px 10px; }
+.page > header { flex: none; text-align: center; }
+.page h1 { font-size: clamp(22px, 2.8vw, 28px); line-height: 1.2; margin: 0 0 6px; font-weight: 700;
+            font-family: var(--font-head); text-wrap: balance; }
+.lede { color: var(--muted); margin: 0 auto 10px; max-width: 640px; text-wrap: balance; }
+.map-wrap { flex: 1 1 auto; min-height: 0; position: relative; }
+.map-wrap > svg { width: 100%; height: 100%; display: block; }
+.page > footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px;
+                 margin-top: 6px; text-wrap: balance; }
+.page > footer a { color: inherit; }
+/* "← All maps" link added by publish.py: pinned top-left on wide screens, above the title on phones */
+.home-link { position: fixed; top: 10px; left: 12px; z-index: 20; font: 600 13px/1 var(--font);
+             color: var(--muted); text-decoration: none; padding: 6px 8px; border-radius: 6px; background: var(--bg); }
+.home-link:hover { color: var(--ink); }
+@media (max-width: 900px) {
+  .home-link { position: static; display: inline-block; margin: 8px 0 0 8px; }
+}
+/* phones: let the page scroll and the map take its natural height */
+@media (max-width: 640px), (max-height: 520px) {
+  .page { height: auto; }
+  .map-wrap > svg { height: auto; }
+}
+
+/* ---- controls ---- */
+.controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 8px 14px; margin-bottom: 4px; }
+.seg { display: inline-flex; background: var(--ctl); border-radius: 8px; padding: 3px; }
+.seg button { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0;
+              padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ctl-on); color: var(--ink); font-weight: 600;
+                                   box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.stat { color: var(--muted); font-size: 13px; }
+
+/* ---- map marks ---- */
+.cell { stroke: var(--edge); stroke-width: 0.5; }
+.cell:hover { stroke: var(--ink); stroke-width: 1.5; }
+.boundary { fill: none; stroke: var(--ink); stroke-width: 0.5; pointer-events: none; }
+.pt { fill: var(--ink); pointer-events: none; }
+.closed { fill: var(--closed); stroke: var(--bg); stroke-width: 1; }
+
+/* ---- in-map legend (drawn in SVG by MapKit.legend) ---- */
+.legend text { fill: var(--ink); font-family: var(--font); }
+.legend .lg-title { font-weight: 600; }
+.legend .lg-muted { fill: var(--muted); }
+
+/* ---- tooltip ---- */
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--bg); color: var(--ink);
+       border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent); border-radius: 6px;
+       padding: 8px 10px; font-size: 12.5px; box-shadow: 0 2px 10px rgba(0,0,0,.12);
+       max-width: 260px; opacity: 0; transition: opacity .1s; }
+.tip b { display: block; margin-bottom: 2px; }
+.tip .m { color: var(--muted); }
+
+.gallery { max-width: 1100px; margin: 0 auto; padding: 40px 16px 32px; }
+.gallery > header { text-align: center; margin-bottom: 28px; }
+.gallery h1 { font-family: var(--font-head); font-size: clamp(26px, 4vw, 36px); line-height: 1.15; margin: 0 0 8px; }
+.gallery .lede { margin-bottom: 4px; }
+.progress { color: var(--muted); font-size: 13px; margin: 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 20px; }
+.card { border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); border-radius: 10px; overflow: hidden;
+         background: var(--bg); display: flex; flex-direction: column; }
+.card .thumb { display: block; background: #fff; aspect-ratio: 5 / 3; }
+.card .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.card .body { padding: 14px 16px 16px; }
+.kicker { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.card h2 { font-family: var(--font-head); font-size: 18px; line-height: 1.25; margin: 0 0 6px; }
+.card h2 a { color: var(--ink); text-decoration: none; }
+.card h2 a:hover { text-decoration: underline; }
+.desc { margin: 0 0 10px; color: var(--muted); font-size: 13.5px; }
+.links { margin: 0; display: flex; gap: 14px; font-size: 13.5px; font-weight: 600; }
+.links a { color: var(--accent); text-decoration: none; }
+.links a:hover { text-decoration: underline; }
+.gallery > footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; }
+.gallery > footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main class="gallery">
+  <header>
+    <h1>30 Day Map Challenge 2026</h1>
+    <p class="lede">One map a day through November, made for the #30DayMapChallenge.</p>
+    <p class="progress">1 of 30 days</p>
+  </header>
+  <section class="grid">
+    <article class="card">
+      <a class="thumb" href="day03/"><img src="day03/thumb.png" alt="On average, the nearest public bathroom in NYC is an 11-minute walk" loading="lazy"></a>
+      <div class="body">
+        <p class="kicker">Day 3 · Polygons</p>
+        <h2><a href="day03/">On average, the nearest public bathroom in NYC is an 11-minute walk</a></h2>
+        <p class="desc">Voronoi polygons around every public restroom in New York City, colored by the longest walk from anywhere inside each one. Toggle to see accessible restrooms only.</p>
+        <p class="links"><a href="day03/">Interactive map</a><a href="day03/map.png">PNG</a></p>
+      </div>
+    </article>
+  </section>
+  <footer>Prompts from <a href="https://30daymapchallenge.com/">30daymapchallenge.com</a> · Code and data on <a href="https://github.com/daniellecarrick/30-day-map-challenge">GitHub</a></footer>
+</main>
+</body>
+</html>

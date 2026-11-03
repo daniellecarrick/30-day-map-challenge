@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map Title</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/map.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">One or two sentences: what is mapped and what it includes.</p>
+    <div class="controls">
+      <!-- optional: <div id="toggle"></div> + MapKit.segmented(...) for alternate views -->
+      <span class="stat" id="stat"></span>
+    </div>
+  </header>
+  <div class="map-wrap" id="map"></div>
+  <footer>How it was calculated, in one sentence. <span id="source"></span> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const W = 640, H = 640;
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[4, 4], [W - 4, H - 4]], D.features);
+const path = d3.geoPath(proj);
+const tip = MapKit.tooltip();
+
+d3.select("#title").html(D.title);
+d3.select("#source").text(D.source);
+d3.select("#day").text(D.day);
+
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
+svg.append("g").selectAll("path").data(D.features.features).join("path")
+  .attr("class", "cell").attr("d", path).attr("fill", d => d.properties.color)
+  .on("mousemove", (ev, d) => tip.show(ev, `<b>${d.properties.value}</b>`))
+  .on("mouseleave", tip.hide);
+
+// Put the legend in the map's emptiest corner (x, y in viewBox units)
+const MAX = D.stops[D.stops.length - 1][0];
+MapKit.legend(svg, {
+  x: 10, y: 10, width: 200, fontSize: 14,
+  title: "Legend title",
+  stops: D.stops,
+  ticks: [[D.stops[0][0], `${D.stops[0][0]}`], [D.center, `${D.center} avg`], [MAX, `${MAX}+`]],
+});
+</script>
+</body>
+</html>

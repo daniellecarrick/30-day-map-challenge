@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYC Nearest Restroom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <div id="toggle" aria-label="Which restrooms to include"></div>
+      <span class="stat" id="stat"></span>
+    </div>
+  </header>
+  <div class="map-wrap" id="map"></div>
+  <footer>Each polygon is the area closer to one restroom than to any other in its borough, colored by the longest walk from anywhere inside it.
+    The average is the mean walk from a random spot in the city. Walk time ≈ straight-line distance × 1.3 (street detour) at 80 m/min.
+    Data: <a href="https://data.cityofnewyork.us/d/i7jb-7jku">NYC Open Data, Public Restrooms</a> (Nov 2026) · #30DayMapChallenge Day 3: Polygons</footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const W = 640, H = 640;
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[4, 4], [W - 4, H - 4]], D.boroughs);
+const path = d3.geoPath(proj);
+const tip = MapKit.tooltip();
+const xy = f => proj(f.geometry.coordinates);
+// "an 8", "an 11", "an 18" vs "a 12", "a 13"
+const article = n => (/^(8|11|18)/.test(String(n)) ? "an" : "a");
+
+const COPY = {
+  all: {
+    title: m => `On average, the nearest public bathroom<br />is ${article(m)} ${m}-minute walk`,
+    lede: n => `Based on all ${n.toLocaleString()} operational public restrooms in NYC: in parks and playgrounds, public libraries, Throne restroom booths, transit hubs, public plazas and more.`,
+  },
+  accessible: {
+    title: m => `On average, the nearest accessible public bathroom<br />is ${article(m)} ${m}-minute walk`,
+    lede: n => `Only the ${n.toLocaleString()} operational restrooms listed as fully, partially or limited accessible: in parks, public libraries, Throne booths, transit hubs, public plazas and more.`,
+  },
+};
+
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img");
+const gCells = svg.append("g");
+svg.append("g").selectAll("path").data(D.boroughs.features).join("path").attr("class", "boundary").attr("d", path);
+const gPts = svg.append("g");
+svg.append("g").selectAll("circle").data(D.points.features.filter(f => !f.properties.operational)).join("circle")
+  .attr("class", "closed").attr("r", 3.2).attr("cx", d => xy(d)[0]).attr("cy", d => xy(d)[1])
+  .on("mousemove", (ev, d) => tip.show(ev, `<b>${d.properties.facility_name}</b><span class="m">${d.properties.operator}</span><br>${d.properties.status}`))
+  .on("mouseleave", tip.hide);
+
+// Legend in the empty water/New Jersey space to the left of Manhattan
+const manhattan = D.boroughs.features.find(f => f.properties.boroname === "Manhattan");
+const [[mx0, my0]] = path.bounds(manhattan);
+const MAX = D.stops[D.stops.length - 1][0];
+MapKit.legend(svg, {
+  x: 10, y: Math.max(10, my0), width: Math.min(210, mx0 - 40), fontSize: 14,
+  title: "Longest walk to the restroom\nfrom anywhere in its polygon",
+  stops: D.stops,
+  ticks: [[0, "0"], [D.center, `${D.center} avg`], [MAX, `${MAX}+ min`]],
+  keys: [{ cls: "pt", r: 1.6, label: "Restroom" }, { cls: "closed", r: 3.2, label: "Closed / not operational" }],
+});
+
+function render(mode) {
+  const avg = Math.round(D.avg[mode]), n = D.counts[mode];
+  d3.select("#title").html(COPY[mode].title(avg));
+  d3.select("#lede").text(COPY[mode].lede(n));
+  d3.select("#stat").text(`${D.share_pct[mode]}% of polygons are under ${D.center} min end to end`);
+  svg.attr("aria-label", COPY[mode].title(avg).replace("<br />", " "));
+
+  gCells.selectAll("path").data(D[mode].features).join("path")
+    .attr("class", "cell").attr("d", path).attr("fill", d => d.properties.color)
+    .on("mousemove", (ev, d) => {
+      const p = d.properties;
+      tip.show(ev, `<b>${p.facility_name}</b><span class="m">${p.operator} · ${p.boroname}</span><br>
+        Longest walk here: ${Math.round(p.max_walk_min)} min`);
+    })
+    .on("mouseleave", tip.hide);
+  const open = D.points.features.filter(f => f.properties.operational && (mode === "all" || f.properties.accessible));
+  gPts.selectAll("circle").data(open).join("circle").attr("class", "pt")
+    .attr("r", 0.9).attr("cx", d => xy(d)[0]).attr("cy", d => xy(d)[1]);
+}
+
+MapKit.segmented("#toggle", [
+  { value: "all", label: "All restrooms" },
+  { value: "accessible", label: "Accessible only" },
+], render);
+</script>
+</body>
+</html>

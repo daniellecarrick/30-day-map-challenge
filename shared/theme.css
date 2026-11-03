@@ -1,0 +1,82 @@
+/* Shared web theme for the #30DayMapChallenge series.
+   Values mirror shared/tokens.json; change both together.
+   Pages load Bitter (headlines) + Raleway (body) from Google Fonts (tokens.json font.web_css). */
+
+:root {
+  --bg: #ffffff; --ink: #2b2b28; --muted: #6b6b66; --edge: #ffffff; --closed: #8a8a86;
+  --ctl: #f0efec; --ctl-on: #ffffff; --accent: #3987e5;
+  --font: "Raleway", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-head: "Bitter", Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
+    --ctl: #2c2c29; --ctl-on: #45453f;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
+  --ctl: #2c2c29; --ctl-on: #45453f;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 14px/1.45 var(--font); -webkit-font-smoothing: antialiased;
+       font-variant-numeric: lining-nums; }
+
+/* ---- page layout: header / map that fills the rest of the viewport / footer ---- */
+.page { height: 100dvh; display: flex; flex-direction: column;
+        max-width: 1100px; margin: 0 auto; padding: 16px 16px 10px; }
+.page > header { flex: none; text-align: center; }
+.page h1 { font-size: clamp(22px, 2.8vw, 28px); line-height: 1.2; margin: 0 0 6px; font-weight: 700;
+            font-family: var(--font-head); text-wrap: balance; }
+.lede { color: var(--muted); margin: 0 auto 10px; max-width: 640px; text-wrap: balance; }
+.map-wrap { flex: 1 1 auto; min-height: 0; position: relative; }
+.map-wrap > svg { width: 100%; height: 100%; display: block; }
+.page > footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px;
+                 margin-top: 6px; text-wrap: balance; }
+.page > footer a { color: inherit; }
+/* "← All maps" link added by publish.py: pinned top-left on wide screens, above the title on phones */
+.home-link { position: fixed; top: 10px; left: 12px; z-index: 20; font: 600 13px/1 var(--font);
+             color: var(--muted); text-decoration: none; padding: 6px 8px; border-radius: 6px; background: var(--bg); }
+.home-link:hover { color: var(--ink); }
+@media (max-width: 900px) {
+  .home-link { position: static; display: inline-block; margin: 8px 0 0 8px; }
+}
+/* phones: let the page scroll and the map take its natural height */
+@media (max-width: 640px), (max-height: 520px) {
+  .page { height: auto; }
+  .map-wrap > svg { height: auto; }
+}
+
+/* ---- controls ---- */
+.controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 8px 14px; margin-bottom: 4px; }
+.seg { display: inline-flex; background: var(--ctl); border-radius: 8px; padding: 3px; }
+.seg button { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0;
+              padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ctl-on); color: var(--ink); font-weight: 600;
+                                   box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.stat { color: var(--muted); font-size: 13px; }
+
+/* ---- map marks ---- */
+.cell { stroke: var(--edge); stroke-width: 0.5; }
+.cell:hover { stroke: var(--ink); stroke-width: 1.5; }
+.boundary { fill: none; stroke: var(--ink); stroke-width: 0.5; pointer-events: none; }
+.pt { fill: var(--ink); pointer-events: none; }
+.closed { fill: var(--closed); stroke: var(--bg); stroke-width: 1; }
+
+/* ---- in-map legend (drawn in SVG by MapKit.legend) ---- */
+.legend text { fill: var(--ink); font-family: var(--font); }
+.legend .lg-title { font-weight: 600; }
+.legend .lg-muted { fill: var(--muted); }
+
+/* ---- tooltip ---- */
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--bg); color: var(--ink);
+       border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent); border-radius: 6px;
+       padding: 8px 10px; font-size: 12.5px; box-shadow: 0 2px 10px rgba(0,0,0,.12);
+       max-width: 260px; opacity: 0; transition: opacity .1s; }
+.tip b { display: block; margin-bottom: 2px; }
+.tip .m { color: var(--muted); }
