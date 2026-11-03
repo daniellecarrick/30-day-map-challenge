@@ -1,0 +1,9 @@
+{
+  "day": 2,
+  "theme": "Lines",
+  "title": "Citi Bike has a daily tide: evening riders flow back the way the morning came",
+  "description": "Every Citi Bike trip in September 2026, turned into a direction and summed across ~400 m hexagons, like a wind map. Weekday mornings pour toward Midtown, evenings flow back out, and weekend afternoons have no prevailing current. Toggle between the three to watch the arrows swing.",
+  "html": "out/citibike_flow.html",
+  "png": "out/citibike_flow.png",
+  "published": "2026-11-03"
+}

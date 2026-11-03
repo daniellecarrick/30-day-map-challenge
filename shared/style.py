@@ -91,21 +91,25 @@ def panel_heading(ax, heading: str, sub: str | None = None) -> None:
 
 
 def callout(ax, target_xy, text_xy, heading: str, detail: str | None = None,
-            ha: str = "left", outline=None) -> None:
+            ha: str = "left", outline=None, halo: bool = False) -> None:
     """Annotate one feature: a thin leader line from `target_xy` (data coords) to a label at
     `text_xy` (axes fraction, 0–1). Heading in Raleway semibold, detail in muted.
-    `outline`: optional geometry/GeoSeries to trace in ink so the feature stands out."""
+    `outline`: optional geometry/GeoSeries to trace in ink so the feature stands out.
+    `halo`: paper-colored outline around the text, for labels that must sit on busy marks."""
+    from matplotlib import patheffects
+    fx = [patheffects.withStroke(linewidth=3, foreground=BG)] if halo else None
     if outline is not None:
         from geopandas import GeoSeries
         gs = outline if isinstance(outline, GeoSeries) else GeoSeries([outline])
         gs.boundary.plot(ax=ax, color=INK, linewidth=1.1, zorder=6)
     ax.annotate(heading, xy=target_xy, xycoords="data", xytext=text_xy, textcoords="axes fraction",
                 ha=ha, va="bottom", fontsize=SIZE["annotation"] + 0.5, fontweight="semibold", color=INK,
-                zorder=7, arrowprops=dict(arrowstyle="-", color=INK, lw=0.6, shrinkA=3, shrinkB=1,
-                                          connectionstyle="angle,angleA=0,angleB=90,rad=0"))
+                zorder=7, path_effects=fx,
+                arrowprops=dict(arrowstyle="-", color=INK, lw=0.6, shrinkA=3, shrinkB=1,
+                                connectionstyle="angle,angleA=0,angleB=90,rad=0"))
     if detail:
         ax.annotate(detail, xy=text_xy, xycoords="axes fraction", xytext=(0, -2), textcoords="offset points",
-                    ha=ha, va="top", fontsize=SIZE["annotation"], color=MUTED, zorder=7)
+                    ha=ha, va="top", fontsize=SIZE["annotation"], color=MUTED, zorder=7, path_effects=fx)
 
 
 def build_page(template: Path, data: dict, out: Path) -> int:

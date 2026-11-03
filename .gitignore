@@ -16,3 +16,6 @@ day*/web/data.js
 
 # Personal blog drafts (made by publish.py)
 drafts/
+
+# Large raw downloads (e.g. Citi Bike trip CSVs): re-downloadable, too big to commit
+day*/data/raw/

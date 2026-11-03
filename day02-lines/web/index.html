@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Citi Bike Tide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/citibike_flow.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .page { max-width: 1280px; }
+  .lede { max-width: 760px; }
+  #toggle button { white-space: nowrap; padding: 6px 12px; }
+  @media (max-width: 640px) { #toggle button { white-space: normal; padding: 6px 8px; } }
+  .land { fill: var(--ctl); }
+  .boundary { stroke-width: 0.4; opacity: .45; vector-effect: non-scaling-stroke; }
+  .arrow { stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+  .focus { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+  .lg-arrows { margin-top: 2px; }
+  .lg-arrows .row { display: flex; align-items: center; gap: 6px; height: 20px; }
+  .lg-arrows svg { flex: none; overflow: visible; }
+  .zoom-hint { position: absolute; right: 6px; bottom: 4px; color: var(--muted); pointer-events: none; }
+  @media (max-width: 640px) { .zoom-hint { display: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <div id="toggle" aria-label="Time of week"></div>
+    </div>
+  </header>
+  <div class="map-wrap" id="map"><span class="zoom-hint">Scroll or pinch to zoom</span></div>
+  <footer>Each trip is a straight line from start to end station; its direction is added to the ~400 m hexagons at both
+    ends. Arrows show the summed direction per average day; areas with fewer than 8 trips a day are left out.
+    September 2026, Labor Day excluded. Data: <a id="src">Citi Bike System Data</a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const tip = MapKit.tooltip();
+const WIN = Object.fromEntries(D.windows.map(w => [w.key, w]));
+// shade, width and length all show net trips a day, capped at D.ref
+const color = d3.scaleLinear().domain(d3.range(D.blues.length).map(i => D.ref * i / (D.blues.length - 1)))
+  .range(D.blues).clamp(true);
+const COMPASS = ["east", "northeast", "north", "northwest", "west", "southwest", "south", "southeast"];
+const compass = (vx, vy) => COMPASS[Math.floor((((Math.atan2(vy, vx) * 180 / Math.PI + 360) % 360 + 22.5) % 360) / 45)];
+const fmt = d3.format(",.0f");
+
+d3.select("#title").text(D.title);
+d3.select("#lede").text(D.lede);
+d3.select("#day").text(D.day);
+d3.select("#src").attr("href", D.source_url);
+
+// ---- map (data in UTM metres; geoIdentity flips y) ----
+// wide viewBox on desktop so the zoomed-in map uses the page width; portrait on phones
+const narrow = matchMedia("(max-width: 640px)").matches;
+const W = narrow ? 470 : 1000, H = narrow ? 760 : 620;
+const [x0, y0, x1, y1] = D.extent;
+const frame = { type: "MultiPoint", coordinates: [[x0, y0], [x1, y1]] };
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[4, 4], [W - 4, H - 4]], frame);
+const path = d3.geoPath(proj);
+const PX = proj.scale();  // viewBox units per metre
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
+const gZoom = svg.append("g");
+gZoom.selectAll("path.land").data(D.boroughs.features).join("path").attr("class", "land").attr("d", path);
+gZoom.selectAll("path.boundary").data(D.boroughs.features).join("path").attr("class", "boundary").attr("d", path);
+const gArrows = svg.append("g");
+const focus = svg.append("path").attr("class", "focus").style("display", "none");
+D.hexes.forEach(d => [d.px, d.py] = proj([d.x, d.y]));
+
+// arrow length: linear in net trips/day, capped at D.ref; LMAX = 2 hex widths at zoom 1
+const LMAX = 2.4 * Math.sqrt(3) * D.hex_r * PX;
+const len = mag => LMAX * Math.min(mag / D.ref, 1);
+function arrowPath(cx, cy, vx, vy, k) {
+  const mag = Math.hypot(vx, vy);
+  if (!mag) return "";
+  const L = Math.max(len(mag) * k, 3), ux = vx / mag, uy = -vy / mag;  // screen y points down
+  const tx = cx + ux * L / 2, ty = cy + uy * L / 2, bx = cx - ux * L / 2, by = cy - uy * L / 2;
+  const hl = Math.min(5, L * 0.45), hw = hl * 0.55;            // head: fixed px, smaller on tiny arrows
+  const hx = tx - ux * hl, hy = ty - uy * hl;
+  return `M${bx},${by}L${hx},${hy}M${tx},${ty}L${hx - uy * hw},${hy + ux * hw}L${hx + uy * hw},${hy - ux * hw}Z`;
+}
+
+// each hex carries its current (animated) net-flow vector in d.cur = [vx, vy]
+const get = (d, w) => { const v = d.w[w]; return v ? [v[0], v[1]] : [0, 0]; };
+let win = "am", zt = d3.zoomIdentity, hovered = null, lastEv = null;
+D.hexes.forEach(d => d.cur = get(d, win));
+const arrows = gArrows.selectAll("path.arrow").data(D.hexes).join("path").attr("class", "arrow");
+function drawArrows() {
+  arrows.attr("d", d => arrowPath(zt.applyX(d.px), zt.applyY(d.py), d.cur[0], d.cur[1], zt.k))
+    .attr("stroke", d => color(Math.hypot(...d.cur))).attr("fill", d => color(Math.hypot(...d.cur)))
+    .attr("stroke-width", d => 1 + 1.6 * Math.min(Math.hypot(d.cur[0], d.cur[1]) / D.ref, 1))
+    .attr("opacity", d => (d.cur[0] || d.cur[1]) ? 1 : 0);
+}
+function place() { gZoom.attr("transform", zt); drawArrows(); placeFocus(); }
+
+// ---- toggle: arrows swing and stretch to the new window ----
+function show(w) {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  win = w;
+  const from = D.hexes.map(d => d.cur.slice()), to = D.hexes.map(d => get(d, w));
+  // interpolate angle + length (not x/y) so arrows rotate rather than shrink through zero
+  const polar = ([vx, vy]) => [Math.hypot(vx, vy), Math.atan2(vy, vx)];
+  const lerp = D.hexes.map((d, i) => {
+    let [m0, a0] = polar(from[i]), [m1, a1] = polar(to[i]);
+    if (!m0) a0 = a1; if (!m1) a1 = a0;
+    let da = a1 - a0; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
+    return t => { const m = m0 + (m1 - m0) * t, a = a0 + da * t; return [m * Math.cos(a), m * Math.sin(a)]; };
+  });
+  svg.interrupt().transition().duration(reduce ? 0 : 900).ease(d3.easeCubicInOut)
+    .tween("swing", () => t => { D.hexes.forEach((d, i) => d.cur = lerp[i](t)); drawArrows(); })
+    .on("end", () => { D.hexes.forEach((d, i) => d.cur = to[i]); drawArrows(); refreshTip(); });
+}
+const SHORT = { am: "Weekday 7–10am", pm: "Weekday 4–7pm", we: "Weekend 1–4pm" };
+MapKit.segmented("#toggle", D.windows.map(w => ({ value: w.key, label: SHORT[w.key] })), show, "am");
+
+// ---- zoom ----
+const zoom = d3.zoom().scaleExtent([1, 8]).translateExtent([[0, 0], [W, H]])
+  .on("zoom", ev => { zt = ev.transform; place(); })
+  .filter(ev => !ev.touches || ev.touches.length > 1);
+svg.call(zoom).style("touch-action", "pan-y pinch-zoom");
+// start zoomed in on the busy core: the morning-flow-weighted centre (around Union Square / the East River)
+const AM = D.hexes.filter(d => d.w.am), wt = d => Math.hypot(d.w.am[0], d.w.am[1]);
+const cx = d3.sum(AM, d => d.px * wt(d)) / d3.sum(AM, wt), cy = d3.sum(AM, d => d.py * wt(d)) / d3.sum(AM, wt);
+const K0 = narrow ? 1.5 : 1.7;
+svg.call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(K0).translate(-cx, -cy));
+
+// ---- hover: nearest hex centre within 16px ----
+const hexD = (() => { const a = d3.range(6).map(i => Math.PI / 6 + i * Math.PI / 3);
+  return k => { const r = D.hex_r * PX * k; return "M" + a.map(t => `${r * Math.cos(t)},${r * Math.sin(t)}`).join("L") + "Z"; }; })();
+function placeFocus() {
+  if (!hovered) return focus.style("display", "none");
+  focus.style("display", null).attr("d", hexD(zt.k))
+    .attr("transform", `translate(${zt.applyX(hovered.px)},${zt.applyY(hovered.py)})`);
+}
+function tipHtml(d) {
+  const v = d.w[win], w = WIN[win];
+  const head = `<b>Near ${d.name}</b>`;
+  if (!v) return `${head}<span class="m">Fewer than ${D.min_trips} trips a day start or end here (${w.label.toLowerCase()})</span>`;
+  const [vx, vy, n, dep, arr] = v, mag = Math.hypot(vx, vy), net = arr - dep;
+  return `${head}${fmt(n)} trips a day start or end here<br>
+    The net flow is heading <b style="display:inline">${compass(vx, vy)}</b><br>
+    <span class="m">${Math.abs(net) < 1 ? "Bikes in ≈ bikes out" :
+      `${fmt(Math.abs(net))} more bikes ${net > 0 ? "arrive than leave" : "leave than arrive"}`} · ${w.label}</span>`;
+}
+function refreshTip() { if (hovered && lastEv) tip.show(lastEv, tipHtml(hovered)); }
+MapKit.nearestHover(svg, D.hexes, {
+  x: d => d.px, y: d => d.py, radius: 16, transform: () => zt,
+  onEnter: (ev, d) => { hovered = d; lastEv = ev; tip.show(ev, tipHtml(d)); placeFocus(); },
+  onLeave: () => { hovered = null; tip.hide(); placeFocus(); },
+});
+
+// ---- legend: bottom-left, beside the map (New Jersey / the harbor are empty) ----
+const lg = MapKit.legend(svg, {
+  x: 8, y: H - 8, anchor: "bottom", width: 175,
+  title: "Each arrow shows the main direction riders travel through that spot",
+});
+lg.append("div").style("margin-top", "8px").style("font-weight", 600).text("Net trips a day in that direction");
+const lgA = lg.append("div").attr("class", "lg-arrows");
+const KEYS = [10, 40, 80];
+const keyRows = lgA.selectAll("div.row").data(KEYS).join("div").attr("class", "row");
+keyRows.append("svg").attr("width", 80).attr("height", 12)
+  .append("path").attr("class", "arrow").attr("stroke", color).attr("fill", color)
+  .attr("stroke-width", v => 1 + 1.6 * Math.min(v / D.ref, 1));
+keyRows.append("span").text(v => v === D.ref ? `${v}+` : v);
+// arrowPath works in its own units, so give it the on-screen length directly
+function keyPath(v) {
+  const r = svg.node().getBoundingClientRect(), s = Math.min(r.width / W, r.height / H);
+  const L = Math.min(len(v) * s * zt.k, 76);
+  return arrowPath(2 + L / 2, 6, v, 0, L / len(v));
+}
+function updateKey() { keyRows.select("path").attr("d", keyPath); }
+new ResizeObserver(updateKey).observe(svg.node());
+zoom.on("zoom.key", () => updateKey());
+updateKey();
+</script>
+</body>
+</html>
