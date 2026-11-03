@@ -20,12 +20,16 @@
 <style>
 /* Shared web theme for the #30DayMapChallenge series.
    Values mirror shared/tokens.json; change both together.
+   Minimum text size on every page is 14px (legends, tooltips, controls); the footer credit line is 11px.
    Pages load Bitter (headlines) + Raleway (body) from Google Fonts (tokens.json font.web_css). */
 
 :root {
   --bg: #ffffff; --ink: #2b2b28; --muted: #6b6b66; --edge: #ffffff; --closed: #8a8a86;
   --ctl: #f0efec; --ctl-on: #ffffff; --accent: #3987e5;
   --font: "Raleway", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  /* NYC subway trunk colors (tokens.json scales.subway) */
+  --sub-123: #ee352e; --sub-456: #00933c; --sub-7: #b933ad; --sub-ACE: #0039a6; --sub-BDFM: #ff6319;
+  --sub-G: #6cbe45; --sub-JZ: #996633; --sub-L: #a7a9ac; --sub-NQRW: #fccc0a; --sub-S: #808183; --sub-SIR: #1d5da8;
   --font-head: "Bitter", Georgia, "Times New Roman", serif;
 }
 @media (prefers-color-scheme: dark) {
@@ -54,11 +58,11 @@ body { margin: 0; background: var(--bg); color: var(--ink);
 .lede { color: var(--muted); margin: 0 auto 10px; max-width: 640px; text-wrap: balance; }
 .map-wrap { flex: 1 1 auto; min-height: 0; position: relative; }
 .map-wrap > svg { width: 100%; height: 100%; display: block; }
-.page > footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px;
+.page > footer { flex: none; text-align: center; color: var(--muted); font-size: 11px;
                  margin-top: 6px; text-wrap: balance; }
 .page > footer a { color: inherit; }
 /* "← All maps" link added by publish.py: pinned top-left on wide screens, above the title on phones */
-.home-link { position: fixed; top: 10px; left: 12px; z-index: 20; font: 600 13px/1 var(--font);
+.home-link { position: fixed; top: 10px; left: 12px; z-index: 20; font: 600 14px/1 var(--font);
              color: var(--muted); text-decoration: none; padding: 6px 8px; border-radius: 6px; background: var(--bg); }
 .home-link:hover { color: var(--ink); }
 @media (max-width: 900px) {
@@ -74,12 +78,12 @@ body { margin: 0; background: var(--bg); color: var(--ink);
 .controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
             gap: 8px 14px; margin-bottom: 4px; }
 .seg { display: inline-flex; background: var(--ctl); border-radius: 8px; padding: 3px; }
-.seg button { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0;
+.seg button { font: inherit; font-size: 14px; color: var(--muted); background: none; border: 0;
               padding: 6px 14px; border-radius: 6px; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--ctl-on); color: var(--ink); font-weight: 600;
                                    box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.stat { color: var(--muted); font-size: 13px; }
+.stat { color: var(--muted); font-size: 14px; }
 
 /* ---- map marks ---- */
 .cell { stroke: var(--edge); stroke-width: 0.5; }
@@ -88,15 +92,27 @@ body { margin: 0; background: var(--bg); color: var(--ink);
 .pt { fill: var(--ink); pointer-events: none; }
 .closed { fill: var(--closed); stroke: var(--bg); stroke-width: 1; }
 
-/* ---- in-map legend (drawn in SVG by MapKit.legend) ---- */
-.legend text { fill: var(--ink); font-family: var(--font); }
+/* ---- in-map legend (HTML overlay placed over the map by MapKit.legend, so text stays 14px) ---- */
+.legend { position: absolute; z-index: 2; font-size: 14px; line-height: 1.3; color: var(--ink); pointer-events: none; }
 .legend .lg-title { font-weight: 600; }
-.legend .lg-muted { fill: var(--muted); }
+.legend .lg-bar { height: 12px; border-radius: 2px; margin-top: 6px; }
+.legend .lg-ticks { position: relative; height: 22px; }
+.legend .lg-ticks span { position: absolute; top: 0; padding-top: 5px; white-space: nowrap; }
+.legend .lg-ticks span::before { content: ""; position: absolute; top: 0; left: 0; width: 1px; height: 4px; background: var(--muted); }
+.legend .lg-ticks span.mid { transform: translateX(-50%); }
+.legend .lg-ticks span.mid::before { left: 50%; }
+.legend .lg-ticks span.end { transform: translateX(-100%); }
+.legend .lg-ticks span.end::before { left: auto; right: 0; }
+.legend .lg-key { display: flex; align-items: center; gap: 7px; margin-top: 4px; }
+.legend .lg-key svg { flex: none; overflow: visible; }
+.legend .lg-muted { color: var(--muted); }
+/* phones: the legend sits under the map instead of on it */
+@media (max-width: 640px) { .legend { position: static; margin-top: 8px; } }
 
 /* ---- tooltip ---- */
 .tip { position: fixed; z-index: 10; pointer-events: none; background: var(--bg); color: var(--ink);
        border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent); border-radius: 6px;
-       padding: 8px 10px; font-size: 12.5px; box-shadow: 0 2px 10px rgba(0,0,0,.12);
+       padding: 8px 10px; font-size: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.12);
        max-width: 260px; opacity: 0; transition: opacity .1s; }
 .tip b { display: block; margin-bottom: 2px; }
 .tip .m { color: var(--muted); }
@@ -105,22 +121,22 @@ body { margin: 0; background: var(--bg); color: var(--ink);
 .gallery > header { text-align: center; margin-bottom: 28px; }
 .gallery h1 { font-family: var(--font-head); font-size: clamp(26px, 4vw, 36px); line-height: 1.15; margin: 0 0 8px; }
 .gallery .lede { margin-bottom: 4px; }
-.progress { color: var(--muted); font-size: 13px; margin: 0; }
+.progress { color: var(--muted); font-size: 14px; margin: 0; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 20px; }
 .card { border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); border-radius: 10px; overflow: hidden;
          background: var(--bg); display: flex; flex-direction: column; }
 .card .thumb { display: block; background: #fff; aspect-ratio: 5 / 3; }
 .card .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .card .body { padding: 14px 16px 16px; }
-.kicker { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.kicker { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .card h2 { font-family: var(--font-head); font-size: 18px; line-height: 1.25; margin: 0 0 6px; }
 .card h2 a { color: var(--ink); text-decoration: none; }
 .card h2 a:hover { text-decoration: underline; }
-.desc { margin: 0 0 10px; color: var(--muted); font-size: 13.5px; }
-.links { margin: 0; display: flex; gap: 14px; font-size: 13.5px; font-weight: 600; }
+.desc { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+.links { margin: 0; display: flex; gap: 14px; font-size: 14px; font-weight: 600; }
 .links a { color: var(--accent); text-decoration: none; }
 .links a:hover { text-decoration: underline; }
-.gallery > footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; }
+.gallery > footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 28px; }
 .gallery > footer a { color: inherit; }
 </style>
 </head>
@@ -129,9 +145,18 @@ body { margin: 0; background: var(--bg); color: var(--ink);
   <header>
     <h1>30 Day Map Challenge 2026</h1>
     <p class="lede">One map a day through November, made for the #30DayMapChallenge.</p>
-    <p class="progress">1 of 30 days</p>
+    <p class="progress">2 of 30 days</p>
   </header>
   <section class="grid">
+    <article class="card">
+      <a class="thumb" href="day01/"><img src="day01/thumb.png" alt="Only a third of NYC subway stations can be used without stairs" loading="lazy"></a>
+      <div class="body">
+        <p class="kicker">Day 1 · Points</p>
+        <h2><a href="day01/">Only a third of NYC subway stations can be used without stairs</a></h2>
+        <p class="desc">Every NYC subway station in its line&#x27;s color: filled if it is ADA accessible, a ring if it is stairs only. A pictogram stacks each line&#x27;s stations to compare % accessible by line, from the E (59%) to the J and G (under 1 in 4).</p>
+        <p class="links"><a href="day01/">Interactive map</a><a href="day01/map.png">PNG</a></p>
+      </div>
+    </article>
     <article class="card">
       <a class="thumb" href="day03/"><img src="day03/thumb.png" alt="On average, the nearest public bathroom in NYC is an 11-minute walk" loading="lazy"></a>
       <div class="body">

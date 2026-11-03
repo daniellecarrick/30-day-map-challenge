@@ -1,5 +1,5 @@
 /* Shared web components for the #30DayMapChallenge series. Needs d3 v7 loaded first.
-   window.MapKit = { tooltip, segmented, legend } */
+   window.MapKit = { tooltip, segmented, legend, nearestHover } */
 (function () {
   /** Tooltip: const tip = MapKit.tooltip(); tip.show(event, html); tip.hide(); */
   function tooltip() {
@@ -28,46 +28,67 @@
     return { select };
   }
 
-  /** Legend drawn inside the map SVG so it scales and stays put with the map.
+  /** Legend placed over the map in its emptiest area. It is HTML (not SVG text) so its
+   *  text stays 14px however small the map is drawn; on phones it moves under the map.
    *  MapKit.legend(svg, {
-   *    x, y, width,                       // in SVG (viewBox) units
+   *    x, y,                              // top-left corner, in the map's SVG (viewBox) units
+   *    width,                             // in CSS px (default 200)
    *    title: "Longest walk ...",          // may contain \n for line breaks
    *    stops: [[value, color], ...],       // continuous gradient bar
    *    ticks: [[value, "label"], ...],
-   *    keys:  [{type: "dot", r, cls, label}, ...]   // point keys below the bar
-   *  })  -> returns the bottom y of the legend */
+   *    keys:  [{cls, r, label} | {draw: g => ..., label}, ...]  // marks drawn in a 16px SVG around (0,0)
+   *  })  -> returns the legend's d3 selection */
   function legend(svg, o) {
-    const fs = o.fontSize ?? 12, g = svg.append("g").attr("class", "legend").attr("transform", `translate(${o.x},${o.y})`);
-    let y = 0;
-    (o.title || "").split("\n").forEach(line => {
-      g.append("text").attr("class", "lg-title").attr("y", y + fs).attr("font-size", fs).text(line);
-      y += fs * 1.3;
-    });
-    y += 6;
+    const node = svg.node(), host = node.parentNode;
+    const el = d3.select(host).append("div").attr("class", "legend").style("width", (o.width ?? 200) + "px");
+    if (o.title) el.append("div").attr("class", "lg-title").html(o.title.split("\n").join("<br>"));
     if (o.stops) {
-      const id = "lg-grad-" + Math.random().toString(36).slice(2, 8);
-      const v0 = o.stops[0][0], v1 = o.stops[o.stops.length - 1][0];
-      const lg = svg.append("defs").append("linearGradient").attr("id", id);
-      o.stops.forEach(([v, c]) => lg.append("stop").attr("offset", (v - v0) / (v1 - v0)).attr("stop-color", c));
-      const h = fs * 0.9;
-      g.append("rect").attr("y", y).attr("width", o.width).attr("height", h).attr("rx", 2).attr("fill", `url(#${id})`);
-      y += h;
-      (o.ticks || []).forEach(([v, label], i, arr) => {
-        const x = o.width * (v - v0) / (v1 - v0);
-        g.append("line").attr("x1", x).attr("x2", x).attr("y1", y).attr("y2", y + 3).style("stroke", "var(--muted)");
-        g.append("text").attr("x", x).attr("y", y + fs + 3).attr("font-size", fs * 0.92)
-          .attr("text-anchor", i === 0 ? "start" : i === arr.length - 1 ? "end" : "middle").text(label);
-      });
-      y += fs + 10;
+      const v0 = o.stops[0][0], v1 = o.stops[o.stops.length - 1][0], pct = v => (100 * (v - v0)) / (v1 - v0);
+      el.append("div").attr("class", "lg-bar")
+        .style("background", `linear-gradient(to right, ${o.stops.map(([v, c]) => `${c} ${pct(v)}%`).join(", ")})`);
+      el.append("div").attr("class", "lg-ticks").selectAll("span").data(o.ticks || []).join("span")
+        .attr("class", (_, i, a) => (i === 0 ? "" : i === a.length - 1 ? "end" : "mid"))
+        .style("left", ([v]) => pct(v) + "%").text(([, label]) => label);
     }
     (o.keys || []).forEach(k => {
-      y += 4;
-      g.append("circle").attr("class", k.cls).attr("cx", 5).attr("cy", y + fs * 0.45).attr("r", k.r ?? 3);
-      g.append("text").attr("x", 16).attr("y", y + fs * 0.85).attr("font-size", fs * 0.92).text(k.label);
-      y += fs * 1.25;
+      const row = el.append("div").attr("class", "lg-key");
+      const g = row.append("svg").attr("width", 16).attr("height", 16).attr("viewBox", "-8 -8 16 16").append("g");
+      if (k.draw) k.draw(g);
+      else g.append("circle").attr("class", k.cls).attr("r", k.r ?? 3);
+      row.append("span").text(k.label);
     });
-    return o.y + y;
+    // keep it pinned to (x, y) on the map as the SVG letterboxes and resizes
+    function place() {
+      if (getComputedStyle(el.node()).position !== "absolute") return;
+      const vb = node.viewBox.baseVal, r = node.getBoundingClientRect(), h = host.getBoundingClientRect();
+      const s = Math.min(r.width / vb.width, r.height / vb.height);
+      const ox = r.left - h.left + (r.width - vb.width * s) / 2, oy = r.top - h.top + (r.height - vb.height * s) / 2;
+      el.style("left", ox + (o.x - vb.x) * s + "px").style("top", oy + (o.y - vb.y) * s + "px");
+    }
+    new ResizeObserver(place).observe(node);
+    place();
+    return el;
   }
 
-  window.MapKit = { tooltip, segmented, legend };
+  /** Easy hover for small point marks: finds the nearest point to the pointer (within `radius`
+   *  screen px) so you don't have to land exactly on a tiny dot.
+   *  MapKit.nearestHover(svg, points, {x: d => .., y: d => .., radius: 16,
+   *                      transform: () => zoomTransform, onEnter(ev, d), onLeave()}) */
+  function nearestHover(svg, points, o) {
+    const node = svg.node(), radius = o.radius ?? 16;
+    const delaunay = d3.Delaunay.from(points, o.x, o.y);
+    let current = null;
+    svg.on("pointermove.nearest", ev => {
+      const t = o.transform ? o.transform() : d3.zoomIdentity;
+      const vb = node.viewBox.baseVal, r = node.getBoundingClientRect();
+      const unitsPerPx = 1 / Math.min(r.width / vb.width, r.height / vb.height);
+      const [mx, my] = t.invert(d3.pointer(ev, node));
+      const i = delaunay.find(mx, my), d = points[i];
+      const dist = Math.hypot(o.x(d) - mx, o.y(d) - my) * t.k / unitsPerPx;  // screen px
+      if (dist <= radius) { current = d; o.onEnter(ev, d); }
+      else if (current) { current = null; o.onLeave(); }
+    }).on("pointerleave.nearest", () => { if (current) { current = null; o.onLeave(); } });
+  }
+
+  window.MapKit = { tooltip, segmented, legend, nearestHover };
 })();

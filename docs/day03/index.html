@@ -10,12 +10,16 @@
 <style>
 /* Shared web theme for the #30DayMapChallenge series.
    Values mirror shared/tokens.json; change both together.
+   Minimum text size on every page is 14px (legends, tooltips, controls); the footer credit line is 11px.
    Pages load Bitter (headlines) + Raleway (body) from Google Fonts (tokens.json font.web_css). */
 
 :root {
   --bg: #ffffff; --ink: #2b2b28; --muted: #6b6b66; --edge: #ffffff; --closed: #8a8a86;
   --ctl: #f0efec; --ctl-on: #ffffff; --accent: #3987e5;
   --font: "Raleway", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  /* NYC subway trunk colors (tokens.json scales.subway) */
+  --sub-123: #ee352e; --sub-456: #00933c; --sub-7: #b933ad; --sub-ACE: #0039a6; --sub-BDFM: #ff6319;
+  --sub-G: #6cbe45; --sub-JZ: #996633; --sub-L: #a7a9ac; --sub-NQRW: #fccc0a; --sub-S: #808183; --sub-SIR: #1d5da8;
   --font-head: "Bitter", Georgia, "Times New Roman", serif;
 }
 @media (prefers-color-scheme: dark) {
@@ -44,11 +48,11 @@ body { margin: 0; background: var(--bg); color: var(--ink);
 .lede { color: var(--muted); margin: 0 auto 10px; max-width: 640px; text-wrap: balance; }
 .map-wrap { flex: 1 1 auto; min-height: 0; position: relative; }
 .map-wrap > svg { width: 100%; height: 100%; display: block; }
-.page > footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px;
+.page > footer { flex: none; text-align: center; color: var(--muted); font-size: 11px;
                  margin-top: 6px; text-wrap: balance; }
 .page > footer a { color: inherit; }
 /* "← All maps" link added by publish.py: pinned top-left on wide screens, above the title on phones */
-.home-link { position: fixed; top: 10px; left: 12px; z-index: 20; font: 600 13px/1 var(--font);
+.home-link { position: fixed; top: 10px; left: 12px; z-index: 20; font: 600 14px/1 var(--font);
              color: var(--muted); text-decoration: none; padding: 6px 8px; border-radius: 6px; background: var(--bg); }
 .home-link:hover { color: var(--ink); }
 @media (max-width: 900px) {
@@ -64,12 +68,12 @@ body { margin: 0; background: var(--bg); color: var(--ink);
 .controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
             gap: 8px 14px; margin-bottom: 4px; }
 .seg { display: inline-flex; background: var(--ctl); border-radius: 8px; padding: 3px; }
-.seg button { font: inherit; font-size: 13px; color: var(--muted); background: none; border: 0;
+.seg button { font: inherit; font-size: 14px; color: var(--muted); background: none; border: 0;
               padding: 6px 14px; border-radius: 6px; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--ctl-on); color: var(--ink); font-weight: 600;
                                    box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.stat { color: var(--muted); font-size: 13px; }
+.stat { color: var(--muted); font-size: 14px; }
 
 /* ---- map marks ---- */
 .cell { stroke: var(--edge); stroke-width: 0.5; }
@@ -78,15 +82,27 @@ body { margin: 0; background: var(--bg); color: var(--ink);
 .pt { fill: var(--ink); pointer-events: none; }
 .closed { fill: var(--closed); stroke: var(--bg); stroke-width: 1; }
 
-/* ---- in-map legend (drawn in SVG by MapKit.legend) ---- */
-.legend text { fill: var(--ink); font-family: var(--font); }
+/* ---- in-map legend (HTML overlay placed over the map by MapKit.legend, so text stays 14px) ---- */
+.legend { position: absolute; z-index: 2; font-size: 14px; line-height: 1.3; color: var(--ink); pointer-events: none; }
 .legend .lg-title { font-weight: 600; }
-.legend .lg-muted { fill: var(--muted); }
+.legend .lg-bar { height: 12px; border-radius: 2px; margin-top: 6px; }
+.legend .lg-ticks { position: relative; height: 22px; }
+.legend .lg-ticks span { position: absolute; top: 0; padding-top: 5px; white-space: nowrap; }
+.legend .lg-ticks span::before { content: ""; position: absolute; top: 0; left: 0; width: 1px; height: 4px; background: var(--muted); }
+.legend .lg-ticks span.mid { transform: translateX(-50%); }
+.legend .lg-ticks span.mid::before { left: 50%; }
+.legend .lg-ticks span.end { transform: translateX(-100%); }
+.legend .lg-ticks span.end::before { left: auto; right: 0; }
+.legend .lg-key { display: flex; align-items: center; gap: 7px; margin-top: 4px; }
+.legend .lg-key svg { flex: none; overflow: visible; }
+.legend .lg-muted { color: var(--muted); }
+/* phones: the legend sits under the map instead of on it */
+@media (max-width: 640px) { .legend { position: static; margin-top: 8px; } }
 
 /* ---- tooltip ---- */
 .tip { position: fixed; z-index: 10; pointer-events: none; background: var(--bg); color: var(--ink);
        border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent); border-radius: 6px;
-       padding: 8px 10px; font-size: 12.5px; box-shadow: 0 2px 10px rgba(0,0,0,.12);
+       padding: 8px 10px; font-size: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.12);
        max-width: 260px; opacity: 0; transition: opacity .1s; }
 .tip b { display: block; margin-bottom: 2px; }
 .tip .m { color: var(--muted); }
@@ -125,7 +141,7 @@ body { margin: 0; background: var(--bg); color: var(--ink);
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script>
 /* Shared web components for the #30DayMapChallenge series. Needs d3 v7 loaded first.
-   window.MapKit = { tooltip, segmented, legend } */
+   window.MapKit = { tooltip, segmented, legend, nearestHover } */
 (function () {
   /** Tooltip: const tip = MapKit.tooltip(); tip.show(event, html); tip.hide(); */
   function tooltip() {
@@ -154,48 +170,69 @@ body { margin: 0; background: var(--bg); color: var(--ink);
     return { select };
   }
 
-  /** Legend drawn inside the map SVG so it scales and stays put with the map.
+  /** Legend placed over the map in its emptiest area. It is HTML (not SVG text) so its
+   *  text stays 14px however small the map is drawn; on phones it moves under the map.
    *  MapKit.legend(svg, {
-   *    x, y, width,                       // in SVG (viewBox) units
+   *    x, y,                              // top-left corner, in the map's SVG (viewBox) units
+   *    width,                             // in CSS px (default 200)
    *    title: "Longest walk ...",          // may contain \n for line breaks
    *    stops: [[value, color], ...],       // continuous gradient bar
    *    ticks: [[value, "label"], ...],
-   *    keys:  [{type: "dot", r, cls, label}, ...]   // point keys below the bar
-   *  })  -> returns the bottom y of the legend */
+   *    keys:  [{cls, r, label} | {draw: g => ..., label}, ...]  // marks drawn in a 16px SVG around (0,0)
+   *  })  -> returns the legend's d3 selection */
   function legend(svg, o) {
-    const fs = o.fontSize ?? 12, g = svg.append("g").attr("class", "legend").attr("transform", `translate(${o.x},${o.y})`);
-    let y = 0;
-    (o.title || "").split("\n").forEach(line => {
-      g.append("text").attr("class", "lg-title").attr("y", y + fs).attr("font-size", fs).text(line);
-      y += fs * 1.3;
-    });
-    y += 6;
+    const node = svg.node(), host = node.parentNode;
+    const el = d3.select(host).append("div").attr("class", "legend").style("width", (o.width ?? 200) + "px");
+    if (o.title) el.append("div").attr("class", "lg-title").html(o.title.split("\n").join("<br>"));
     if (o.stops) {
-      const id = "lg-grad-" + Math.random().toString(36).slice(2, 8);
-      const v0 = o.stops[0][0], v1 = o.stops[o.stops.length - 1][0];
-      const lg = svg.append("defs").append("linearGradient").attr("id", id);
-      o.stops.forEach(([v, c]) => lg.append("stop").attr("offset", (v - v0) / (v1 - v0)).attr("stop-color", c));
-      const h = fs * 0.9;
-      g.append("rect").attr("y", y).attr("width", o.width).attr("height", h).attr("rx", 2).attr("fill", `url(#${id})`);
-      y += h;
-      (o.ticks || []).forEach(([v, label], i, arr) => {
-        const x = o.width * (v - v0) / (v1 - v0);
-        g.append("line").attr("x1", x).attr("x2", x).attr("y1", y).attr("y2", y + 3).style("stroke", "var(--muted)");
-        g.append("text").attr("x", x).attr("y", y + fs + 3).attr("font-size", fs * 0.92)
-          .attr("text-anchor", i === 0 ? "start" : i === arr.length - 1 ? "end" : "middle").text(label);
-      });
-      y += fs + 10;
+      const v0 = o.stops[0][0], v1 = o.stops[o.stops.length - 1][0], pct = v => (100 * (v - v0)) / (v1 - v0);
+      el.append("div").attr("class", "lg-bar")
+        .style("background", `linear-gradient(to right, ${o.stops.map(([v, c]) => `${c} ${pct(v)}%`).join(", ")})`);
+      el.append("div").attr("class", "lg-ticks").selectAll("span").data(o.ticks || []).join("span")
+        .attr("class", (_, i, a) => (i === 0 ? "" : i === a.length - 1 ? "end" : "mid"))
+        .style("left", ([v]) => pct(v) + "%").text(([, label]) => label);
     }
     (o.keys || []).forEach(k => {
-      y += 4;
-      g.append("circle").attr("class", k.cls).attr("cx", 5).attr("cy", y + fs * 0.45).attr("r", k.r ?? 3);
-      g.append("text").attr("x", 16).attr("y", y + fs * 0.85).attr("font-size", fs * 0.92).text(k.label);
-      y += fs * 1.25;
+      const row = el.append("div").attr("class", "lg-key");
+      const g = row.append("svg").attr("width", 16).attr("height", 16).attr("viewBox", "-8 -8 16 16").append("g");
+      if (k.draw) k.draw(g);
+      else g.append("circle").attr("class", k.cls).attr("r", k.r ?? 3);
+      row.append("span").text(k.label);
     });
-    return o.y + y;
+    // keep it pinned to (x, y) on the map as the SVG letterboxes and resizes
+    function place() {
+      if (getComputedStyle(el.node()).position !== "absolute") return;
+      const vb = node.viewBox.baseVal, r = node.getBoundingClientRect(), h = host.getBoundingClientRect();
+      const s = Math.min(r.width / vb.width, r.height / vb.height);
+      const ox = r.left - h.left + (r.width - vb.width * s) / 2, oy = r.top - h.top + (r.height - vb.height * s) / 2;
+      el.style("left", ox + (o.x - vb.x) * s + "px").style("top", oy + (o.y - vb.y) * s + "px");
+    }
+    new ResizeObserver(place).observe(node);
+    place();
+    return el;
   }
 
-  window.MapKit = { tooltip, segmented, legend };
+  /** Easy hover for small point marks: finds the nearest point to the pointer (within `radius`
+   *  screen px) so you don't have to land exactly on a tiny dot.
+   *  MapKit.nearestHover(svg, points, {x: d => .., y: d => .., radius: 16,
+   *                      transform: () => zoomTransform, onEnter(ev, d), onLeave()}) */
+  function nearestHover(svg, points, o) {
+    const node = svg.node(), radius = o.radius ?? 16;
+    const delaunay = d3.Delaunay.from(points, o.x, o.y);
+    let current = null;
+    svg.on("pointermove.nearest", ev => {
+      const t = o.transform ? o.transform() : d3.zoomIdentity;
+      const vb = node.viewBox.baseVal, r = node.getBoundingClientRect();
+      const unitsPerPx = 1 / Math.min(r.width / vb.width, r.height / vb.height);
+      const [mx, my] = t.invert(d3.pointer(ev, node));
+      const i = delaunay.find(mx, my), d = points[i];
+      const dist = Math.hypot(o.x(d) - mx, o.y(d) - my) * t.k / unitsPerPx;  // screen px
+      if (dist <= radius) { current = d; o.onEnter(ev, d); }
+      else if (current) { current = null; o.onLeave(); }
+    }).on("pointerleave.nearest", () => { if (current) { current = null; o.onLeave(); } });
+  }
+
+  window.MapKit = { tooltip, segmented, legend, nearestHover };
 })();
 </script>
 <script>
@@ -234,7 +271,7 @@ const manhattan = D.boroughs.features.find(f => f.properties.boroname === "Manha
 const [[mx0, my0]] = path.bounds(manhattan);
 const MAX = D.stops[D.stops.length - 1][0];
 MapKit.legend(svg, {
-  x: 10, y: Math.max(10, my0), width: Math.min(210, mx0 - 40), fontSize: 14,
+  x: 10, y: Math.max(10, my0), width: 230,
   title: "Longest walk to the restroom\nfrom anywhere in its polygon",
   stops: D.stops,
   ticks: [[0, "0"], [D.center, `${D.center} avg`], [MAX, `${MAX}+ min`]],

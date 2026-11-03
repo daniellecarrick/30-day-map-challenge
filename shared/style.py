@@ -32,6 +32,7 @@ DIVERGING = TOKENS["scales"]["diverging"]
 SEQUENTIAL_BLUE = TOKENS["scales"]["sequential_blue"]
 SEQUENTIAL_AMBER = TOKENS["scales"]["sequential_amber"]
 CATEGORICAL = TOKENS["scales"]["categorical_light"]
+SUBWAY = {k: v for k, v in TOKENS["scales"]["subway"].items()}   # trunk -> {color, text}
 MAP = TOKENS["map"]
 
 

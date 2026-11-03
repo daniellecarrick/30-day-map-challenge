@@ -1,0 +1,9 @@
+{
+  "day": 1,
+  "theme": "Points",
+  "title": "Only a third of NYC subway stations can be used without stairs",
+  "description": "Every NYC subway station in its line's color: filled if it is ADA accessible, a ring if it is stairs only. A pictogram stacks each line's stations to compare % accessible by line, from the E (59%) to the J and G (under 1 in 4).",
+  "html": "out/nyc_subway_accessible.html",
+  "png": "out/nyc_subway_accessible.png",
+  "published": "2026-11-03"
+}

@@ -116,22 +116,22 @@ def gallery(days: list[dict]) -> None:
 .gallery > header {{ text-align: center; margin-bottom: 28px; }}
 .gallery h1 {{ font-family: var(--font-head); font-size: clamp(26px, 4vw, 36px); line-height: 1.15; margin: 0 0 8px; }}
 .gallery .lede {{ margin-bottom: 4px; }}
-.progress {{ color: var(--muted); font-size: 13px; margin: 0; }}
+.progress {{ color: var(--muted); font-size: 14px; margin: 0; }}
 .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 20px; }}
 .card {{ border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); border-radius: 10px; overflow: hidden;
          background: var(--bg); display: flex; flex-direction: column; }}
 .card .thumb {{ display: block; background: #fff; aspect-ratio: 5 / 3; }}
 .card .thumb img {{ width: 100%; height: 100%; object-fit: contain; display: block; }}
 .card .body {{ padding: 14px 16px 16px; }}
-.kicker {{ margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }}
+.kicker {{ margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }}
 .card h2 {{ font-family: var(--font-head); font-size: 18px; line-height: 1.25; margin: 0 0 6px; }}
 .card h2 a {{ color: var(--ink); text-decoration: none; }}
 .card h2 a:hover {{ text-decoration: underline; }}
-.desc {{ margin: 0 0 10px; color: var(--muted); font-size: 13.5px; }}
-.links {{ margin: 0; display: flex; gap: 14px; font-size: 13.5px; font-weight: 600; }}
+.desc {{ margin: 0 0 10px; color: var(--muted); font-size: 14px; }}
+.links {{ margin: 0; display: flex; gap: 14px; font-size: 14px; font-weight: 600; }}
 .links a {{ color: var(--accent); text-decoration: none; }}
 .links a:hover {{ text-decoration: underline; }}
-.gallery > footer {{ text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; }}
+.gallery > footer {{ text-align: center; color: var(--muted); font-size: 14px; margin-top: 28px; }}
 .gallery > footer a {{ color: inherit; }}
 </style>
 </head>

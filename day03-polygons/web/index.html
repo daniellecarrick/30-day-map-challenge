@@ -64,7 +64,7 @@ const manhattan = D.boroughs.features.find(f => f.properties.boroname === "Manha
 const [[mx0, my0]] = path.bounds(manhattan);
 const MAX = D.stops[D.stops.length - 1][0];
 MapKit.legend(svg, {
-  x: 10, y: Math.max(10, my0), width: Math.min(210, mx0 - 40), fontSize: 14,
+  x: 10, y: Math.max(10, my0), width: 230,
   title: "Longest walk to the restroom\nfrom anywhere in its polygon",
   stops: D.stops,
   ticks: [[0, "0"], [D.center, `${D.center} avg`], [MAX, `${MAX}+ min`]],

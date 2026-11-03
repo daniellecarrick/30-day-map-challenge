@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYC Accessible Subway</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .page { max-width: 1280px; }
+  .body { flex: 1 1 auto; min-height: 0; display: flex; gap: 24px; }
+  .body .map-wrap { flex: 1.5 1 0; }
+  .side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+  .side h2 { font: 600 17px/1.2 var(--font-head); margin: 4px 0 2px; }
+  .side .sub { color: var(--muted); margin: 0 0 8px; }
+  .side .seg { align-self: flex-start; margin-bottom: 6px; }
+
+  /* pictogram: HTML rows (text stays 14px), dots in a per-row SVG that shares one scale */
+  .picto { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
+  .picto { gap: 4px; }
+  .prow { flex: 1 1 0; min-height: 20px; max-height: 32px; display: flex; align-items: center; gap: 6px; }
+  .bullet { flex: none; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px;
+            display: inline-grid; place-items: center; font-weight: 700; font-size: 14px; line-height: 1; }
+  .prow .pct { flex: none; width: 40px; text-align: right; font-weight: 600; }
+  .prow svg.dots { flex: 1 1 auto; min-width: 0; height: 100%; overflow: visible; }
+  .prow, .stn, .dot { transition: opacity .15s; }
+
+  .land { fill: var(--ctl); }
+  .boundary { stroke-width: 0.4; opacity: .5; vector-effect: non-scaling-stroke; }
+  .map-wrap > svg { cursor: default; }
+  .stn { pointer-events: none; }
+  .dim { opacity: .12; }
+  .edge { fill: none; stroke: var(--bg); stroke-width: .8; }
+  .hit { fill: transparent; }
+  .tip .bullets { display: flex; gap: 3px; margin: 4px 0; }
+  .zoom-hint { position: absolute; right: 6px; bottom: 4px; color: var(--muted); pointer-events: none; }
+  @media (max-width: 760px), (max-height: 520px) {
+    .page { height: auto; }
+    .body { flex-direction: column; }
+    .body .map-wrap, .side { flex: none; }
+    .map-wrap > svg { height: auto; }
+    .picto { overflow: visible; }
+    .zoom-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+  </header>
+  <div class="body">
+    <div class="map-wrap" id="map"><span class="zoom-hint">Scroll or pinch to zoom</span></div>
+    <div class="side">
+      <h2>Accessible stations by line</h2>
+      <p class="sub">Each dot is one station on that line. Hover a line to find it on the map.</p>
+      <div id="sort" aria-label="Sort lines"></div>
+      <div class="picto" id="picto"></div>
+    </div>
+  </div>
+  <footer>Accessible = ADA accessible per MTA. Lines are weekday daytime service; a station on several lines appears in each line's row and is split into wedges on the map.
+    Data: <a href="https://data.ny.gov/d/39hk-dx4f">MTA Subway Stations via NYC Open Data</a> (Nov 2026) · #30DayMapChallenge Day 1: Points</footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const C = D.colors;
+const tip = MapKit.tooltip();
+const STATUS = { 1: "Fully accessible", 2: "Accessible in one direction", 0: "Not accessible: stairs only" };
+const TRUNK = {};
+D.routes.forEach(r => TRUNK[r.route] = r.trunk);
+const order = { 0: 0, 2: 1, 1: 2 };  // rings underneath / last, filled dots on top / first
+
+d3.select("#title").text(D.title);
+d3.select("#lede").text(D.lede);
+
+// ---- marker: one wedge per trunk line; fill = accessible, ring = not, light fill + ring = one direction
+function marker(g, trunks, ada, r, ring) {
+  const n = trunks.length, arc = d3.arc();
+  trunks.forEach((t, i) => {
+    const a0 = (2 * Math.PI * i) / n, a1 = (2 * Math.PI * (i + 1)) / n;
+    if (ada > 0) g.append("path").attr("fill", C[t].color).attr("fill-opacity", ada === 1 ? 1 : 0.35)
+      .attr("d", arc({ innerRadius: 0, outerRadius: r, startAngle: a0, endAngle: a1 }));
+    if (ada !== 1) g.append("path").attr("fill", C[t].color)
+      .attr("d", arc({ innerRadius: r - ring, outerRadius: r, startAngle: a0, endAngle: a1 }));
+  });
+  if (ada === 1) g.append("circle").attr("class", "edge").attr("r", r);
+}
+
+const bullet = r => `<span class="bullet" style="background:${C[TRUNK[r]].color};color:${C[TRUNK[r]].text}">${r}</span>`;
+function stationTip(ev, s) {
+  tip.show(ev, `<b>${s.name}</b><div class="bullets">${s.routes.map(bullet).join("")}</div>
+    ${STATUS[s.ada]}${s.notes ? ` (${s.notes.toLowerCase()})` : ""}
+    <br><span class="m">${s.line} · ${s.borough} · ${s.structure.toLowerCase()}</span>`);
+}
+
+// ---- map ----
+const W = 600, H = 640;
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[6, 6], [W - 6, H - 6]], D.boroughs);
+const path = d3.geoPath(proj);
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
+const gZoom = svg.append("g");
+gZoom.selectAll("path.land").data(D.boroughs.features).join("path").attr("class", "land").attr("d", path);
+gZoom.selectAll("path.boundary").data(D.boroughs.features).join("path").attr("class", "boundary").attr("d", path);
+const gSt = svg.append("g");
+D.stations.forEach(s => [s.px, s.py] = proj([s.x, s.y]));
+const stn = gSt.selectAll("g.stn").data(D.stations.slice().sort((a, b) => order[a.ada] - order[b.ada]))
+  .join("g").attr("class", "stn");
+const R = 3.6;
+function drawStations(k = 1) {
+  const r = R * Math.min(2.6, Math.sqrt(k));
+  stn.selectAll("*").remove();
+  stn.each(function (s) { marker(d3.select(this), s.trunks, s.ada, r, Math.max(1.1, r * 0.32)); });
+}
+let zt = d3.zoomIdentity;
+function place() {
+  gZoom.attr("transform", zt);
+  stn.attr("transform", s => `translate(${zt.applyX(s.px)},${zt.applyY(s.py)})`);
+}
+drawStations(); place();
+const zoom = d3.zoom().scaleExtent([1, 10]).translateExtent([[0, 0], [W, H]]).on("zoom", ev => {
+  if (ev.transform.k !== zt.k) drawStations(ev.transform.k);
+  zt = ev.transform;
+  place();
+}).filter(ev => !ev.touches || ev.touches.length > 1);   // one finger scrolls the page on phones
+svg.call(zoom).style("touch-action", "pan-y pinch-zoom");
+// start 30% zoomed in, centered on Grand St (B/D, Manhattan)
+const START = D.stations.find(s => s.name === "Grand St" && s.routes.includes("B"));
+svg.call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(1.3).translate(-START.px, -START.py));
+
+// hover the nearest station within 16px of the pointer, not just the tiny dot itself
+MapKit.nearestHover(svg, D.stations, {
+  x: s => s.px, y: s => s.py, radius: 16, transform: () => zt,
+  onEnter: (ev, s) => { stationTip(ev, s); highlightStation(s); },
+  onLeave: () => { tip.hide(); clearHL(); },
+});
+
+// legend in the empty New Jersey space, top left
+MapKit.legend(svg, {
+  x: 8, y: 10, width: 200,
+  title: "Each dot is a station,\nin its line's color",
+  keys: [
+    { draw: g => marker(g, ["456"], 1, 5.5, 1.8), label: "Fully accessible" },
+    { draw: g => marker(g, ["456"], 2, 5.5, 1.8), label: "One direction only" },
+    { draw: g => marker(g, ["456"], 0, 5.5, 1.8), label: "Not accessible" },
+    { draw: g => marker(g, ["123", "456"], 1, 5.5, 1.8), label: "On several lines" },
+  ],
+});
+
+// ---- pictogram ----
+const STEP = 10, DR = 4.1, MAXN = d3.max(D.routes, r => r.n);
+const stationsOn = route => D.stations.filter(s => s.routes.includes(route)).sort((a, b) => order[b.ada] - order[a.ada]);
+const rows = d3.select("#picto").selectAll("div.prow").data(D.routes, d => d.route).join("div").attr("class", "prow")
+  .on("mouseenter", (ev, r) => highlightRoute(r.route))
+  .on("mouseleave", () => { clearHL(); tip.hide(); })
+  .on("mousemove", (ev, r) => {
+    if (ev.target.closest(".dot")) return;
+    tip.show(ev, `<b>${r.route === "SIR" ? "Staten Island Railway" : r.route === "S" ? "Shuttles" : r.route + " train"}</b>
+      ${r.full} of ${r.n} stations fully accessible${r.part ? `, ${r.part} in one direction only` : ""}`);
+  });
+rows.append("span").html(r => bullet(r.route)).style("display", "contents");
+rows.append("span").attr("class", "pct").text(r => `${Math.round(r.pct)}%`);
+rows.append("svg").attr("class", "dots").attr("viewBox", `0 -6 ${MAXN * STEP} 12`)
+  .attr("preserveAspectRatio", "xMinYMid meet")
+  .each(function (r) {
+    d3.select(this).selectAll("g.dot").data(stationsOn(r.route)).join("g").attr("class", "dot")
+      .attr("transform", (s, j) => `translate(${STEP * (j + 0.5)},0)`)
+      .each(function (s) {
+        const g = d3.select(this);
+        marker(g, [r.trunk], s.ada, DR, 1.3);
+        // hit area: the dot's whole slot, taller than the dot
+        g.append("rect").attr("class", "hit").attr("x", -STEP / 2).attr("y", -12).attr("width", STEP).attr("height", 24);
+      })
+      .on("mousemove", (ev, s) => { stationTip(ev, s); highlightStation(s); })
+      .on("mouseleave", () => highlightRoute(r.route));
+  });
+
+function sortRows(mode) {
+  const key = mode === "pct" ? (r => -r.pct) : (r => D.route_order.indexOf(r.route));
+  const rank = new Map(D.routes.slice().sort((a, b) => d3.ascending(key(a), key(b))).map((r, i) => [r.route, i]));
+  rows.style("order", r => rank.get(r.route));
+}
+MapKit.segmented("#sort", [{ value: "pct", label: "Most accessible first" }, { value: "line", label: "By line" }], sortRows, "pct");
+
+// ---- linked highlighting ----
+function highlightRoute(route) {
+  stn.classed("dim", s => !s.routes.includes(route));
+  rows.classed("dim", r => r.route !== route);
+  rows.selectAll("g.dot").classed("dim", false);
+}
+function highlightStation(st) {
+  stn.classed("dim", s => s !== st);
+  rows.classed("dim", r => !st.routes.includes(r.route));
+  rows.selectAll("g.dot").classed("dim", s => s !== st);
+}
+function clearHL() {
+  stn.classed("dim", false);
+  rows.classed("dim", false);
+  rows.selectAll("g.dot").classed("dim", false);
+}
+</script>
+</body>
+</html>
