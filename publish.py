@@ -5,7 +5,8 @@ For every dayNN-*/meta.json it:
     (Open Graph + Twitter card) and a small "All maps" link
   - copies the PNG to docs/dayNN/map.png and makes preview.png (1200x630, for social cards)
     and thumb.png (for the gallery)
-Then writes docs/index.html, the gallery home page.
+Then writes docs/index.html (gallery home page), docs/cover.png (30-day grid for the
+portfolio) and drafts/week-N.md (weekly blog drafts, gitignored).
 
 Run from the repo root after building a day:   .venv/bin/python publish.py
 Then commit and push docs/ to update the live site.
@@ -152,11 +153,119 @@ def gallery(days: list[dict]) -> None:
     print(f"wrote gallery: {BASE_URL}/ ({len(days)} days)")
 
 
+PROMPTS = {int(k): v for k, v in json.loads((ROOT / "shared" / "prompts.json").read_text()).items()
+           if not k.startswith("_")}
+TOKENS = json.loads((ROOT / "shared" / "tokens.json").read_text())
+INK, MUTED = TOKENS["color"]["light"]["ink"], TOKENS["color"]["light"]["muted"]
+EMPTY = TOKENS["color"]["light"]["ctl"]
+FONT_DIR = ROOT / "shared" / "fonts"
+WEEKS = [(1, 7), (8, 14), (15, 21), (22, 30)]
+
+
+def cover(days: list[dict]) -> None:
+    """docs/cover.png: all 30 days as a 6x5 grid. Finished days show their map thumbnail,
+    upcoming days an empty tile with the prompt. Use as the portfolio case-study hero."""
+    from PIL import ImageDraw, ImageFont
+    done = {d["day"]: d for d in days}
+    cols, rows, tw, th, lab, gap, mx, top = 6, 5, 360, 216, 58, 24, 60, 190
+    W = mx * 2 + cols * tw + (cols - 1) * gap
+    H = top + rows * (th + lab) + (rows - 1) * gap + 70
+    img = Image.new("RGB", (W, H), "white")
+    d = ImageDraw.Draw(img)
+    f_title = ImageFont.truetype(str(FONT_DIR / "Bitter-Bold.ttf"), 56)
+    f_sub = ImageFont.truetype(str(FONT_DIR / "Raleway-Regular.ttf"), 26)
+    f_lab = ImageFont.truetype(str(FONT_DIR / "Raleway-SemiBold.ttf"), 21)
+    f_theme = ImageFont.truetype(str(FONT_DIR / "Raleway-Regular.ttf"), 20)
+    f_day = ImageFont.truetype(str(FONT_DIR / "Bitter-SemiBold.ttf"), 30)
+    d.text((mx, 60), SITE_TITLE, font=f_title, fill=INK)
+    d.text((mx, 132), f"{len(days)} of 30 maps  ·  daniellecarrick.github.io/30-day-map-challenge",
+           font=f_sub, fill=MUTED)
+    for n in range(1, 31):
+        r, c = divmod(n - 1, cols)
+        x, y = mx + c * (tw + gap), top + r * (th + lab + gap)
+        if n in done:
+            thumb = Image.open(DOCS / done[n]["slug"] / "thumb.png").convert("RGB")
+            thumb.thumbnail((tw, th), Image.LANCZOS)
+            img.paste(thumb, (x + (tw - thumb.width) // 2, y + (th - thumb.height) // 2))
+            d.rectangle([x, y, x + tw - 1, y + th - 1], outline="#e2e1dc", width=1)
+            d.text((x, y + th + 12), f"Day {n} · {PROMPTS[n]}", font=f_lab, fill=INK)
+        else:
+            d.rounded_rectangle([x, y, x + tw - 1, y + th - 1], radius=10, fill=EMPTY)
+            d.text((x + tw / 2, y + th / 2 - 14), f"Day {n}", font=f_day, fill="#b9b8b2", anchor="mm")
+            d.text((x + tw / 2, y + th / 2 + 22), PROMPTS[n], font=f_theme, fill="#a3a29c", anchor="mm")
+            d.text((x, y + th + 12), f"Day {n} · {PROMPTS[n]}", font=f_lab, fill="#b9b8b2")
+    img.save(DOCS / "cover.png", optimize=True)
+    print(f"wrote cover: {BASE_URL}/cover.png")
+
+
+def weekly_drafts(days: list[dict]) -> None:
+    """drafts/week-N.md: a Markdown blog draft per week, pre-filled from each day's meta.json.
+    Images and links use the live GitHub Pages URLs so the draft works on any blog platform.
+    Never overwrites an existing draft: if week-N.md exists and is out of date, the fresh
+    version is written to week-N.new.md so you can copy new sections across."""
+    out = ROOT / "drafts"
+    out.mkdir(exist_ok=True)
+    done = {d["day"]: d for d in days}
+    for w, (a, b) in enumerate(WEEKS, start=1):
+        in_week = [done[n] for n in range(a, b + 1) if n in done]
+        if not in_week:
+            continue
+        lines = [
+            f"# 30 Day Map Challenge, week {w}: days {a}–{b}",
+            "",
+            f"<!-- {len(in_week)} of {b - a + 1} days finished. Lead with your favorite map of the week. -->",
+            "",
+            "_Intro: what this week's prompts were, and one sentence on the theme that tied your maps together._",
+            "",
+        ]
+        for n in range(a, b + 1):
+            if n not in done:
+                lines += [f"## Day {n} · {PROMPTS[n]}", "", "_Not published yet._", ""]
+                continue
+            m = done[n]
+            url = f"{BASE_URL}/{m['slug']}/"
+            lines += [
+                f"## Day {n} · {m['theme']}: {m['title']}",
+                "",
+                f"[![{m['title']}]({url}map.png)]({url})",
+                "",
+                m["description"],
+                "",
+                f"**[Open the interactive map →]({url})**",
+                "",
+                "_What I tried, what surprised me, what I'd do differently._",
+                "",
+            ]
+        lines += [
+            "## What I learned this week",
+            "",
+            "_One or two takeaways about tools, data or design._",
+            "",
+            "---",
+            "",
+            f"All maps: [{BASE_URL.replace('https://', '')}]({BASE_URL}/) · "
+            f"Code: [GitHub]({REPO_URL}) · Prompts: [30daymapchallenge.com](https://30daymapchallenge.com/)",
+            "",
+            "#30DayMapChallenge",
+            "",
+        ]
+        text = "\n".join(lines)
+        dest = out / f"week-{w}.md"
+        if dest.exists():
+            if dest.read_text() == text:
+                continue
+            dest = out / f"week-{w}.new.md"  # never overwrite a draft you may have edited
+        dest.write_text(text)
+        print(f"wrote draft: {dest.relative_to(ROOT)}")
+
+
 def main():
     DOCS.mkdir(exist_ok=True)
     (DOCS / ".nojekyll").write_text("")  # serve files as-is (no Jekyll processing)
     days = [publish_day(m.parent) for m in sorted(ROOT.glob("day*/meta.json"))]
     gallery(days)
+    cover(days)
+    weekly_drafts(days)
 
 
 if __name__ == "__main__":

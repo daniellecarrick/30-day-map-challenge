@@ -17,6 +17,10 @@ Live site: https://daniellecarrick.github.io/30-day-map-challenge/ (served from 
 2. Make sure the day has a `meta.json` (day, theme, title, description, html, png, published).
 3. From the repo root: `.venv/bin/python publish.py`. This copies the page to `docs/dayNN/index.html` with link-preview tags, makes `preview.png` (1200×630) and `thumb.png`, and rebuilds the gallery `docs/index.html`.
 4. Commit and push. The site updates in about a minute.
+`publish.py` also writes:
+- `docs/cover.png`: a 6×5 grid of all 30 days (thumbnails for finished days, empty tiles with the prompt for upcoming ones). Use it as the portfolio case-study hero image.
+- `drafts/week-N.md`: a Markdown blog draft per week (days 1–7, 8–14, 15–21, 22–30), pre-filled from each day's `meta.json`, using live Pages URLs for images. It never overwrites an existing draft: if one is out of date, the fresh version goes to `week-N.new.md`. `drafts/` is gitignored.
+- Prompts for all 30 days live in `shared/prompts.json`.
 `day*/out/` is gitignored; `docs/` holds the published copies.
 
 ## Shared look (keep every day consistent)
