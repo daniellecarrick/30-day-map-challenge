@@ -1,5 +1,5 @@
 /* Shared web components for the #30DayMapChallenge series. Needs d3 v7 loaded first.
-   window.MapKit = { tooltip, segmented, legend, nearestHover } */
+   window.MapKit = { tooltip, segmented, dropdown, legend, nearestHover } */
 (function () {
   /** Tooltip: const tip = MapKit.tooltip(); tip.show(event, html); tip.hide(); */
   function tooltip() {
@@ -24,6 +24,24 @@
       btns.attr("aria-pressed", d => d.value === v);
       onChange(v);
     }
+    select(initial ?? options[0].value);
+    return { select };
+  }
+
+  /** Dropdown, for when there are too many views for a segmented toggle (more than ~6).
+   *  MapKit.dropdown("#pick", [{value, label, group?}, ...], value => render(value), initial, "Cuisine")
+   *  Options with a `group` are put under <optgroup> headings in first-seen order. Returns { select }. */
+  function dropdown(target, options, onChange, initial, ariaLabel) {
+    const root = d3.select(target).attr("class", "dd");
+    const sel = root.append("select").attr("aria-label", ariaLabel ?? null);
+    const groups = d3.groups(options, d => d.group ?? "");
+    for (const [name, opts] of groups) {
+      const parent = name ? sel.append("optgroup").attr("label", name) : sel;
+      parent.selectAll("option.o").data(opts).join("option").attr("class", "o")
+        .attr("value", d => d.value).text(d => d.label);
+    }
+    sel.on("change", () => onChange(sel.property("value")));
+    function select(v) { sel.property("value", v); onChange(v); }
     select(initial ?? options[0].value);
     return { select };
   }
@@ -96,5 +114,5 @@
     }).on("pointerleave.nearest", () => { if (current) { current = null; o.onLeave(); } });
   }
 
-  window.MapKit = { tooltip, segmented, legend, nearestHover };
+  window.MapKit = { tooltip, segmented, dropdown, legend, nearestHover };
 })();

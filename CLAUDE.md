@@ -27,7 +27,7 @@ Live site: https://daniellecarrick.github.io/30-day-map-challenge/ (served from 
 Everything visual comes from `shared/`. Don't hard-code colors, fonts or control styles in a day's folder.
 - `shared/tokens.json` is the source of truth: colors, scales, font, sizes. `shared/theme.css` mirrors it as CSS variables, so **change both together**.
 - `shared/style.py`: `S.apply()` (Bitter/Raleway + colors for matplotlib), `S.make_scale`, `S.diverging_stops(center)`, `S.title`, `S.credit`, `S.panel_heading`, `S.callout` (leader-line annotation for a standout feature), `S.build_page` (inlines theme.css, components.js and data into one HTML file).
-- `shared/components.js` (`window.MapKit`): `tooltip()`, `segmented()` toggle, `legend()` drawn inside the map SVG.
+- `shared/components.js` (`window.MapKit`): `tooltip()`, `segmented()` toggle, `dropdown()` (for more views than a toggle can hold), `legend()` drawn inside the map SVG.
 - Fonts: **Bitter** for headlines (titles, panel headings), **Raleway** for body text, labels, legends and controls. TTFs in `shared/fonts/` for PNGs; Google Fonts link for web. The Raleway TTFs were modified so their digits are lining (even-height) by default; Raleway's stock digits are old-style. If you re-download them, re-run `.venv/bin/pyftfeatfreeze -f lnum` on each file. Web pages get lining digits from `font-variant-numeric: lining-nums` in theme.css.
 
 ## Style rules
