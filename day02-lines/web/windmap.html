@@ -14,7 +14,6 @@
   .lede { max-width: 820px; }
   .land { fill: var(--ctl); }
   .boundary { stroke-width: 0.4; opacity: .45; vector-effect: non-scaling-stroke; }
-  .focus { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
   .map-wrap canvas { position: absolute; pointer-events: none; }
   .zoom-hint { position: absolute; right: 6px; bottom: 4px; color: var(--muted); pointer-events: none; }
   @media (max-width: 640px) { .zoom-hint { display: none; } }
@@ -65,8 +64,6 @@ const tip = MapKit.tooltip();
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const narrow = matchMedia("(max-width: 640px)").matches;
 const NS = 24 * 60 / D.slot_min, NH = D.hexes.length, PER_HOUR = 60 / D.slot_min;
-const COMPASS = ["east", "northeast", "north", "northwest", "west", "southwest", "south", "southeast"];
-const compass = (vx, vy) => COMPASS[Math.floor((((Math.atan2(vy, vx) * 180 / Math.PI + 360) % 360 + 22.5) % 360) / 45)];
 const fmt = d3.format(",.0f");
 const clockOf = slot => { const m = slot * D.slot_min, h = Math.floor(m / 60), mm = m % 60;
   return `${h % 12 || 12}:${String(mm).padStart(2, "0")}${h < 12 ? "am" : "pm"}`; };
@@ -95,7 +92,6 @@ const svg = wrap.append("svg").attr("viewBox", `0 0 ${W} ${H}`)
 const gZoom = svg.append("g");
 gZoom.selectAll("path.land").data(D.boroughs.features).join("path").attr("class", "land").attr("d", path);
 gZoom.selectAll("path.boundary").data(D.boroughs.features).join("path").attr("class", "boundary").attr("d", path);
-const focus = svg.append("path").attr("class", "focus").style("display", "none");
 D.hexes.forEach(d => { d.x = D.hex_r * Math.sqrt(3) * (d.q + d.r / 2); d.y = D.hex_r * 1.5 * d.r;
                        [d.px, d.py] = proj([d.x, d.y]); });
 
@@ -174,7 +170,6 @@ P.forEach(p => { spawn(p, box); p.age = Math.random() * p.life; });
 
 // ---- time ----
 let dtype = "wd", t = 5 * PER_HOUR, playing = false, f0 = null, f1 = null, slot0 = -1;
-let hovered = null, lastEv = null;
 function updateFields() {
   const s0 = Math.floor(t) % NS;
   if (s0 !== slot0 || !f0) { slot0 = s0; f0 = fieldFor(dtype, s0); f1 = fieldFor(dtype, (s0 + 1) % NS); onSlot(); }
@@ -255,7 +250,6 @@ function onSlot() {
   d3.select("#clock").text(clockOf(slot0));
   tl.attr("aria-valuenow", slot0).attr("aria-valuetext", clockOf(slot0));
   tlSvg.selectAll("rect.bar").attr("class", i => "bar" + (i === slot0 ? " on" : ""));
-  refreshTip();
 }
 const slotAt = ev => Math.max(0, Math.min(NS - 1, Math.floor(d3.pointer(ev, tlSvg.node())[0] / xBand.step())));
 let dragging = false;
@@ -275,30 +269,11 @@ new ResizeObserver(drawTimeline).observe(tl.node());
 // ---- zoom (trails are cleared so they don't smear) ----
 const zoom = d3.zoom().scaleExtent([1, 8]).translateExtent([[0, 0], [W, H]])
   .on("zoom", ev => { zt = ev.transform; gZoom.attr("transform", zt); ctx.clearRect(0, 0, canvas.width, canvas.height);
-                      box = visibleBox(); placeFocus(); if (reduce) renderStatic(); })
+                      box = visibleBox(); if (reduce) renderStatic(); })
   .on("end", () => { box = visibleBox(); P.forEach(p => spawn(p, box)); })
   .filter(ev => !ev.touches || ev.touches.length > 1);
 svg.call(zoom).style("touch-action", "pan-y pinch-zoom");
 
-// ---- hover: nearest hex within 16px ----
-const hexD = (() => { const a = d3.range(6).map(i => Math.PI / 6 + i * Math.PI / 3);
-  return k => { const r = D.hex_r * PX * k; return "M" + a.map(q => `${r * Math.cos(q)},${r * Math.sin(q)}`).join("L") + "Z"; }; })();
-function placeFocus() {
-  if (!hovered) return focus.style("display", "none");
-  focus.style("display", null).attr("d", hexD(zt.k)).attr("transform", `translate(${zt.applyX(hovered.px)},${zt.applyY(hovered.py)})`);
-}
-function tipHtml(d) {
-  const h = D.hexes.indexOf(d), F = FLOW[dtype], vx = F[(slot0 * NH + h) * 2], vy = F[(slot0 * NH + h) * 2 + 1];
-  const mag = Math.hypot(vx, vy), when = `${dtype === "wd" ? "Weekdays" : "Weekends"}, ${clockOf(slot0)}`;
-  return `<b>Near ${d.name}</b>${mag >= 1 ? `The net flow is heading <b style="display:inline">${compass(vx, vy)}</b>,
-    about ${fmt(mag)} trips an hour` : "No clear net direction"}<br><span class="m">${when}</span>`;
-}
-function refreshTip() { if (hovered && lastEv) tip.show(lastEv, tipHtml(hovered)); }
-MapKit.nearestHover(svg, D.hexes, {
-  x: d => d.px, y: d => d.py, radius: 16, transform: () => zt,
-  onEnter: (ev, d) => { hovered = d; lastEv = ev; tip.show(ev, tipHtml(d)); placeFocus(); },
-  onLeave: () => { hovered = null; tip.hide(); placeFocus(); },
-});
 
 // day-type toggle (its callback runs once immediately, so it comes after everything it touches)
 MapKit.segmented("#daytype", D.daytypes.map(d => ({ value: d.key, label: d.label })), v => {
