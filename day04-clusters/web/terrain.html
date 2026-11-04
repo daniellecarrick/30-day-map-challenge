@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYC Crash Hills</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .map-wrap { overflow: hidden; }
+  .map-wrap canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  .map-wrap canvas:active { cursor: grabbing; }
+  .peak { position: absolute; left: 0; top: 0; z-index: 1; pointer-events: none; white-space: nowrap;
+          font-size: 14px; font-weight: 600; color: var(--ink); transform: translate(-50%, -100%);
+          text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 3px var(--bg); }
+  .peak::after { content: ""; display: block; width: 1px; height: 14px; margin: 2px auto 0; background: var(--ink); }
+  .legend { top: 8px; left: 8px; padding: 8px 10px; border-radius: 8px;
+            background: color-mix(in srgb, var(--bg) 82%, transparent); }
+  .hint { color: var(--muted); margin-top: 8px; }
+  /* map buttons: zoom, pan, turn, reset (bottom-right) */
+  .navpad { position: absolute; right: 8px; bottom: 8px; z-index: 3; display: grid; gap: 4px;
+            grid-template-columns: repeat(3, 36px); grid-auto-rows: 36px; }
+  .navpad button { font: 600 16px/1 var(--font); color: var(--ink); background: var(--ctl); border: 0;
+                   border-radius: 6px; cursor: pointer; padding: 0; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+  .navpad button:hover { background: var(--ctl-on); }
+  .navpad button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .navpad .wide { grid-column: span 3; font-size: 14px; font-weight: 600; }
+  .navpad .gap { visibility: hidden; }
+  .navpad [data-act^="turn"] { font-size: 20px; }
+  /* phones: keep the legend over the empty sky (the shared theme would move it under the map, out of view) */
+  @media (max-width: 640px) { .map-wrap { height: 75vh; } .map-wrap .legend { position: absolute; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+  </header>
+  <div class="map-wrap" id="map">
+    <div class="legend" id="legend"></div>
+    <div class="navpad" role="group" aria-label="Map controls">
+      <button data-act="zoomin" aria-label="Zoom in" title="Zoom in">+</button>
+      <button data-act="up" aria-label="Move away" title="Move away">↑</button>
+      <button data-act="zoomout" aria-label="Zoom out" title="Zoom out">−</button>
+      <button data-act="left" aria-label="Move left" title="Move left">←</button>
+      <button class="gap" tabindex="-1" aria-hidden="true"></button>
+      <button data-act="right" aria-label="Move right" title="Move right">→</button>
+      <button data-act="turnleft" aria-label="Turn left" title="Turn left">↺</button>
+      <button data-act="down" aria-label="Move closer" title="Move closer">↓</button>
+      <button data-act="turnright" aria-label="Turn right" title="Turn right">↻</button>
+      <button data-act="reset" class="wide" title="Back to the starting view">Reset view</button>
+    </div>
+  </div>
+  <footer>Height at every point on a 50 m grid = the number of crashes within <span id="radius"></span> m of it.
+    <span id="missing"></span> Data: <a id="src">NYC Open Data, Motor Vehicle Collisions (NYPD)</a>, <span id="years"></span> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="terrain.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const fmt = d3.format(",");
+const { nx, ny, cell } = D;
+const PEAK_KM = 4;             // tallest hill, in km (map is ~47 km across)
+const KM = 1 / 1000;
+
+d3.select("#title").text(D.title);
+d3.select("#lede").text(`Each of the ${fmt(D.n)} crashes in ${D.years} that injured or killed a pedestrian or cyclist adds a little height around where it happened. Drag to turn the city, scroll to zoom, or use the buttons.`);
+d3.select("#radius").text(D.radius_m);
+const MAXC = D.max_count;           // tallest peak, in crashes within radius_m
+d3.select("#day").text(D.day);
+d3.select("#years").text(D.years);
+d3.select("#src").attr("href", D.source_url);
+d3.select("#missing").text(`${fmt(D.total - D.n)} crashes with no location are left out.`);
+
+// grid cell (i, j) -> world (x east, z south), metres -> km, centred on the city
+const xc = D.x0 + nx * cell / 2, yc = D.y0 + ny * cell / 2;
+const wx = i => (D.x0 + (i + 0.5) * cell - xc) * KM;
+const wz = j => -(D.y0 + (j + 0.5) * cell - yc) * KM;
+const mx = x => (x - xc) * KM, mz = y => -(y - yc) * KM;
+
+// ---- three.js scene ----
+const wrap = document.getElementById("map");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+wrap.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 500);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+// start aimed at the middle of the three tallest peaks (the headline's three), looking north-west
+const top3 = D.peaks.slice(0, 3);
+const T0 = new THREE.Vector3(d3.mean(top3, p => wx(p.i)) + 1.5, 0, d3.mean(top3, p => wz(p.j)) + 1.5);
+const C0 = T0.clone().add(new THREE.Vector3(11, 25, 30));
+camera.position.copy(C0);
+controls.enableDamping = true;
+controls.maxPolarAngle = 1.38;
+controls.minDistance = 2;
+controls.maxDistance = 120;
+controls.target.copy(T0);
+
+// ---- buttons: each one eases the camera (and what it looks at) to a new spot over ~300 ms ----
+let tween = null;
+function moveTo(pos, target) {
+  tween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: target, start: performance.now() };
+}
+function stepTween(now) {
+  if (!tween) return;
+  const u = Math.min(1, (now - tween.start) / 300), e = 1 - Math.pow(1 - u, 3);
+  camera.position.lerpVectors(tween.p0, tween.p1, e);
+  controls.target.lerpVectors(tween.t0, tween.t1, e);
+  if (u === 1) tween = null;
+}
+const UP = new THREE.Vector3(0, 1, 0);
+function act(name) {
+  // start from where a running animation is heading, so quick repeated clicks add up
+  const pos = (tween ? tween.p1 : camera.position).clone(), tgt = (tween ? tween.t1 : controls.target).clone();
+  const off = pos.clone().sub(tgt);
+  const dist = off.length();
+  const fwd = new THREE.Vector3(-off.x, 0, -off.z).normalize();       // "away from me", along the ground
+  const right = fwd.clone().cross(UP).normalize();
+  const pan = v => { const d = v.multiplyScalar(dist * 0.18); moveTo(pos.add(d), tgt.add(d)); };
+  const zoom = f => {
+    const len = THREE.MathUtils.clamp(dist * f, controls.minDistance, controls.maxDistance);
+    moveTo(tgt.clone().add(off.setLength(len)), tgt);
+  };
+  const turn = a => moveTo(tgt.clone().add(off.applyAxisAngle(UP, a)), tgt);
+  ({
+    zoomin: () => zoom(0.7), zoomout: () => zoom(1 / 0.7),
+    up: () => pan(fwd), down: () => pan(fwd.negate()), left: () => pan(right.negate()), right: () => pan(right),
+    turnleft: () => turn(-Math.PI / 8), turnright: () => turn(Math.PI / 8),
+    reset: () => moveTo(C0.clone(), T0.clone()),
+  })[name]();
+}
+document.querySelectorAll(".navpad [data-act]").forEach(b => b.addEventListener("click", () => act(b.dataset.act)));
+controls.addEventListener("start", () => { tween = null; });  // a drag or pinch takes over from a button
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const sun = new THREE.DirectionalLight(0xffffff, 0.75);
+sun.position.set(-30, 40, -20);   // from the north-west, so slopes facing south-east are shaded
+scene.add(sun);
+
+// terrain: one vertex per cell, triangles only where the grid touches land (water stays empty)
+const N = nx * ny;
+const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+  const k = j * nx + i;
+  pos[3 * k] = wx(i); pos[3 * k + 2] = wz(j);
+}
+const nearLand = (i, j) => D.c[j * nx + i] >= 0;   // -1 = water
+const index = [];
+for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+  if (!(nearLand(i, j) || nearLand(i + 1, j) || nearLand(i, j + 1) || nearLand(i + 1, j + 1))) continue;
+  const a = j * nx + i, b = a + 1, c = a + nx, d = c + 1;
+  index.push(a, c, b, b, c, d);
+}
+const geom = new THREE.BufferGeometry();
+geom.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+geom.setAttribute("color", new THREE.BufferAttribute(col, 3));
+geom.setIndex(index);
+const mesh = new THREE.Mesh(geom, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+scene.add(mesh);
+
+// borough outlines at ground level
+const lineMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.6 });
+D.outlines.forEach(ring => {
+  const g = new THREE.BufferGeometry().setFromPoints(ring.map(([x, y]) => new THREE.Vector3(mx(x), 0.01, mz(y))));
+  scene.add(new THREE.Line(g, lineMat));
+});
+
+// ---- height (to scale: proportional to smoothed crash density) ----
+// height to scale: exactly the crash count the tooltip shows at that point
+const level = k => Math.max(0, D.c[k]) / MAXC;
+for (let k = 0; k < N; k++) pos[3 * k + 1] = level(k) * PEAK_KM;
+geom.computeVertexNormals();
+
+// contour lines every 5 crashes, draped just above the surface
+const STEP = 5, LEVELS = d3.range(STEP, MAXC, STEP);
+const contourMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35 });
+const cpts = [];
+d3.contours().size([nx, ny]).thresholds(LEVELS)(D.c).forEach(c => {
+  const y = c.value / MAXC * PEAK_KM + 0.004;
+  c.coordinates.forEach(poly => poly.forEach(ring => {
+    for (let q = 1; q < ring.length; q++) {
+      const [a, b] = [ring[q - 1], ring[q]];
+      cpts.push(wx(a[0] - 0.5), y, wz(a[1] - 0.5), wx(b[0] - 0.5), y, wz(b[1] - 0.5));
+    }
+  }));
+});
+const cgeom = new THREE.BufferGeometry();
+cgeom.setAttribute("position", new THREE.Float32BufferAttribute(cpts, 3));
+scene.add(new THREE.LineSegments(cgeom, contourMat));
+
+// ---- colour (follows the theme) ----
+const css = () => getComputedStyle(document.documentElement);
+function applyTheme() {
+  const c = css(), ink = c.getPropertyValue("--ink").trim();
+  renderer.setClearColor(c.getPropertyValue("--bg").trim());
+  lineMat.color.set(ink);
+  contourMat.color.set(ink);
+  const ramp = d3.interpolateRgbBasis([c.getPropertyValue("--ctl").trim(), ...D.amber]);
+  // one colour per whole crash count (lookup table, fast for ~900k points)
+  const tmp = new THREE.Color(), lut = d3.range(MAXC + 1).map(v => { tmp.set(d3.color(ramp(v / MAXC)).formatHex()); return [tmp.r, tmp.g, tmp.b]; });
+  for (let k = 0; k < N; k++) {
+    const [r, g, b] = lut[Math.max(0, D.c[k])];
+    col[3 * k] = r; col[3 * k + 1] = g; col[3 * k + 2] = b;
+  }
+  geom.attributes.color.needsUpdate = true;
+  drawLegend(ramp);
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+
+function drawLegend(ramp) {
+  
+  const el = d3.select("#legend").html("");
+  el.append("div").attr("class", "lg-title").html("Taller and darker =<br>more crashes nearby");
+  el.append("div").attr("class", "lg-bar").style("width", "220px")
+    .style("background", `linear-gradient(to right, ${d3.range(0, 1.001, 0.1).map(t => ramp(t)).join(", ")})`);
+  el.append("div").attr("class", "lg-ticks").style("width", "220px").html(
+    `<span style="left:0">0</span><span class="end" style="left:100%">${MAXC} crashes within ${D.radius_m} m</span>`);
+  el.append("div").attr("class", "lg-muted").text(`Contours every ${STEP} crashes`);
+}
+applyTheme();
+
+// ---- peak labels (HTML, so they stay 14px) ----
+const labels = D.peaks.slice(0, 6).map(p => ({
+  p, el: d3.select(wrap).append("div").attr("class", "peak").text(p.name).node(),
+}));
+const v3 = new THREE.Vector3();
+function placeLabels() {
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  const lg = document.getElementById("legend"), wr = wrap.getBoundingClientRect(), lr = lg.getBoundingClientRect();
+  const placed = getComputedStyle(lg).position === "absolute"   // labels never sit on the legend
+    ? [[lr.left - wr.left - 6, lr.top - wr.top - 6, lr.right - wr.left + 6, lr.bottom - wr.top + 6]] : [];
+  // tallest peak first; a label that would overlap one already placed is hidden
+  labels.forEach(({ p, el }) => {
+    v3.set(wx(p.i), pos[3 * (p.j * nx + p.i) + 1] + 0.05, wz(p.j)).project(camera);
+    const x = (v3.x + 1) / 2 * w, y = (1 - v3.y) / 2 * h;
+    const bw = el.offsetWidth || 160, bh = 20;
+    const box = [x - bw / 2 - 4, y - 36, x + bw / 2 + 4, y - 36 + bh];
+    const onScreen = v3.z < 1 && Math.abs(v3.x) < 1 && Math.abs(v3.y) < 1;
+    const clash = placed.some(b => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1]);
+    const vis = onScreen && !clash;
+    if (vis) placed.push(box);
+    el.style.display = vis ? "block" : "none";
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+  });
+}
+
+// ---- hover: what's under the pointer ----
+const tip = MapKit.tooltip();
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let lastEv = null;
+renderer.domElement.addEventListener("pointermove", ev => { lastEv = ev; });
+renderer.domElement.addEventListener("pointerleave", () => { lastEv = null; tip.hide(); });
+
+// surface height (km) at world (X, Z), bilinear between grid points; water = 0
+function heightAt(X, Z) {
+  const fi = ((X / KM + xc) - D.x0) / cell - 0.5, fj = ((-Z / KM + yc) - D.y0) / cell - 0.5;
+  const i = Math.floor(fi), j = Math.floor(fj);
+  if (i < 0 || j < 0 || i >= nx - 1 || j >= ny - 1) return 0;
+  const u = fi - i, v = fj - j, Y = k => pos[3 * k + 1], k = j * nx + i;
+  return (Y(k) * (1 - u) + Y(k + 1) * u) * (1 - v) + (Y(k + nx) * (1 - u) + Y(k + nx + 1) * u) * v;
+}
+// where the line of sight first meets the terrain: step along it in ~20 m hops, then bisect.
+// (Much faster than testing ~1.3M triangles.)
+function pick(o, d) {
+  if (d.y >= 0) return null;
+  const tTop = Math.max(0, (o.y - PEAK_KM) / -d.y), tGround = o.y / -d.y;
+  const above = t => o.y + d.y * t - heightAt(o.x + d.x * t, o.z + d.z * t);
+  let a = tTop, step = 0.02;
+  for (let b = a + step; a < tGround; a = b, b += step) {
+    if (above(Math.min(b, tGround)) <= 0) {
+      for (let q = 0; q < 12; q++) { const m = (a + b) / 2; if (above(m) > 0) a = m; else b = m; }
+      return new THREE.Vector3(o.x + d.x * b, 0, o.z + d.z * b);
+    }
+  }
+  return new THREE.Vector3(o.x + d.x * tGround, 0, o.z + d.z * tGround);
+}
+const samePair = (a, b) => a.split(" & ").sort().join("|") === b.split(" & ").sort().join("|");
+function hover() {
+  if (!lastEv) return;
+  const ev = lastEv; lastEv = null;
+  if (ev.buttons) { tip.hide(); return; }
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = pick(ray.ray.origin, ray.ray.direction);
+  if (!hit) { tip.hide(); return; }
+  const x = hit.x / KM + xc, y = -hit.z / KM + yc;
+  const i = Math.round((x - D.x0) / cell - 0.5), j = Math.round((y - D.y0) / cell - 0.5);  // nearest grid point
+  if (i < 0 || j < 0 || i >= nx || j >= ny || D.c[j * nx + i] < 0) { tip.hide(); return; }
+  const within = D.c[j * nx + i];
+  const s = nearest(x, y);
+  // only when this very intersection is one of the corner hotspots
+  const hot = D.hotspots.find(h => samePair(h.name, s.name) && Math.hypot(h.x - s.x, h.y - s.y) < 100);
+  tip.show(ev, `<b>Near ${s.name}</b><span class="m">${s.boro}</span><br>` +
+    `${fmt(within)} crash${within === 1 ? "" : "es"} within ${D.radius_m} m` +
+    (hot ? `<br>One of the city’s corner hotspots: ${fmt(hot.crashes)} crashes right at this intersection` : ""));
+}
+
+// nearest named intersection (from the crash records' street names) to any point
+const XS = d3.range(D.xs.length / 4).map(k => ({
+  x: D.xs[4 * k], y: D.xs[4 * k + 1], name: D.xs_names[D.xs[4 * k + 2]], boro: D.boros[D.xs[4 * k + 3]],
+}));
+const xsIndex = d3.Delaunay.from(XS, d => d.x, d => d.y);
+let lastFind = 0;
+function nearest(x, y) { lastFind = xsIndex.find(x, y, lastFind); return XS[lastFind]; }
+
+// ---- render loop ----
+function resize() {
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(wrap);
+resize();
+(function frame(now) {
+  stepTween(now ?? performance.now());
+  controls.update();
+  renderer.render(scene, camera);
+  placeLabels();
+  hover();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

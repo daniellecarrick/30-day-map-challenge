@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYC Crash Hotspots</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .crash { fill: none; stroke: var(--muted); stroke-opacity: .4; stroke-linecap: round; pointer-events: none; }
+  .hull { stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .hot { stroke: var(--edge); vector-effect: non-scaling-stroke; }
+  .hl { fill: none; stroke: var(--ink); stroke-width: 1.6; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .land { fill: var(--ctl); stroke: var(--edge); stroke-width: 0.6; vector-effect: non-scaling-stroke; }
+  .hint { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <div id="toggle" aria-label="Hotspot scale"></div>
+    </div>
+  </header>
+  <div class="map-wrap" id="map"></div>
+  <footer>Hotspots found with DBSCAN clustering: each crash in a hotspot has the minimum number of crashes within the radius, and touching groups chain together.
+    <span id="missing"></span> Data: <a id="src">NYC Open Data, Motor Vehicle Collisions (NYPD)</a>, <span id="years"></span> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const W = 640, H = 640;
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[4, 4], [W - 4, H - 4]], D.boroughs);
+const path = d3.geoPath(proj);
+const tip = MapKit.tooltip();
+const fmt = d3.format(",");
+const PLURAL = { crash: "crashes", person: "people" };
+const pl = (k, w) => `${fmt(k)} ${k === 1 ? w : PLURAL[w] ?? w + "s"}`;
+
+d3.select("#title").text(D.title);
+d3.select("#day").text(D.day);
+d3.select("#years").text(D.years);
+d3.select("#src").attr("href", D.source_url);
+d3.select("#missing").text(`${fmt(D.total - D.n)} crashes with no location are left out.`);
+
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
+const g = svg.append("g");
+g.append("g").selectAll("path").data(D.boroughs.features).join("path").attr("class", "land").attr("d", path);
+
+// every crash as one path of zero-length round-capped segments (fast for ~40k dots)
+let dots = "";
+for (let i = 0; i < D.points.length; i += 2) {
+  const [x, y] = proj([D.points[i], D.points[i + 1]]);
+  dots += `M${x.toFixed(1)},${y.toFixed(1)}h0`;
+}
+const crashPath = g.append("path").attr("class", "crash").attr("d", dots);
+const gHull = g.append("g"), gHot = g.append("g"), gHl = g.append("g");
+
+let k = 1;  // zoom scale
+// corner circles: radius linear in crashes, smallest -> biggest hotspot (exaggerates the worst corners)
+const corner = D.views.find(v => v.key === "corner");
+const rScale = d3.scaleLinear().domain([corner.min_n, d3.max(corner.features.features, d => d.properties.crashes)])
+  .range(D.web_r).clamp(true);
+const radius = d => rScale(d.properties.crashes) / Math.sqrt(k);
+function restyle() {
+  crashPath.attr("stroke-width", 1.3 / k);
+  gHot.selectAll("circle").attr("r", radius).attr("stroke-width", 0.6 / k);
+  gHl.selectAll("circle").attr("r", d => radius(d) + 1.5 / k);
+}
+const zoom = d3.zoom().scaleExtent([1, 24]).translateExtent([[0, 0], [W, H]])
+  .on("zoom", ev => { k = ev.transform.k; g.attr("transform", ev.transform); restyle(); });
+svg.call(zoom).on("dblclick.zoom", null);
+
+// legend in the empty New Jersey space, left of Manhattan; rebuilt for each view
+const manhattan = D.boroughs.features.find(f => f.properties.boroname === "Manhattan");
+const [[, my0]] = path.bounds(manhattan);
+const dotKey = { draw: s => s.append("circle").attr("r", 1).attr("fill", "var(--muted)"), label: "One crash" };
+let legend;
+function drawLegend(v, color) {
+  if (legend) legend.remove();
+  const o = { x: 8, y: Math.max(8, my0 - 20), width: 230, title: "Crashes that injured or killed\na pedestrian or cyclist" };
+  if (v.key === "corner") {
+    o.keys = [dotKey];
+  } else {
+    const [lo, hi] = color.domain();
+    o.stops = d3.range(0, 1.0001, 0.1).map(t => [t, color(lo * Math.pow(hi / lo, t))]);
+    o.ticks = [[0, fmt(lo)], [1, `${fmt(hi)} crashes`]];
+    o.title += "\n\nHotspot area, shaded by crashes";
+    o.keys = [dotKey];
+  }
+  legend = MapKit.legend(svg, o);
+  if (v.key === "corner") {
+    // smallest and biggest hotspot side by side in one row: "Hotspots ● 8  ⬤ 25 crashes"
+    const row = legend.append("div").attr("class", "lg-key").style("margin-top", "8px");
+    row.append("span").text("Hotspots");
+    rScale.domain().forEach((c, i) => {
+      const r = rScale(c);
+      row.append("svg").attr("width", 2 * r + 2).attr("height", 2 * r + 2).attr("viewBox", `${-r - 1} ${-r - 1} ${2 * r + 2} ${2 * r + 2}`)
+        .style("margin-left", i ? "6px" : "2px")
+        .append("circle").attr("r", r).attr("fill", D.hot).attr("stroke", "var(--edge)");
+      row.append("span").text(i ? `${c} crashes` : `${c}`);
+    });
+  }
+  legend.append("div").attr("class", "hint").style("margin-top", "8px").text("Scroll or pinch to zoom");
+}
+
+function tipHtml(d) {
+  const p = d.properties;
+  const killed = p.killed ? ` · <b style="display:inline">${pl(p.killed, "person")} killed</b>` : "";
+  const near = current.key === "corner" ? "" : "Around ";
+  return `<b>${near}${p.name}</b><span class="m">${p.boroname}${p.spots > 1 ? " · " + pl(p.spots, "location") : ""}</span><br>
+    ${pl(p.crashes, "crash")}<br>${pl(p.ped_inj, "pedestrian")}, ${pl(p.cyc_inj, "cyclist")} hurt${killed}`;
+}
+function highlight(d) {
+  gHl.selectAll("*").remove();
+  if (!d) return;
+  if (current.key !== "corner") { gHl.append("path").attr("class", "hl").attr("d", path(d)); return; }
+  gHl.append("circle").datum(d).attr("class", "hl").attr("cx", proj([d.properties.x, d.properties.y])[0])
+    .attr("cy", proj([d.properties.x, d.properties.y])[1]);
+  restyle();
+}
+
+let current;
+function render(key) {
+  current = D.views.find(v => v.key === key);
+  const v = current, feats = v.features.features;
+  const lead = key === "corner"
+    ? `It's the worst of ${fmt(v.count)} hotspots: places with ${v.min_n} or more crashes within ${v.eps} m of each other.`
+    : `Here a hotspot is ${v.min_n} or more crashes within ${v.eps} m of each other, chained along a block or two.`;
+  d3.select("#lede").text(`${lead} Each gray dot is one of the ${fmt(D.n)} crashes in ${D.years} that hurt someone walking or biking.`);
+
+  const ext = d3.extent(feats, d => d.properties.crashes);
+  const color = d3.scaleSequentialLog(d3.interpolateRgbBasis(D.amber)).domain(ext);
+  drawLegend(v, color);
+  gHull.selectAll("path").data(key === "corner" ? [] : feats).join("path").attr("class", "hull")
+    .attr("d", path).attr("fill", d => color(d.properties.crashes)).attr("stroke", "var(--edge)")
+    .on("mousemove", (ev, d) => { tip.show(ev, tipHtml(d)); highlight(d); })
+    .on("mouseleave", () => { tip.hide(); highlight(null); });
+  // corners: circles sized by crashes, big ones under small ones so every circle stays reachable
+  gHot.selectAll("circle").data(key !== "corner" ? [] : feats.slice().sort((a, b) => b.properties.crashes - a.properties.crashes)).join("circle")
+    .attr("class", "hot").attr("fill", D.hot).attr("fill-opacity", .9)
+    .attr("cx", d => proj([d.properties.x, d.properties.y])[0]).attr("cy", d => proj([d.properties.x, d.properties.y])[1]);
+  highlight(null);
+  restyle();
+
+  MapKit.nearestHover(svg, feats, {
+    x: d => proj([d.properties.x, d.properties.y])[0], y: d => proj([d.properties.x, d.properties.y])[1],
+    radius: 16, transform: () => d3.zoomTransform(svg.node()),
+    onEnter: (ev, d) => { tip.show(ev, tipHtml(d)); highlight(d); },
+    onLeave: () => { tip.hide(); highlight(null); },
+  });
+}
+
+MapKit.segmented("#toggle", D.views.map(v => ({ value: v.key, label: v.label })), render);
+</script>
+</body>
+</html>
