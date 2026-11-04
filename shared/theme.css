@@ -11,16 +11,20 @@
   --sub-123: #ee352e; --sub-456: #00933c; --sub-7: #b933ad; --sub-ACE: #0039a6; --sub-BDFM: #ff6319;
   --sub-G: #6cbe45; --sub-JZ: #996633; --sub-L: #a7a9ac; --sub-NQRW: #fccc0a; --sub-S: #808183; --sub-SIR: #1d5da8;
   --font-head: "Bitter", Georgia, "Times New Roman", serif;
+  /* categorical (tokens.json scales.categorical_light / _dark): assign in this order, never cycle */
+  --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100; --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #6250d6; --cat-8: #e34948;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
     --ctl: #2c2c29; --ctl-on: #45453f;
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
   }
 }
 :root[data-theme="dark"] {
   --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
   --ctl: #2c2c29; --ctl-on: #45453f;
+  --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
 }
 
 * { box-sizing: border-box; }
@@ -72,6 +76,14 @@ body { margin: 0; background: var(--bg); color: var(--ink);
 .dd select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .dd::after { content: ""; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px; margin-top: -6px;
              border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; }
+/* play / pause button for animated maps: same surface as the toggle; put an icon <svg> before the label */
+.play { font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: var(--ctl);
+        border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer; display: inline-flex; gap: 8px;
+        align-items: center; }
+.play:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.play svg { fill: currentColor; }
+/* the current value of an animated control (a clock, a date), in the headline face */
+.readout { font: 700 20px/1 var(--font-head); }
 
 /* ---- map marks ---- */
 .cell { stroke: var(--edge); stroke-width: 0.5; }

@@ -41,5 +41,7 @@
 - **Measure:** 400 m hexes, each scored on the restaurants within 500 m. Uncolored when under 1.5× or fewer than 30 restaurants. A peak needs 40+ restaurants nearby. Namesakes are scored at their best hex within 500 m of the landmark corner. "Clustered" = share of a cuisine's restaurants whose other neighbors within 500 m are 3×+ the city share for it.
 - **Hex names:** the neighborhood most of a hex's nearby restaurants are in (keeps park and stadium names off busy blocks).
 - **Data quirks called out in the context notes:** American peaks at Yankee Stadium concessions; Donuts at the Staten Island Ferry Dunkin' stands.
+- **Flavor map ("Top cuisine" view + `out/nyc_flavor_map.png`):** each hex colored by its most over-represented cuisine (needs 5+ of its restaurants within 500 m and 1.5×+). 37 cuisines don't fit 8 categorical colors, so the winner is colored by family (`FAMILIES` in build.py); tooltips and the side panel name the exact cuisine. Headline: Latin American leads in 143 of 1,081 spots, more than any other cuisine (Mexican 84); its family leads 287. The PNG labels each family's strongest spot where that cuisine is 20%+ of nearby restaurants (American skipped: Yankee Stadium concessions).
+- Shared: `--cat-1…8` CSS variables added to theme.css (light + dark, from tokens.json).
 - No `meta.json` yet, on purpose: publish.py would put the day live. Add it on Nov 23.
 - Known issue: in dark mode the darkest blue (10×+) is low-contrast on the dark background.

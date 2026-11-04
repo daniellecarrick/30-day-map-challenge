@@ -41,6 +41,18 @@
   .meter span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--ink); }
   .side .context { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); }
   .dd, .dd select { width: 100%; }
+  #mode { margin-bottom: 12px; }
+  #mode.seg { display: flex; }
+  #mode.seg button { flex: 1; }
+  .hexes path { transition: opacity .15s; }
+  .hexes path.dim { opacity: .12; }
+  .fam { display: grid; grid-template-columns: 14px 1fr; gap: 0 10px; width: 100%; text-align: left; font: inherit;
+         color: var(--ink); background: none; border: 0; padding: 6px 0; cursor: default; }
+  .fam .sw { width: 14px; height: 14px; border-radius: 2px; margin-top: 3px; }
+  .fam .name { font-weight: 600; }
+  .fam .m { grid-column: 2; color: var(--muted); }
+  .fam:hover .name, .fam:focus-visible .name { text-decoration: underline; }
+  .fam:focus-visible { outline: none; }
 
   @media (max-width: 860px) {
     .page { height: auto; }
@@ -61,10 +73,20 @@
   <div class="main">
     <div class="map-wrap" id="map"></div>
     <div class="picker">
-      <label class="pick-label" for="pick-select">Cuisine</label>
-      <div id="pick"></div>
+      <div id="mode" aria-label="Map view"></div>
+      <div id="pick-wrap">
+        <label class="pick-label" for="pick-select">Cuisine</label>
+        <div id="pick"></div>
+      </div>
     </div>
     <aside class="side" aria-live="polite">
+     <div id="side-top">
+      <h2>The standout cuisine</h2>
+      <p class="big" id="t-big"></p>
+      <div id="t-fams"></div>
+      <p class="context" id="t-note"></p>
+     </div>
+     <div id="side-one">
       <h2 id="c-name"></h2>
       <p class="big" id="c-big"></p>
       <h3>Most concentrated</h3>
@@ -75,6 +97,7 @@
       <div class="meter"><span id="c-meter"></span></div>
       <div id="c-cluster"></div>
       <p class="context" id="c-context"></p>
+     </div>
     </aside>
   </div>
   <footer><span id="how"></span> Data: <a id="src">NYC DOHMH Restaurant Inspection Results</a> (Nov 2026) · #30DayMapChallenge <span id="day"></span></footer>
@@ -91,8 +114,11 @@ const path = d3.geoPath(proj);
 const tip = MapKit.tooltip();
 const fmt = d3.format(","), pct = v => `${Math.round(100 * v)}%`, x1 = v => `${v.toFixed(1)}×`;
 
-d3.select("#title").text(D.title);
-d3.select("#lede").text(`For every spot in the city: how much more common a cuisine is among the restaurants within ${D.r} m than in NYC overall.`);
+const F = D.flavor;
+const LEDE = {
+  one: `For every spot in the city: how much more common a cuisine is among the restaurants within ${D.r} m than in NYC overall.`,
+  top: `Every spot in the city, colored by the cuisine that is most over-represented among the restaurants within ${D.r} m.`,
+};
 d3.select("#day").text(D.day);
 d3.select("#src").attr("href", D.source_url);
 d3.select("#how").text(`${fmt(D.n_rest)} restaurants inspected since ${D.since}, by the cuisine they registered; every cuisine with ${D.min_cuisine}+ restaurants. ` +
@@ -137,7 +163,10 @@ function placeRow(sel, i, name, extra) {
     .on("mouseleave blur", () => hoverHex.attr("d", null));
 }
 
+let mode = "one", lastKey = "Chinese";
 function render(key) {
+  lastKey = key;
+  if (mode !== "one") return;
   cur = D.cuisines.find(c => c.key === key);
   kFull = new Uint16Array(N);
   cur.ki.forEach((i, j) => { kFull[i] = cur.kv[j]; });
@@ -147,7 +176,7 @@ function render(key) {
     const n = D.hn[i], c = colorOf(n ? kFull[i] / n / cur.city : 0, n);
     if (c) byColor.set(c, (byColor.get(c) || "") + hexD(i));
   }
-  gHex.selectAll("path").data([...byColor], d => d[0]).join("path").attr("fill", d => d[0]).attr("d", d => d[1]);
+  gHex.selectAll("path").data([...byColor], d => d[0]).join("path").attr("class", null).attr("fill", d => d[0]).attr("d", d => d[1]);
 
   dots = [];
   for (let j = 0; j < cur.pts.length; j += 2) {
@@ -181,12 +210,64 @@ function render(key) {
   hideHover();
 }
 
+// "Top cuisine" view: each hex in its standout cuisine's family color
+const famOf = new Map(F.families.flatMap((f, fi) => f.members.map(([label]) => [label, fi])));
+function renderTop() {
+  cur = null; kFull = null; dots = []; delaunay = null;
+  const byFam = F.families.map(() => "");
+  for (let i = 0; i < N; i++) {
+    const w = F.win[i];
+    if (w >= 0) byFam[famOf.get(D.cuisines[w].label)] += hexD(i);
+  }
+  gHex.selectAll("path").data(byFam.map((d, fi) => [fi, d]), d => "f" + d[0]).join("path")
+    .attr("class", null).attr("fill", d => `var(--cat-${d[0] + 1})`).attr("d", d => d[1]);
+  dotPath.attr("d", null);
+  gMark.selectAll("path").data(F.families.filter(f => f.peak != null).map(f => ({ i: f.peak, c: "mark" })))
+    .join("path").attr("class", d => d.c).attr("d", d => hexD(d.i));
+
+  const [top, next] = F.families.flatMap(f => f.members).sort((a, b) => b[1] - a[1]);
+  d3.select("#t-big").html(`Of ${fmt(F.spots)} spots where one cuisine stands out, <b>${top[0]}</b> leads in ${fmt(top[1])}, ` +
+    `more than any other (${next[0]} is next, ${fmt(next[1])}). Colors group the ${D.cuisines.length} cuisines into families.`);
+  const rows = d3.select("#t-fams").html("").selectAll("button").data(F.families).join("button")
+    .attr("type", "button").attr("class", "fam")
+    .on("mouseenter focus", (_, f) => gHex.selectAll("path").classed("dim", d => d[0] !== F.families.indexOf(f)))
+    .on("mouseleave blur", () => gHex.selectAll("path").classed("dim", false));
+  rows.append("span").attr("class", "sw").style("background", (_, fi) => `var(--cat-${fi + 1})`);
+  rows.append("span").html(f => `<span class="name">${f.name}</span> · ${fmt(f.count)} spots`);
+  rows.append("span").attr("class", "m").text(f => f.members.slice(0, 4).map(([c, n]) => `${c} ${n}`).join(", ") +
+    (f.members.length > 4 ? `, +${f.members.length - 4} more` : ""));
+  d3.select("#t-note").text(`A cuisine needs at least ${F.min_k} restaurants within ${D.r} m and ${D.labels[0]} its city share to stand out. ` +
+    `Hover a family to see only its spots; pick "One cuisine" for the details of any of them.`);
+  hideHover();
+}
+
+function setMode(m) {
+  mode = m;
+  d3.select("#title").text(m === "top" ? F.title : D.title);
+  d3.select("#lede").text(LEDE[m]);
+  d3.select("#pick-wrap").style("display", m === "one" ? null : "none");
+  d3.select("#side-one").style("display", m === "one" ? null : "none");
+  d3.select("#side-top").style("display", m === "top" ? null : "none");
+  legendOne.style("display", m === "one" ? null : "none");
+  legendTop.style("display", m === "top" ? null : "none");
+  if (m === "top") renderTop(); else render(lastKey);
+}
+
 function restyle() { dotPath.attr("stroke-width", 1.8 / Math.sqrt(k)); hoverDot.attr("r", 3 / Math.sqrt(k)); }
 
 function hexHtml(i) {
-  const n = D.hn[i], c = kFull[i];
+  const n = D.hn[i];
   const head = `<b>${place(i)}</b>`;
   if (n < D.min_n) return `${head}<span class="m">Only ${n} restaurant${n === 1 ? "" : "s"} within ${D.r} m: too few to say.</span>`;
+  if (mode === "top") {
+    const w = F.win[i];
+    if (w < 0) return `${head}<span class="m">No cuisine stands out among the ${n} restaurants within ${D.r} m.</span>`;
+    const c = D.cuisines[w], fam = F.families[famOf.get(c.label)].name;
+    const kk = c.kv[c.ki.indexOf(i)];
+    return `${head}Standout: ${c.label}<br><span class="m">${pct(kk / n)} of the ${n} restaurants within ${D.r} m, ` +
+      `${x1(F.best[i])} the city share · ${fam}</span>`;
+  }
+  const c = kFull[i];
   const s = c / n;
   return `${head}${cur.label}: ${pct(s)} of the ${n} restaurants within ${D.r} m` +
     `<br><span class="m">${x1(s / cur.city)} the city share (${(100 * cur.city).toFixed(1)}%)</span>`;
@@ -195,7 +276,7 @@ function hideHover() { tip.hide(); hoverHex.attr("d", null); hoverDot.attr("disp
 
 // one hover for everything: the nearest restaurant dot within 10px wins, else the hex under the pointer
 svg.on("pointermove", ev => {
-  if (!cur) return;
+  if (mode === "one" && !cur) return;
   const [mx, my] = transform.invert(d3.pointer(ev, svg.node()));
   const vb = svg.node().viewBox.baseVal, r = svg.node().getBoundingClientRect();
   const pxPerUnit = Math.min(r.width / vb.width, r.height / vb.height) * transform.k;
@@ -220,7 +301,7 @@ svg.call(zoom).on("dblclick.zoom", null);
 
 // legend in the empty top-left (New Jersey)
 const swatch = c => s => s.append("rect").attr("x", -7).attr("y", -7).attr("width", 14).attr("height", 14).attr("rx", 2).attr("fill", c);
-MapKit.legend(svg, {
+const legendOne = MapKit.legend(svg, {
   x: 8, y: 8, width: 200,
   title: "Times the city share",
   keys: [
@@ -230,8 +311,18 @@ MapKit.legend(svg, {
   ],
 });
 
+const legendTop = MapKit.legend(svg, {
+  x: 8, y: 8, width: 230,
+  title: "Standout cuisine",
+  keys: [
+    ...F.families.map((f, fi) => ({ label: f.name, draw: swatch(`var(--cat-${fi + 1})`) })),
+    { label: "Strongest spot of a family", draw: s => s.append("path").attr("d", "M0,-6L5.2,-3L5.2,3L0,6L-5.2,3L-5.2,-3Z").attr("class", "mark") },
+  ],
+});
+
 MapKit.dropdown("#pick", D.cuisines.map(c => ({ value: c.key, label: c.label, group: c.group })), render, "Chinese", "Cuisine");
 d3.select("#pick select").attr("id", "pick-select");
+MapKit.segmented("#mode", [{ value: "one", label: "One cuisine" }, { value: "top", label: "Top cuisine" }], setMode, "one");
 </script>
 </body>
 </html>

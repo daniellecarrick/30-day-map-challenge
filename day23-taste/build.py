@@ -61,6 +61,25 @@ FAMOUS = {
 }
 # the PNG's 8 panels (small multiples); the page offers every cuisine
 PNG_PANELS = ["Chinese", "Italian", "Korean", "Eastern European", "Caribbean", "Jewish/Kosher", "Latin American", "Mexican"]
+# ---- "flavor map": each hex colored by the cuisine that is most over-represented there ----
+FLAVOR_MIN_K = 5       # a cuisine needs this many restaurants within R to win a hex (stops one-off wins)
+# 37 cuisines are too many colors; each winner is colored by its family (tokens.json allows 8 categorical
+# colors). Families are listed in the order their colors are assigned; build.py checks every cuisine has one.
+FAMILIES = [
+    ("Latin American", ["Latin American", "Mexican", "Spanish", "Peruvian", "Tex-Mex"]),
+    ("American & fast food", ["American", "New American", "Pizza", "Chicken", "Hamburgers", "Sandwiches",
+                              "Steakhouse", "Seafood", "Bagels/Pretzels", "Salads", "Sandwiches/Salads/Mixed Buffet",
+                              "Fusion"]),
+    ("East & Southeast Asian", ["Chinese", "Korean", "Japanese", "Asian/Asian Fusion", "Thai", "Southeast Asian"]),
+    ("European", ["Italian", "French", "Greek", "Eastern European", "Irish", "Mediterranean"]),
+    ("Caribbean", ["Caribbean"]),
+    ("Middle Eastern & South Asian", ["Middle Eastern", "Indian"]),
+    ("Kosher", ["Jewish/Kosher"]),
+    ("Sweets & drinks", ["Bakery Products/Desserts", "Donuts", "Juice, Smoothies, Fruit Salads", "Frozen Desserts"]),
+]
+FLAVOR_TITLE = "Latin American food stands out in more of NYC than any other cuisine"
+CALLOUT_MIN_SHARE = 0.20   # flavor PNG labels a family's strongest spot only if that cuisine is 1 in 5+ nearby
+FAMILY_OF = {c: i for i, (_, cs) in enumerate(FAMILIES) for c in cs}
 # dropdown groups by how much of a cuisine sits in a cluster (share of its restaurants at 3x+ the city share)
 CLUSTER_X = 3
 GROUPS = [(0.4, "Tightly clustered"), (0.2, "Partly clustered"), (0.0, "Spread across the city")]
@@ -108,6 +127,11 @@ BINS = [1.5, 2, 3, 5, 10]
 LABELS = ["1.5×", "2×", "3×", "5×", "10×"]
 RAMP = [S.SEQUENTIAL_BLUE[i] for i in (1, 2, 3, 4, 6)]   # 5 of the 7 blues, one per bin
 LAND = S.C["ctl"]                  # land: under 1.5× the city share, or too few restaurants to say
+
+
+def pct(v: float) -> str:
+    """Whole percent, halves rounded up (Python's :.0% rounds half to even; the page's Math.round rounds up)."""
+    return f"{int(np.floor(100 * v + 0.5))}%"
 
 
 def short(name: str) -> str:
@@ -220,9 +244,9 @@ def main():
              "k": k, "share": share, "lq": lq, "peak": peak, "also": also, "clustered": clustered,
              "famous": famous_name, "famous_i": famous_i, "context": context[key]}
         views.append(v)
-        print(f"{v['label']:>30}: {v['city']:.1%} (n={v['count']}) · {clustered:.0%} clustered · peak "
-              f"{hexes.label[peak]} {share[peak]:.0%} of {hexes.n[peak]} = {lq[peak]:.1f}× · also "
-              + ", ".join(f"{hexes.label[i]} {share[i]:.0%}" for i in also))
+        print(f"{v['label']:>30}: {v['city']:.1%} (n={v['count']}) · {pct(clustered)} clustered · peak "
+              f"{hexes.label[peak]} {pct(share[peak])} of {hexes.n[peak]} = {lq[peak]:.1f}× · also "
+              + ", ".join(f"{hexes.label[i]} {pct(share[i])}" for i in also))
 
     # headline: every namesake neighborhood loses to somewhere else
     for v in views:
@@ -231,7 +255,9 @@ def main():
     title = "Chinatown, Little Italy and Koreatown aren't where their cuisines are most concentrated"
     by_key = {v["key"]: v for v in views}
     png(boros, land, hexes, [by_key[k] for k in PNG_PANELS], title)
-    web(g, boros, hexes, views, title, total)
+    fl = flavor(hexes, views)
+    flavor_png(boros, land, hexes, views, fl)
+    web(g, boros, hexes, views, title, total, fl)
 
 
 def bin_color(lq: float, n: int) -> str:
@@ -270,14 +296,14 @@ def png(boros, land, hexes, panels, title):
         pk = p["peak"]
         px, py, pha = PEAK_POS.get(p["key"], (0.98, 0.10, "right"))
         S.callout(ax, (hexes.x[pk], hexes.y[pk]), (px, py),
-                  f"{PEAK_NAME.get(p['key'], hexes.label[pk])}: {p['share'][pk]:.0%}",
+                  f"{PEAK_NAME.get(p['key'], hexes.label[pk])}: {pct(p['share'][pk])}",
                   (f"of {hexes.n[pk]} · {p['lq'][pk]:.1f}× NYC" if p["key"] in PEAK_POS
                    else f"of {hexes.n[pk]} nearby restaurants · {p['lq'][pk]:.1f}× NYC"),
                   ha=pha, outline=hexes.geometry[pk], halo=True)
         if p["famous"]:
             f = p["famous_i"]
             S.callout(ax, (hexes.x[f], hexes.y[f]), (0.02, 0.62),
-                      f"{p['famous']}: {p['share'][f]:.0%}",
+                      f"{p['famous']}: {pct(p['share'][f])}",
                       f"of {hexes.n[f]} · {p['lq'][f]:.1f}× NYC",
                       ha="left", outline=hexes.geometry[f], halo=True)
 
@@ -302,11 +328,113 @@ def png(boros, land, hexes, panels, title):
     print("wrote", OUT / "nyc_cuisine_capitals.png")
 
 
+def flavor(hexes, views) -> dict:
+    """For each hex: the cuisine most over-represented among restaurants within R (at least FLAVOR_MIN_K of
+    them, and at least BINS[0] times the city share), or -1 when nothing stands out / too few restaurants."""
+    missing = {v["key"] for v in views} ^ set(FAMILY_OF)
+    assert not missing, f"cuisines without a family (or families listing unknown cuisines): {missing}"
+    K = np.stack([v["k"] for v in views], 1)
+    lq = K / np.maximum(hexes.n.values, 1)[:, None] / np.array([v["city"] for v in views])
+    lq[K < FLAVOR_MIN_K] = 0
+    win = lq.argmax(1)
+    best = lq[np.arange(len(hexes)), win]
+    win[(best < BINS[0]) | (hexes.n.values < MIN_N)] = -1
+    fam = np.array([FAMILY_OF[views[w]["key"]] if w >= 0 else -1 for w in win])
+    has = win >= 0
+    by_cuisine = pd.Series([views[w]["label"] for w in win[has]]).value_counts()
+    by_family = pd.Series(fam[has]).value_counts()
+    print(f"flavor: {has.sum()} of {(hexes.n >= MIN_N).sum()} hexes have a standout cuisine")
+    for i, (name, _) in enumerate(FAMILIES):
+        cs = pd.Series([views[w]["label"] for w in win[has & (fam == i)]]).value_counts()
+        print(f"  {name:>30}: {by_family.get(i, 0):4d}  " + ", ".join(f"{c} {n}" for c, n in cs.items()))
+    # each family's strongest hex (for callouts)
+    peaks = {}
+    for i in range(len(FAMILIES)):
+        share_w = np.array([views[w]["share"][j] if w >= 0 else 0 for j, w in enumerate(win)])
+        m = has & (fam == i) & (hexes.n.values >= PEAK_MIN_N) & (share_w >= CALLOUT_MIN_SHARE)
+        if m.any():
+            j = int(np.argmax(np.where(m, best, -1)))
+            peaks[i] = j
+            v = views[win[j]]
+            print(f"  peak {FAMILIES[i][0]}: {v['label']} in {hexes.label[j]}, {pct(v['share'][j])} of {hexes.n[j]} = {best[j]:.1f}×")
+    return {"win": win, "best": best, "fam": fam, "by_cuisine": by_cuisine, "by_family": by_family, "peaks": peaks,
+            "has": has}
+
+
+# where each family's callout label sits on the flavor PNG (axes fraction, ha), keyed by family name.
+# Labels sit in the margin right of the map (x > 1) or over New Jersey (left).
+FLAVOR_POS = {
+    "Middle Eastern & South Asian": (1.02, 0.80, "left"),
+    "Latin American": (1.02, 0.71, "left"),
+    "East & Southeast Asian": (1.02, 0.58, "left"),
+    "Caribbean": (1.02, 0.34, "left"),
+    "European": (1.02, 0.12, "left"),
+    "Kosher": (0.02, 0.48, "left"),
+}
+# families whose strongest spot isn't labeled: American's peak is Yankee Stadium's concession stands
+
+
+def flavor_png(boros, land, hexes, views, fl):
+    top_c, top_n = fl["by_cuisine"].index[0], int(fl["by_cuisine"].iloc[0])
+    fam0 = FAMILIES[int(fl["by_family"].index[0])][0]
+    assert top_c == "Latin American" and fam0 == "Latin American", (top_c, fam0)  # the headline names it
+    total = int(fl["has"].sum())
+    title = FLAVOR_TITLE.replace(" in more", "\nin more")
+    print("FLAVOR TITLE:", FLAVOR_TITLE, f"({top_n} of {total} spots; family {int(fl['by_family'].iloc[0])})")
+
+    fig = plt.figure(figsize=S.MAP["png_size_in"])
+    ax = fig.add_axes([0.33, 0.05, 0.52, 0.90])   # the map is height-limited; labels use the margin to its right
+    clipped = hexes.copy()
+    clipped["geometry"] = clipped.geometry.intersection(land)
+    colors = [S.CATEGORICAL[f] if f >= 0 else LAND for f in fl["fam"]]
+    clipped.plot(ax=ax, color=colors, linewidth=0)
+    boros.boundary.plot(ax=ax, color=S.INK, linewidth=S.MAP["boundary_width"])
+    xmin, ymin, xmax, ymax = boros.total_bounds
+    ax.set_xlim(xmin - 800, xmax + 800)
+    ax.set_ylim(ymin - 600, ymax + 600)
+    ax.set_axis_off()
+    ax.set_aspect("equal")
+    for i, j in fl["peaks"].items():
+        if FAMILIES[i][0] not in FLAVOR_POS:
+            continue
+        v = views[fl["win"][j]]
+        tx, ty, ha = FLAVOR_POS[FAMILIES[i][0]]
+        S.callout(ax, (hexes.x[j], hexes.y[j]), (tx, ty), f"{v['label']}, {hexes.label[j]}",
+                  f"{pct(v['share'][j])} of {hexes.n[j]} restaurants · {fl['best'][j]:.0f}× NYC",
+                  ha=ha, outline=hexes.geometry[j], halo=True)
+
+    fig.text(0.03, 0.93, title, ha="left", va="top", fontsize=S.SIZE["title"], fontweight="bold",
+             fontfamily=S.HEAD_FONT, color=S.INK, linespacing=1.2)
+    fig.text(0.03, 0.80,
+             f"Each spot is colored by the cuisine that is most over-represented\n"
+             f"among the restaurants within {R} m, compared with its share\n"
+             f"of all NYC restaurants. Latin American leads in {top_n} of\n"
+             f"{total:,} spots, more than any other ({fl['by_cuisine'].index[1]} is next, {int(fl['by_cuisine'].iloc[1])}).\n"
+             f"Colors group the {len(views)} cuisines into families.",
+             ha="left", va="top", fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED, linespacing=1.5)
+    handles = []
+    for i, (name, _) in enumerate(FAMILIES):
+        cs = [c for c in fl["by_cuisine"].index if FAMILY_OF[next(v["key"] for v in views if v["label"] == c)] == i][:3]
+        handles.append(Patch(color=S.CATEGORICAL[i], label=f"{name}  ({int(fl['by_family'].get(i, 0))})\n" +
+                             ", ".join(cs) + ("…" if len([c for c in fl["by_cuisine"].index
+                                                          if FAMILY_OF[next(v['key'] for v in views if v['label'] == c)] == i]) > 3 else "")))
+    handles.append(Patch(color=LAND, label=f"Nothing stands out ({BINS[0]:g}×+, {FLAVOR_MIN_K}+ restaurants),\nor fewer than {MIN_N} restaurants"))
+    fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.03, 0.66), fontsize=S.SIZE["legend"] + 1,
+               title="Standout cuisine (spots it leads)", title_fontsize=S.SIZE["legend"] + 1, alignment="left",
+               handlelength=1.4, handleheight=1.2, labelspacing=0.75, borderaxespad=0, labelcolor=S.INK)
+    S.credit(fig, f"Restaurants with an inspection since {ACTIVE_SINCE[:4]}, by the cuisine they registered; {HEX} m hexes, "
+                  f"each scored on restaurants within {R} m of its center; cuisines with {MIN_CUISINE}+ restaurants "
+                  f"(not coffee).  Data: NYC DOHMH Restaurant Inspection Results (Nov 2026)  ·  #30DayMapChallenge {DAY}")
+    fig.savefig(OUT / "nyc_flavor_map.png", dpi=S.MAP["png_dpi"])
+    plt.close(fig)
+    print("wrote", OUT / "nyc_flavor_map.png")
+
+
 def group_for(clustered: float) -> str:
     return next(name for lo, name in GROUPS if clustered >= lo)
 
 
-def web(g, boros, hexes, views, title, total):
+def web(g, boros, hexes, views, title, total, fl):
     labels = sorted(set(hexes.label))
     lab_i = {n: i for i, n in enumerate(labels)}
     b = boros.copy()
@@ -337,6 +465,19 @@ def web(g, boros, hexes, views, title, total):
             "pts": np.c_[sel.geometry.x, sel.geometry.y].round(0).astype(int).ravel().tolist(),
             "names": sel.dba.str.title().str.replace(r"\s+", " ", regex=True).str.strip().tolist(),
         })
+    # "Top cuisine" view: each hex's standout cuisine (index into data["cuisines"]) and how many times the city share
+    pos = {c["key"]: i for i, c in enumerate(data["cuisines"])}
+    data["flavor"] = {
+        "title": FLAVOR_TITLE, "min_k": FLAVOR_MIN_K, "spots": int(fl["has"].sum()),
+        "win": [pos[views[w]["key"]] if w >= 0 else -1 for w in fl["win"]],
+        "best": [round(float(b), 1) if w >= 0 else 0 for w, b in zip(fl["win"], fl["best"])],
+        "families": [{
+            "name": name, "count": int(fl["by_family"].get(i, 0)),
+            "members": [[c, int(n)] for c, n in fl["by_cuisine"].items()
+                        if FAMILY_OF[next(v["key"] for v in views if v["label"] == c)] == i],
+            "peak": fl["peaks"].get(i) if name in FLAVOR_POS else None,
+        } for i, (name, _) in enumerate(FAMILIES)],
+    }
     size = S.build_page(HERE / "web" / "index.html", data, OUT / "nyc_cuisine_capitals.html")
     print("wrote", OUT / "nyc_cuisine_capitals.html", f"({size / 1e6:.1f} MB)")
 
