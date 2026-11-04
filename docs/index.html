@@ -9,13 +9,13 @@
 <meta property="og:title" content="30 Day Map Challenge 2026">
 <meta property="og:description" content="One map a day through November, made for the #30DayMapChallenge.">
 <meta property="og:url" content="https://daniellecarrick.github.io/30-day-map-challenge/">
-<meta property="og:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day04/preview.png">
+<meta property="og:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day05/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="30 Day Map Challenge 2026">
 <meta name="twitter:description" content="One map a day through November, made for the #30DayMapChallenge.">
-<meta name="twitter:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day04/preview.png">
+<meta name="twitter:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day05/preview.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 /* Shared web theme for the #30DayMapChallenge series.
@@ -31,16 +31,20 @@
   --sub-123: #ee352e; --sub-456: #00933c; --sub-7: #b933ad; --sub-ACE: #0039a6; --sub-BDFM: #ff6319;
   --sub-G: #6cbe45; --sub-JZ: #996633; --sub-L: #a7a9ac; --sub-NQRW: #fccc0a; --sub-S: #808183; --sub-SIR: #1d5da8;
   --font-head: "Bitter", Georgia, "Times New Roman", serif;
+  /* categorical (tokens.json scales.categorical_light / _dark): assign in this order, never cycle */
+  --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100; --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #6250d6; --cat-8: #e34948;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
     --ctl: #2c2c29; --ctl-on: #45453f;
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
   }
 }
 :root[data-theme="dark"] {
   --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
   --ctl: #2c2c29; --ctl-on: #45453f;
+  --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
 }
 
 * { box-sizing: border-box; }
@@ -84,6 +88,22 @@ body { margin: 0; background: var(--bg); color: var(--ink);
                                    box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .stat { color: var(--muted); font-size: 14px; }
+/* dropdown (MapKit.dropdown): same surface as the segmented toggle, chevron drawn in CSS */
+.dd { position: relative; display: inline-block; }
+.dd select { font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: var(--ctl);
+             border: 0; border-radius: 8px; padding: 8px 34px 8px 12px; cursor: pointer;
+             appearance: none; -webkit-appearance: none; max-width: 100%; }
+.dd select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dd::after { content: ""; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px; margin-top: -6px;
+             border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; }
+/* play / pause button for animated maps: same surface as the toggle; put an icon <svg> before the label */
+.play { font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: var(--ctl);
+        border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer; display: inline-flex; gap: 8px;
+        align-items: center; }
+.play:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.play svg { fill: currentColor; }
+/* the current value of an animated control (a clock, a date), in the headline face */
+.readout { font: 700 20px/1 var(--font-head); }
 
 /* ---- map marks ---- */
 .cell { stroke: var(--edge); stroke-width: 0.5; }
@@ -145,7 +165,7 @@ body { margin: 0; background: var(--bg); color: var(--ink);
   <header>
     <h1>30 Day Map Challenge 2026</h1>
     <p class="lede">One map a day through November, made for the #30DayMapChallenge.</p>
-    <p class="progress">4 of 30 days</p>
+    <p class="progress">5 of 30 days</p>
   </header>
   <section class="grid">
     <article class="card">
@@ -182,6 +202,15 @@ body { margin: 0; background: var(--bg); color: var(--ink);
         <h2><a href="day04/">NYC’s three tallest crash peaks: 2nd Ave at 39th St, Broadway at Flushing Ave, and 125th St in Harlem</a></h2>
         <p class="desc">A 3D landscape of every crash in 2023–2025 that injured or killed a pedestrian or cyclist in New York City. Each spot&#x27;s height is the number of crashes within 100 m of it, so the hills are where crashes cluster. Drag to turn the city and hover for the nearest intersection.</p>
         <p class="links"><a href="day04/">Interactive map</a><a href="day04/map.png">PNG</a></p>
+      </div>
+    </article>
+    <article class="card">
+      <a class="thumb" href="day05/"><img src="day05/thumb.png" alt="On Wall Street you can see 6% of the sky. On a typical Staten Island block, 83%." loading="lazy"></a>
+      <div class="body">
+        <p class="kicker">Day 5 · Senses: Sight</p>
+        <h2><a href="day05/">On Wall Street you can see 6% of the sky. On a typical Staten Island block, 83%.</a></h2>
+        <p class="desc">From the middle of every block in New York City, how much of the sky isn&#x27;t hidden by buildings? Each street is colored by the share of the sky dome left open, from about 2% in the deepest Financial District canyons to nearly all of it on the open edges of the city. Hover or tap a block to see its sky circle: the view straight up from that spot, drawn so the sky&#x27;s share of the disc is its share of the sky. Trees aren&#x27;t counted.</p>
+        <p class="links"><a href="day05/">Interactive map</a><a href="day05/map.png">PNG</a></p>
       </div>
     </article>
   </section>

@@ -1,0 +1,9 @@
+{
+  "day": 5,
+  "theme": "Senses: Sight",
+  "title": "On Wall Street you can see 6% of the sky. On a typical Staten Island block, 83%.",
+  "description": "From the middle of every block in New York City, how much of the sky isn't hidden by buildings? Each street is colored by the share of the sky dome left open, from about 2% in the deepest Financial District canyons to nearly all of it on the open edges of the city. Hover or tap a block to see its sky circle: the view straight up from that spot, drawn so the sky's share of the disc is its share of the sky. Trees aren't counted.",
+  "html": "out/nyc_sky.html",
+  "png": "out/nyc_sky.png",
+  "published": "2026-11-04"
+}
