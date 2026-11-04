@@ -4,6 +4,6 @@
   "title": "NYC’s three tallest crash peaks: 2nd Ave at 39th St, Broadway at Flushing Ave, and 125th St in Harlem",
   "description": "A 3D landscape of every crash in 2023–2025 that injured or killed a pedestrian or cyclist in New York City. Each spot's height is the number of crashes within 100 m of it, so the hills are where crashes cluster. Drag to turn the city and hover for the nearest intersection.",
   "html": "out/nyc_crash_terrain.html",
-  "png": "out/nyc_crash_hotspots.png",
+  "png": "out/nyc_crash_terrain.png",
   "published": "2026-11-03"
 }
