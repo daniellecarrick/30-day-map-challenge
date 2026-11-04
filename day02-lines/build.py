@@ -271,45 +271,6 @@ def hex_names(od, st):
     return st.sort_values("busy").groupby(["q", "r"]).name.last()
 
 
-def flow(od, st):
-    """Per window and hex: summed unit vectors (per day), trip ends, departures, arrivals."""
-    h = hex_sums(od, st, ["window"])
-    days = od.groupby("window").days.first()
-    h["days"] = h.window.map(days)
-    for c in ("vx", "vy", "n", "dep", "arr"):
-        h[c] = h[c] / h.days
-    h["mag"] = np.hypot(h.vx, h.vy)
-    h["x"], h["y"] = hex_center(h.q, h.r)
-    return h.join(hex_names(od, st), on=["q", "r"])
-
-
-# ---------------------------------------------------------------- findings
-def findings(h, st, boros):
-    """The numbers the headline and lede quote, computed so they stay literally true."""
-    pts = gpd.GeoDataFrame(h, geometry=gpd.points_from_xy(h.x, h.y), crs=CRS_M)
-    h = h.assign(boro=gpd.sjoin_nearest(pts, boros, how="left").boroname.values)
-    f = {}
-    # morning vs evening: share of hexes (busy in both) whose arrows point >120° apart
-    a = h[h.window == "am"].set_index(["q", "r"])
-    p = h[h.window == "pm"].set_index(["q", "r"])
-    j = a.join(p, rsuffix="_p", how="inner")
-    cos = (j.vx * j.vx_p + j.vy * j.vy_p) / (j.mag * j.mag_p)
-    f["flip_share"] = float((cos < -0.5).mean())
-    f["flip_hexes"] = len(j)
-    # Brooklyn mornings: share of arrows aimed at Midtown (within 45° of Grand Central)
-    gc = st.loc[st.name == "Park Ave & E 42 St"].iloc[0]
-    g = h[(h.window == "am") & (h.boro == "Brooklyn")]
-    bx, by = gc.x - g.x, gc.y - g.y
-    f["bk_midtown"] = float(((g.vx * bx + g.vy * by) / (g.mag * np.hypot(bx, by)) > np.cos(np.pi / 4)).mean())
-    # extremes
-    am = h[h.window == "am"]
-    f["am_strongest"] = am.loc[am.mag.idxmax()]
-    f["am_sink"] = am.loc[(am.arr - am.dep).idxmax()]
-    pm = h[h.window == "pm"]
-    f["pm_strongest"] = pm.loc[pm.mag.idxmax()]
-    return f, h
-
-
 # ---------------------------------------------------------------- smooth field for the PNG
 def field(g, xs, ys, sigma=280, reach=380):
     """Gaussian-weighted average of hex vectors on a regular grid (Nadaraya–Watson).
@@ -335,138 +296,114 @@ def field(g, xs, ys, sigma=280, reach=380):
     return U, V
 
 
-def draw_png(h, f, boros, title, lede, out):
-    import matplotlib.pyplot as plt
+STILL_HOURS = [8, 11, 14, 17]  # weekday hours shown in the PNG and LinkedIn still: the tide turning
+
+
+def pull_text(p):
+    """Panel subtitle from the pooled pull toward Midtown (share of trip ends)."""
+    if p >= 0.05:
+        return "Strong pull toward Midtown"
+    if p >= 0.02:
+        return "Still leaning toward Midtown"
+    if p > -0.02:
+        return "Nearly balanced: the tide turns"
+    return "Flowing back out of Midtown"
+
+
+def draw_flow(ax, g, frame, land, LW_REF, cmap, norm, density, lw=(0.3, 1.9), step=60):
+    """Streamlines of one hour's net flow, framed like the wind map."""
+    x0, y0, x1, y1 = frame
+    xs, ys = np.arange(x0 - 800, x1 + 800, step), np.arange(y0 - 800, y1 + 800, step)
+    land.plot(ax=ax, color=S.TOKENS["color"]["light"]["ctl"], edgecolor="none", zorder=0)
+    land.boundary.plot(ax=ax, color=S.INK, linewidth=0.3, alpha=0.4, zorder=1)
+    U, V = field(g, xs, ys)
+    speed = np.hypot(U, V)
+    ax.streamplot(xs, ys, U, V, density=density, color=speed, cmap=cmap, norm=norm,
+                  linewidth=lw[0] + lw[1] * np.clip(speed / LW_REF, 0, 1), arrowsize=0.5,
+                  arrowstyle="-|>", minlength=0.08, maxlength=3, broken_streamlines=True, zorder=3)
+    ax.set_xlim(x0, x1); ax.set_ylim(y0, y1)
+    ax.set_aspect("equal"); ax.set_axis_off()
+
+
+def still_parts(fr, boros):
     from matplotlib.colors import LinearSegmentedColormap, Normalize
-
-    LW_REF = 100  # net trips/day that draws the widest, darkest line
+    frame = windmap_frame()
+    x0, y0, x1, y1 = frame
+    land = boros.clip((x0, y0, x1, y1))
     cmap = LinearSegmentedColormap.from_list("blue", S.SEQUENTIAL_BLUE[1:])
-    norm = Normalize(0, LW_REF)
-    ext = h[h.n >= MIN_TRIPS_PER_DAY]
-    pad = 500
-    x0, x1 = ext.x.min() - pad, ext.x.max() + pad
-    y0, y1 = ext.y.min() - pad, ext.y.max() + pad
-    xs, ys = np.arange(x0, x1, 90), np.arange(y0, y1, 90)
-    land = boros.clip((x0 - 2000, y0 - 2000, x1 + 2000, y1 + 2000))
+    return frame, land, cmap, Normalize(0, REF_HOUR)
 
-    fig = plt.figure(figsize=S.MAP["png_size_in"])
-    S.title(fig, title)
-    fig.text(0.5, 0.925, lede, ha="center", va="top", fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED,
-             linespacing=1.4)
+
+def draw_png(fr, tide_, boros, out):
+    """Site / gallery PNG: four weekday hours side by side, as streamlines."""
+    import matplotlib.pyplot as plt
+    frame, land, cmap, norm = still_parts(fr, boros)
+    wd = fr[fr.daytype == "wd"]
+    # wider than the series default (16 x 9.6): four square maps in a row would leave empty bands
+    fig = plt.figure(figsize=(16, 6.6))
+    S.title(fig, tide_["title"], y=0.965)
+    fig.text(0.5, 0.885, "Each line follows the net flow of Citi Bike trips in one hour of an average weekday; "
+             "faster, darker lines carry more trips.\nThe current pulls toward Midtown all morning, "
+             f"strongest {hour_range(tide_['peak'])}, and turns around about {tide_['turn_clock']}.",
+             ha="center", va="top", fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED, linespacing=1.4)
     axes = {}
-    for i, (key, (label, _, _)) in enumerate(WINDOWS.items()):
-        ax = fig.add_axes([0.02 + i * 0.325, 0.065, 0.31, 0.79])
-        axes[key] = ax
-        g = h[(h.window == key) & (h.n >= MIN_TRIPS_PER_DAY)]
-        land.plot(ax=ax, color=S.TOKENS["color"]["light"]["ctl"], edgecolor="none", zorder=0)
-        land.boundary.plot(ax=ax, color=S.INK, linewidth=S.MAP["boundary_width"] * 0.6, alpha=0.4, zorder=1)
-        U, V = field(g, xs, ys)
-        speed = np.hypot(U, V)
-        lw = 0.35 + 2.05 * np.clip(speed / LW_REF, 0, 1)
-        ax.streamplot(xs, ys, U, V, density=2.6, color=speed, cmap=cmap, norm=norm, linewidth=lw,
-                      arrowsize=0.55, arrowstyle="-|>", minlength=0.08, maxlength=2.5,
-                      broken_streamlines=True, zorder=3)
-        ax.set_xlim(x0, x1); ax.set_ylim(y0, y1)
-        ax.set_aspect("equal"); ax.set_axis_off()
-        ax.text(0.03, 0.995, label, transform=ax.transAxes, va="top", fontsize=S.SIZE["panel_title"],
-                fontweight="semibold", fontfamily=S.HEAD_FONT, color=S.INK)
-        ax.text(0.03, 0.962, f"{f['trips'][key]:,.0f} trips a day",
-                transform=ax.transAxes, va="top", fontsize=S.SIZE["subtitle"], color=S.MUTED)
-
-    # callouts: the strongest current in each rush, and the biggest morning sink
-    def call(ax, row, xy, head, detail, ha="left"):
-        S.callout(ax, (row.x, row.y), xy, head, detail, ha=ha, outline=hex_polygon(row.x, row.y), halo=True)
-
-    r = f["am_sink"]
-    call(axes["am"], r, (0.36, 0.56), "Grand Central: biggest bike sink",
-         f"{r.arr - r.dep:.0f} more bikes arrive than leave\neach weekday morning")
-    r = f["am_strongest"]
-    call(axes["am"], r, (0.36, 0.33), "Strongest morning current",
-         f"{r['name']}: {r.mag:.0f} trips a day,\nnet, heading {compass(r.vx, r.vy)}")
-    r = f["pm_strongest"]
-    call(axes["pm"], r, (0.03, 0.62), "Strongest evening current",
-         f"{r['name']}: {r.mag:.0f} trips\na day, net, heading {compass(r.vx, r.vy)}")
-
-    # legend: width and shade both = net trips a day (bottom right of the last panel: east Brooklyn, no lines)
-    L = 0.85
-    fig.text(L, 0.165, "Net trips a day\nin that direction", fontsize=S.SIZE["legend"], va="bottom",
-             fontweight="semibold")
-    wax = fig.add_axes([L, 0.09, 0.09, 0.065])
-    wax.set_xlim(0, 10); wax.set_ylim(0, 3); wax.set_axis_off()
-    for k, v in enumerate([10, 50, 100]):
-        wax.plot([0.2, 3.2], [2.5 - k, 2.5 - k], color=cmap(norm(v)), lw=0.35 + 2.05 * min(v / LW_REF, 1),
+    for i, h in enumerate(STILL_HOURS):
+        ax = fig.add_axes([0.015 + i * 0.247, 0.135, 0.23, 0.557])
+        axes[h] = ax
+        draw_flow(ax, wd[wd.frame == h], frame, land, REF_HOUR, cmap, norm, density=1.6)
+        ax.text(0.0, 1.075, hour_range(h), transform=ax.transAxes, fontsize=S.SIZE["panel_title"],
+                fontweight="semibold", fontfamily=S.HEAD_FONT, color=S.INK, va="bottom")
+        ax.text(0.0, 1.03, pull_text(tide_["pull"]["wd"][h]), transform=ax.transAxes,
+                fontsize=S.SIZE["subtitle"], color=S.MUTED, va="bottom")
+    # callouts: the biggest morning sink and the strongest evening current
+    g = wd[wd.frame == STILL_HOURS[0]]
+    r = g.loc[(g.arr - g.dep).idxmax()]
+    S.callout(axes[STILL_HOURS[0]], (r.x, r.y), (0.55, 0.93), r["name"],
+              f"{r.arr - r.dep:.0f} more bikes arrive\nthan leave, {hour_range(STILL_HOURS[0])}",
+              outline=hex_polygon(r.x, r.y), halo=True)
+    g = wd[wd.frame == STILL_HOURS[-1]]
+    r = g.loc[g.mag.idxmax()]
+    S.callout(axes[STILL_HOURS[-1]], (r.x, r.y), (0.55, 0.93), "Strongest current",
+              f"{r['name']}: {r.mag:.0f} trips\nan hour, net, heading {compass(r.vx, r.vy)}",
+              outline=hex_polygon(r.x, r.y), halo=True)
+    # key: width and shade = net trips that hour
+    fig.text(0.02, 0.078, "Net trips that hour in that direction", fontsize=S.SIZE["legend"],
+             fontweight="semibold", va="bottom")
+    kax = fig.add_axes([0.02, 0.04, 0.25, 0.03])
+    kax.set_xlim(0, 30); kax.set_ylim(-1, 1); kax.set_axis_off()
+    for k, v in enumerate([5, 15, REF_HOUR]):
+        kax.plot([k * 9, k * 9 + 3.5], [0, 0], color=cmap(norm(v)), lw=0.3 + 1.9 * min(v / REF_HOUR, 1),
                  solid_capstyle="butt")
-        wax.text(3.8, 2.5 - k, f"{v}{'+' if v == LW_REF else ''}", va="center", fontsize=S.SIZE["legend"] - 0.5)
-
-    S.credit(fig, "Each trip is a straight line from start to end station; its direction is added to the ~400 m "
-             "hexagons at both ends and smoothed. September 2026, Labor Day excluded.  "
-             "Data: Citi Bike System Data (citibikenyc.com/system-data)"
-             f"  ·  #30DayMapChallenge {DAY}")
+        kax.text(k * 9 + 4.2, 0, f"{v}{'+' if v == REF_HOUR else ''}", va="center", fontsize=S.SIZE["legend"])
+    S.credit(fig, "Each trip is a straight line from start to end station; directions are summed per ~400 m hexagon "
+             "and smoothed. Average weekday, September 2026, Labor Day excluded.  "
+             f"Data: Citi Bike System Data (citibikenyc.com/system-data)  ·  #30DayMapChallenge {DAY}")
     fig.savefig(out, dpi=S.MAP["png_dpi"])
     plt.close(fig)
     print("wrote", out)
 
 
-def social_card(h, f, boros, out):
-    """1080x1350 (4:5) image for LinkedIn/Instagram feeds: morning vs evening side by side,
-    cropped to the busy core, type sized for a phone."""
+def social_card(fr, tide_, boros, out):
+    """1080x1350 (4:5) feed image: the same four hours in a 2x2 grid, type sized for a phone."""
     import matplotlib.pyplot as plt
-    from matplotlib.colors import LinearSegmentedColormap, Normalize
-
+    frame, land, cmap, norm = still_parts(fr, boros)
+    wd = fr[fr.daytype == "wd"]
     W_IN, H_IN, DPI = 5.4, 6.75, 200
-    LW_REF = 100
-    cmap = LinearSegmentedColormap.from_list("blue", S.SEQUENTIAL_BLUE[1:])
-    norm = Normalize(0, LW_REF)
-    # crop: centred on the morning-flow-weighted centre, nudged north to keep Midtown + Harlem in frame
-    am = h[h.window == "am"]
-    cx = np.average(am.x, weights=am.mag)
-    cy = np.average(am.y, weights=am.mag) + 2200
-    HW, HH = 4300, 7900
-    x0, x1, y0, y1 = cx - HW, cx + HW, cy - HH, cy + HH
-    xs, ys = np.arange(x0 - 1000, x1 + 1000, 70), np.arange(y0 - 1000, y1 + 1000, 70)
-    land = boros.clip((x0 - 3000, y0 - 3000, x1 + 3000, y1 + 3000))
-
     fig = plt.figure(figsize=(W_IN, H_IN), dpi=DPI)
-    fig.text(0.06, 0.955, "Citi Bike has a daily tide", ha="left", va="top", fontsize=19, fontweight="bold",
+    fig.text(0.06, 0.962, "Citi Bike's daily tide", ha="left", va="top", fontsize=19, fontweight="bold",
              color=S.INK, fontfamily=S.HEAD_FONT)
-    fig.text(0.06, 0.898, "Every weekday morning, riders pour toward Midtown. By evening,\n"
-             f"the current runs back the way it came: in {round(f['flip_share'] * 5)} of every 5 busy spots,\n"
-             "the evening flow points roughly opposite the morning one.",
+    fig.text(0.06, 0.905, f"Every weekday, bikes flow toward Midtown until about {tide_['turn_clock']},\n"
+             "then turn around. Faster, darker lines carry more trips.",
              ha="left", va="top", fontsize=8.3, color=S.MUTED, linespacing=1.35)
-
-    panels = [("am", "Weekday mornings, 7–10am"), ("pm", "Weekday evenings, 4–7pm")]
-    for i, (key, label) in enumerate(panels):
-        ax = fig.add_axes([0.03 + i * 0.48, 0.155, 0.46, 0.635])
-        g = h[h.window == key]
-        land.plot(ax=ax, color=S.TOKENS["color"]["light"]["ctl"], edgecolor="none", zorder=0)
-        land.boundary.plot(ax=ax, color=S.INK, linewidth=0.3, alpha=0.4, zorder=1)
-        U, V = field(g, xs, ys)
-        speed = np.hypot(U, V)
-        ax.streamplot(xs, ys, U, V, density=1.7, color=speed, cmap=cmap, norm=norm,
-                      linewidth=0.3 + 1.6 * np.clip(speed / LW_REF, 0, 1), arrowsize=0.5,
-                      arrowstyle="-|>", minlength=0.08, maxlength=3, broken_streamlines=True, zorder=3)
-        ax.set_xlim(x0, x1); ax.set_ylim(y0, y1)
-        ax.set_aspect("equal"); ax.set_axis_off()
-        if key == "am":  # the extreme: biggest morning sink
-            r = f["am_sink"]
-            S.callout(ax, (r.x, r.y), (0.49, 0.935), "Grand Central",
-                      f"{r.arr - r.dep:.0f} more bikes in\nthan out each morning",
-                      outline=hex_polygon(r.x, r.y), halo=True)
-        fig.text(0.03 + i * 0.48 + 0.02, 0.80, label, fontsize=10, fontweight="semibold",
-                 fontfamily=S.HEAD_FONT, color=S.INK, va="bottom")
-
-    # width/shade key, one row along the bottom
-    fig.text(0.06, 0.118, "Net trips a day in that direction", fontsize=7.5, color=S.INK, fontweight="semibold",
-             va="bottom")
-    kax = fig.add_axes([0.06, 0.09, 0.6, 0.022])
-    kax.set_xlim(0, 30); kax.set_ylim(-1, 1); kax.set_axis_off()
-    for k, v in enumerate([10, 50, 100]):
-        x = k * 8
-        kax.plot([x, x + 3.2], [0, 0], color=cmap(norm(v)), lw=0.3 + 1.6 * min(v / LW_REF, 1), solid_capstyle="butt")
-        kax.text(x + 3.8, 0, f"{v}{'+' if v == LW_REF else ''}", va="center", fontsize=7.5, color=S.INK)
-
-    fig.text(0.06, 0.018, "Every Citi Bike trip, Sept 2026 (Labor Day excluded), as a straight line from start to end\n"
-             "station; directions summed per ~400 m area and smoothed. Data: Citi Bike System Data\n"
+    pos = [(0.06, 0.47), (0.52, 0.47), (0.06, 0.08), (0.52, 0.08)]
+    for (px, py), h in zip(pos, STILL_HOURS):
+        ax = fig.add_axes([px, py, 0.42, 0.336])
+        draw_flow(ax, wd[wd.frame == h], frame, land, REF_HOUR, cmap, norm, density=1.15, lw=(0.25, 1.4))
+        ax.text(0.0, 1.085, hour_range(h), transform=ax.transAxes, fontsize=10, fontweight="semibold",
+                fontfamily=S.HEAD_FONT, color=S.INK, va="bottom")
+        ax.text(0.0, 1.02, pull_text(tide_["pull"]["wd"][h]), transform=ax.transAxes, fontsize=7.2,
+                color=S.MUTED, va="bottom")
+    fig.text(0.06, 0.018, "Net flow of every Citi Bike trip, average weekday, Sept 2026. Data: Citi Bike System Data\n"
              "#30DayMapChallenge Day 2: Lines  ·  daniellecarrick.github.io/30-day-map-challenge",
              ha="left", va="bottom", fontsize=6.3, color=S.MUTED, linespacing=1.4)
     fig.savefig(out, dpi=DPI)
@@ -474,33 +411,10 @@ def social_card(h, f, boros, out):
     print("wrote", out)
 
 
-def main():
-    S.apply()
-    od, st, boros = load()
-    h = flow(od, st)
-    h = h[h.n >= MIN_TRIPS_PER_DAY]
-    f, h = findings(h, st, boros)
-    # all cleaned trips per average day in each window (not just those in drawn hexes)
-    f["trips"] = {k: float(g.trips.sum() / g.days.iat[0]) for k, g in od.groupby("window")}
-    for k, v in f.items():
-        print(k, v if not hasattr(v, "name") else dict(v[["name", "mag", "arr", "dep", "vx", "vy"]]))
-
-    flip = round(f["flip_share"] * 5)
-    title = "Citi Bike has a daily tide: evening riders flow back the way the morning came"
-    lede = (f"In {flip} of every 5 busy spots, the evening current runs roughly opposite the morning one. "
-            f"In the morning, {100 * f['bk_midtown']:.0f}% of Brooklyn's arrows aim at Midtown.\n"
-            "Weekend afternoons have no prevailing current: riders head every which way.")
-    draw_png(h, f, boros, title, lede, OUT / "citibike_flow.png")
-    social_card(h, f, boros, OUT / "linkedin_citibike_flow.png")
-
-    summary = web_page(od, st, boros)
-    windmap_page(od, st, boros, summary)
-
-
-def web_page(od, st, boros):
-    """The interactive page: arrows hour by hour through an average weekday / weekend day."""
+def tide(st):
+    """Hourly frames plus the headline numbers: pooled net flow toward Grand Central per hour
+    (share of trip ends), its peak, and the hour it turns."""
     fr = hourly_frames(load_hourly(st))
-    # headline numbers: pooled net flow toward Grand Central, per frame (share of trip ends)
     gc = st.loc[st.name == "Park Ave & E 42 St"].iloc[0]
     bx, by = gc.x - fr.x, gc.y - fr.y
     fr["toward"] = (fr.vx * bx + fr.vy * by) / np.hypot(bx, by)
@@ -508,20 +422,36 @@ def web_page(od, st, boros):
             for dt, g in fr.groupby("daytype")}
     wd = pull["wd"]
     peak = int(np.argmax(wd))
-    turn = next(i for i in range(peak, peak + 24) if wd[i % 24] < 0) % 24  # first window pointing away
+    turn = next(i for i in range(peak, peak + 24) if wd[i % 24] < 0) % 24  # first hour pointing away
     in_frames = [i for i in range(24) if wd[i] > 0]
+    assert in_frames == list(range(in_frames[0], in_frames[-1] + 1)) and in_frames[0] <= 5, in_frames  # 'early morning' holds
     ratio = max(pull["we"]) / max(wd)
     print("pull toward Midtown, weekdays:", [round(100 * v, 1) for v in wd])
-    print(f"peak {hour_range(peak)}, turns {hour_range(turn)}, weekend/weekday peak {ratio:.2f}, "
-          f"toward-Midtown hours {in_frames}")
-    print("net trips/hour quantiles:", fr.mag.quantile([.5, .9, .98, 1]).round(1).tolist())
+    print(f"peak {hour_range(peak)}, turns {hour_range(turn)}, weekend/weekday peak {ratio:.2f}")
     turn_clock = f"{turn % 12 or 12}{'am' if turn < 12 else 'pm'}"
     title = f"Every weekday, Citi Bike flows toward Midtown until about {turn_clock}, then turns around"
+    return fr, {"title": title, "turn_clock": turn_clock, "peak": peak, "turn": turn, "ratio": ratio, "pull": pull}
+
+
+def main():
+    S.apply()
+    od, st, boros = load()
+    fr, tide_ = tide(st)
+    fr = fr.join(hex_names(od, st), on=["q", "r"])
+    draw_png(fr, tide_, boros, OUT / "citibike_flow.png")
+    social_card(fr, tide_, boros, OUT / "linkedin_citibike_flow.png")
+    web_page(od, st, boros, fr, tide_)
+    windmap_page(od, st, boros, tide_)
+
+
+def web_page(od, st, boros, fr, tide_):
+    """Unpublished alternative: arrows hour by hour through an average weekday / weekend day."""
+    title, turn_clock, peak, ratio = tide_["title"], tide_["turn_clock"], tide_["peak"], tide_["ratio"]
+    print("net trips/hour quantiles:", fr.mag.quantile([.5, .9, .98, 1]).round(1).tolist())
     lede = (f"Each frame is one hour of trips on an average day. On weekdays the net flow points toward Midtown from early "
             f"morning until about {turn_clock}, strongest {hour_range(peak)}, then away from it through the evening "
             f"and night. Weekends follow the same shape, "
             f"{'about half' if 0.4 <= ratio <= 0.6 else f'{100 * ratio:.0f}%'} as strong.")
-    assert in_frames == list(range(in_frames[0], in_frames[-1] + 1)) and in_frames[0] <= 5, in_frames  # 'early morning' holds
 
     names = hex_names(od, st)
     # compact: hex grid position (q, r) instead of coordinates; whole trips per day per frame
@@ -553,41 +483,53 @@ def web_page(od, st, boros):
     (HERE / "web" / "data.js").write_text("window.DATA = " + json.dumps(web, separators=(",", ":")) + ";")
     size = S.build_page(HERE / "web" / "index.html", web, OUT / "citibike_flow.html")
     print("wrote", OUT / "citibike_flow.html", f"({size / 1e6:.2f} MB)")
-    return {"title": title, "turn_clock": turn_clock, "peak": peak, "ratio": ratio}
 
 
-def windmap_page(od, st, boros, summary):
-    """Experiment: particle wind map. 15-minute slots of net flow per hex, as a rate per hour on an
-    average day; the page smooths them into a field and lets particles drift along it."""
-    import base64
-    sl = load_slots(st)
+def windmap_frame():
+    """The wind map's frame (WINDMAP_BBOX) in projected metres: x0, y0, x1, y1."""
+    lo0, la0, lo1, la1 = WINDMAP_BBOX
+    c = gpd.GeoSeries(gpd.points_from_xy([lo0, lo0, lo1, lo1], [la0, la1, la0, la1]), crs="EPSG:4326").to_crs(CRS_M)
+    return c.x.min(), c.y.min(), c.x.max(), c.y.max()
+
+
+def slot_flow(st):
+    """Net flow per 15-minute slot and hex inside the wind-map frame, as trips per hour on an
+    average day. Returns (hex keys [(q, r)], {daytype: float array [slot, hex, (vx, vy)]},
+    {daytype: trips started per hour, by slot})."""
+    raw = load_slots(st)
     per_hour = 60 // SLOT_MIN
     nslot = 24 * per_hour
-    sl = sl.assign(vx=sl.vx / sl.days * per_hour, vy=sl.vy / sl.days * per_hour, n=sl.n / sl.days * per_hour)
-    sl = sl[sl.n >= MIN_TRIPS_PER_HOUR]  # rate per hour, same threshold as the hourly page
-    # frame: a fixed box around the busy core; hexes outside it are dropped
-    lo0, la0, lo1, la1 = WINDMAP_BBOX
-    corners = gpd.GeoSeries(gpd.points_from_xy([lo0, lo0, lo1, lo1], [la0, la1, la0, la1]), crs="EPSG:4326").to_crs(CRS_M)
-    x0, x1 = corners.x.min(), corners.x.max()
-    y0, y1 = corners.y.min(), corners.y.max()
+    sl = raw.assign(vx=raw.vx / raw.days * per_hour, vy=raw.vy / raw.days * per_hour, n=raw.n / raw.days * per_hour)
+    sl = sl[sl.n >= MIN_TRIPS_PER_HOUR]  # same threshold as the hourly page
+    x0, y0, x1, y1 = windmap_frame()
     cx, cy = hex_center(sl.q, sl.r)
     sl = sl[(cx >= x0) & (cx <= x1) & (cy >= y0) & (cy <= y1)]
-    keep = sl.groupby(["q", "r"]).size().index
-    names = hex_names(od, st)
-    hexes = [{"q": int(q), "r": int(r), "name": names.get((q, r), "")} for q, r in keep]
+    keep = list(sl.groupby(["q", "r"]).size().index)
     idx = {k: i for i, k in enumerate(keep)}
     flow = {}
     for dt in DAYTYPES:
-        a = np.zeros((nslot, len(keep), 2), dtype=np.int8)  # net trips/hour, clamped to int8
+        a = np.zeros((nslot, len(keep), 2), dtype=np.float32)
         g = sl[sl.daytype == dt]
         hi = np.array([idx[k] for k in zip(g.q, g.r)])
-        a[g.slot.values, hi, 0] = np.clip(np.round(g.vx.values), -127, 127)
-        a[g.slot.values, hi, 1] = np.clip(np.round(g.vy.values), -127, 127)
-        flow[dt] = base64.b64encode(a.tobytes()).decode()
-    print("wind map: hexes", len(keep), "| |v| quantiles", np.hypot(sl.vx, sl.vy).quantile([.5, .9, .99]).round(1).tolist())
-    # trips started per hour (rate) for each 15-minute slot, for the timeline
+        a[g.slot.values, hi, 0] = g.vx.values
+        a[g.slot.values, hi, 1] = g.vy.values
+        flow[dt] = a
     trips = {dt: [round(float(g[g.slot == i].dep.sum() / g.days.iat[0] * per_hour)) for i in range(nslot)]
-             for dt, g in load_slots(st).groupby("daytype")}
+             for dt, g in raw.groupby("daytype")}
+    print("wind map: hexes", len(keep), "| |v| quantiles", np.hypot(sl.vx, sl.vy).quantile([.5, .9, .99]).round(1).tolist())
+    return keep, flow, trips
+
+
+def windmap_page(od, st, boros, summary):
+    """The published page: particle wind map. 15-minute slots of net flow per hex, as a rate per hour on
+    an average day; the page smooths them into a field and lets particles drift along it."""
+    import base64
+    keep, flowf, trips = slot_flow(st)
+    x0, y0, x1, y1 = windmap_frame()
+    names = hex_names(od, st)
+    hexes = [{"q": int(q), "r": int(r), "name": names.get((q, r), "")} for q, r in keep]
+    flow = {dt: base64.b64encode(np.clip(np.round(a), -127, 127).astype(np.int8).tobytes()).decode()
+            for dt, a in flowf.items()}  # net trips/hour, clamped to int8
     b = boros.clip((x0, y0, x1, y1))  # land stops at the frame
     b["geometry"] = b.geometry.simplify(25)
     print(f"wind map frame: {(x1 - x0) / 1000:.1f} x {(y1 - y0) / 1000:.1f} km")
