@@ -33,6 +33,8 @@
    *  MapKit.legend(svg, {
    *    x, y,                              // top-left corner, in the map's SVG (viewBox) units
    *    anchor: "bottom",                  // optional: (x, y) is the bottom-left corner instead
+   *    align: "right", dx: -16,           // optional: (x, y) is the legend's right edge, shifted dx CSS px;
+   *                                       //   e.g. x: 0, dx: -16 puts it in the empty space left of the map
    *    width,                             // in CSS px (default 200)
    *    title: "Longest walk ...",          // may contain \n for line breaks
    *    stops: [[value, color], ...],       // continuous gradient bar
@@ -65,7 +67,8 @@
       const s = Math.min(r.width / vb.width, r.height / vb.height);
       const ox = r.left - h.left + (r.width - vb.width * s) / 2, oy = r.top - h.top + (r.height - vb.height * s) / 2;
       const top = oy + (o.y - vb.y) * s - (o.anchor === "bottom" ? el.node().offsetHeight : 0);
-      el.style("left", ox + (o.x - vb.x) * s + "px").style("top", top + "px");
+      const left = ox + (o.x - vb.x) * s + (o.dx ?? 0) - (o.align === "right" ? el.node().offsetWidth : 0);
+      el.style("left", Math.max(0, left) + "px").style("top", top + "px");
     }
     new ResizeObserver(place).observe(node);
     new ResizeObserver(place).observe(el.node());  // content added after creation changes its height

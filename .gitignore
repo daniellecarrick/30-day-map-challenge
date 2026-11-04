@@ -13,6 +13,7 @@ _smoketest/
 # The published copies live in docs/ (made by publish.py).
 day*/out/
 day*/web/data.js
+day*/web/*_data.js
 
 # Personal blog drafts (made by publish.py)
 drafts/

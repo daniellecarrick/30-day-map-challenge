@@ -112,13 +112,14 @@ def callout(ax, target_xy, text_xy, heading: str, detail: str | None = None,
                     ha=ha, va="top", fontsize=SIZE["annotation"], color=MUTED, zorder=7, path_effects=fx)
 
 
-def build_page(template: Path, data: dict, out: Path) -> int:
+def build_page(template: Path, data: dict, out: Path, data_src: str = "data.js") -> int:
     """Write one self-contained HTML file: inlines shared/theme.css, shared/components.js
     and the page data (window.DATA). In the template, reference them as
       <link rel="stylesheet" href="../../shared/theme.css">
       <script src="../../shared/components.js"></script>
       <script src="data.js"></script>
-    so the template also works when opened from disk during development."""
+    so the template also works when opened from disk during development. A second page in the same
+    folder can load its own dev data file: pass data_src="other.js"."""
     page = Path(template).read_text()
     css = (SHARED / "theme.css").read_text()
     js = (SHARED / "components.js").read_text()
@@ -126,6 +127,6 @@ def build_page(template: Path, data: dict, out: Path) -> int:
     blob = re.sub(r"(\d{3,}\.\d)\d+", r"\1", blob)  # trim long coordinates (metres -> 0.1 m)
     page = re.sub(r'<link rel="stylesheet" href="[./]*shared/theme\.css">', lambda _: f"<style>\n{css}</style>", page)
     page = re.sub(r'<script src="[./]*shared/components\.js"></script>', lambda _: f"<script>\n{js}</script>", page)
-    page = page.replace('<script src="data.js"></script>', f"<script>window.DATA = {blob};</script>")
+    page = page.replace(f'<script src="{data_src}"></script>', f"<script>window.DATA = {blob};</script>")
     Path(out).write_text(page)
     return len(page)

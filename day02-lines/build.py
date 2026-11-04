@@ -5,13 +5,21 @@ end station, reduced to a unit vector so short and long rides count equally). Th
 cut into ~400 m hexagons; each trip adds its direction to the hex where it starts AND the
 hex where it ends, so a hex's summed vector is the direction traffic moves *through* it.
   - arrow angle  = main direction of travel
-  - arrow length, width and color = size of that vector per day: net trips in that
+  - arrow length, width and color = size of that vector per average day: net trips in that
     direction (trips heading opposite ways cancel out)
-Three 3-hour windows: weekday 7-10am, weekday 4-7pm, weekend 1-4pm. Labor Day is excluded.
+Labor Day is excluded.
 
 Writes:
-  - out/citibike_flow.png    (static, for posting: three panels, streamlines)
-  - out/citibike_flow.html   (interactive, self-contained: arrows, toggle between windows)
+  - out/citibike_flow.html   (unpublished alternative: the arrows hour by hour through an
+                              average weekday or weekend day, with play/pause and a timeline)
+  - out/citibike_flow.png    (static, for posting: three 3-hour windows as streamlines:
+                              weekday 7-10am, weekday 4-7pm, weekend 1-4pm)
+  - out/linkedin_citibike_flow.png  (1080x1350 feed image: morning vs evening)
+  - out/citibike_windmap.html (the published page: particle wind map, 15-minute steps, canvas)
+  - data/hex_hourly_202609.csv.gz (hex sums per day type and start hour; cache for the page)
+  - data/hex_15min_202609.csv.gz  (same per 15-minute slot; cache for the wind map)
+Earlier interactive versions (three-window toggle; rolling 3-hour animation) are kept as
+self-contained snapshots in experiments/.
   - data/od_202609.csv.gz    (trips per station pair per window; cache so raw CSVs aren't needed)
   - data/stations_202609.csv
 
@@ -43,7 +51,9 @@ CRS_M = "EPSG:32618"  # UTM 18N, metres (same as days 1 and 3)
 MONTH = "2026-09"
 HOLIDAYS = {"2026-09-07"}  # Labor Day: not a normal weekday
 HEX_R = 230  # hex centre-to-corner, metres -> ~400 m across
-MIN_TRIPS_PER_DAY = 8  # hexes with fewer trip ends per day are too noisy to draw
+MIN_TRIPS_PER_DAY = 8  # hexes with fewer trip ends per day are too noisy to draw (3-hour windows)
+MIN_TRIPS_PER_HOUR = 4  # same idea for the one-hour frames on the page
+REF_HOUR = 30  # net trips in an hour that draws the longest, darkest arrow on the page
 
 WINDOWS = {  # key -> (label, weekday?, hours [start, end))
     "am": ("Weekday mornings, 7–10am", True, (7, 10)),
@@ -53,8 +63,8 @@ WINDOWS = {  # key -> (label, weekday?, hours [start, end))
 
 
 # ---------------------------------------------------------------- trips -> station pairs
-def build_od():
-    """Read the raw trip CSVs once and reduce them to trips per (window, start, end) station."""
+def read_trips():
+    """Read the raw trip CSVs and drop trips that carry no direction or look broken."""
     cols = ["started_at", "ended_at", "start_station_id", "end_station_id", "start_station_name",
             "end_station_name", "start_lat", "start_lng", "end_lat", "end_lng"]
     ids = {"start_station_id": str, "end_station_id": str}
@@ -72,6 +82,12 @@ def build_od():
             & df.start_station_id.notna() & df.end_station_id.notna()
             & (df.start_station_id != df.end_station_id)]
     print(f"{n0:,} trips -> {len(df):,} after dropping round trips, missing ends, <1 min, >2 h")
+    return df
+
+
+def build_od():
+    """Reduce the raw trips to trips per (window, start, end) station, plus station locations."""
+    df = read_trips()
 
     # one fixed location per station (e-bike trips carry GPS jitter around the dock)
     pts = pd.concat([
@@ -110,6 +126,85 @@ def load():
     stations["x"], stations["y"] = st.geometry.x.values, st.geometry.y.values
     boros = gpd.read_file(DATA / "boroughs.geojson").to_crs(CRS_M)[["boroname", "geometry"]]
     return od, stations.set_index("id"), boros
+
+
+# ---------------------------------------------------------------- hour by hour (all-day page)
+DAYTYPES = {"wd": "Weekdays", "we": "Weekends"}
+
+
+def load_hourly(st):
+    """Hex sums per (day type, start hour) for the whole month, cached in
+    data/hex_hourly_YYYYMM.csv.gz (small, unlike station pairs x 24 hours).
+    Day types: 'wd' = weekdays (Labor Day excluded), 'we' = weekends; `days` = how many."""
+    f = DATA / f"hex_hourly_{MONTH.replace('-', '')}.csv.gz"
+    if f.exists():
+        return pd.read_csv(f)
+    df = read_trips()
+    date = df.started_at.dt.strftime("%Y-%m-%d")
+    dow = df.started_at.dt.dayofweek
+    df = df.assign(daytype=np.where(dow >= 5, "we", np.where(date.isin(HOLIDAYS), "", "wd")),
+                   hour=df.started_at.dt.hour, date=date)
+    df = df[df.daytype != ""]
+    days = df.groupby("daytype").date.nunique()
+    od = (df.groupby(["daytype", "hour", "start_station_id", "end_station_id"]).size().rename("trips")
+            .reset_index().rename(columns={"start_station_id": "a", "end_station_id": "b"}))
+    h = hex_sums(od, st, ["daytype", "hour"])
+    h["days"] = h.daytype.map(days)
+    h.round(3).to_csv(f, index=False)
+    return h
+
+
+SLOT_MIN = 15  # wind-map page: time step in minutes
+# wind-map page frame (lon/lat): ~110th St to Prospect Heights, the Hudson to western Queens
+WINDMAP_BBOX = (-74.028, 40.672, -73.855, 40.802)
+
+
+def load_slots(st):
+    """Hex sums per (day type, 15-minute slot of the day), cached in data/hex_15min_YYYYMM.csv.gz.
+    slot = hour * 4 + minute // 15. Same day types and `days` as load_hourly."""
+    f = DATA / f"hex_15min_{MONTH.replace('-', '')}.csv.gz"
+    if f.exists():
+        return pd.read_csv(f)
+    df = read_trips()
+    date = df.started_at.dt.strftime("%Y-%m-%d")
+    dow = df.started_at.dt.dayofweek
+    df = df.assign(daytype=np.where(dow >= 5, "we", np.where(date.isin(HOLIDAYS), "", "wd")),
+                   slot=df.started_at.dt.hour * (60 // SLOT_MIN) + df.started_at.dt.minute // SLOT_MIN,
+                   date=date)
+    df = df[df.daytype != ""]
+    days = df.groupby("daytype").date.nunique()
+    od = (df.groupby(["daytype", "slot", "start_station_id", "end_station_id"]).size().rename("trips")
+            .reset_index().rename(columns={"start_station_id": "a", "end_station_id": "b"}))
+    h = hex_sums(od, st, ["daytype", "slot"])
+    h["days"] = h.daytype.map(days)
+    h.round(3).to_csv(f, index=False)
+    return h
+
+
+def hour_range(h0, n=1):
+    """'7–8am', '11am–12pm', '12–1am' for trips starting h0:00 to (h0+n):00."""
+    def part(h):
+        h %= 24
+        return (12 if h % 12 == 0 else h % 12), ("am" if h < 12 else "pm")
+    (a, pa), (b, pb) = part(h0), part(h0 + n)
+    return f"{a}–{b}{pb}" if pa == pb else f"{a}{pa}–{b}{pb}"
+
+
+def hourly_frames(hh, n=1, min_trips=MIN_TRIPS_PER_HOUR):
+    """One frame per start hour covering `n` hours (frame 8 with n=1 = trips starting 8–9am).
+    Values per average day; quiet hexes dropped."""
+    out = []
+    for dt, g in hh.groupby("daytype"):
+        days = g.days.iat[0]
+        for i in range(24):
+            hrs = [(i + k) % 24 for k in range(n)]
+            f = g[g.hour.isin(hrs)].groupby(["q", "r"])[["vx", "vy", "n", "dep", "arr"]].sum() / days
+            f = f[f.n >= min_trips].reset_index()
+            out.append(f.assign(daytype=dt, frame=i))
+    fr = pd.concat(out)
+    fr["x"], fr["y"] = hex_center(fr.q, fr.r)
+    fr["mag"] = np.hypot(fr.vx, fr.vy)
+    return fr
 
 
 # ---------------------------------------------------------------- hex binning
@@ -152,38 +247,40 @@ def compass(vx, vy):
     return COMPASS[int(((a + 22.5) % 360) // 45)]
 
 
-def flow(od, st):
-    """Per window and hex: summed unit vectors (per day), trip ends, departures, arrivals."""
+def hex_sums(od, st, keys):
+    """Each trip (station pair x trips) adds its unit direction to the hex at both ends.
+    Returns summed vx, vy, trip ends n, departures, arrivals per `keys` + hex (q, r)."""
     od = od.join(st[["x", "y"]], on="a").join(st[["x", "y"]], on="b", rsuffix="_b").dropna().reset_index(drop=True)
     dx, dy = od.x_b - od.x, od.y_b - od.y
     d = np.hypot(dx, dy)
     od = od[d > 0].assign(ux=dx / d, uy=dy / d)
-    od["qa"], od["ra"] = hex_of(od.x.values, od.y.values)
-    od["qb"], od["rb"] = hex_of(od.x_b.values, od.y_b.values)
+    qa, ra = hex_of(od.x.values, od.y.values)
+    qb, rb = hex_of(od.x_b.values, od.y_b.values)
+    w = od.trips
+    start = od[keys].assign(q=qa, r=ra, vx=od.ux * w, vy=od.uy * w, n=w, dep=w, arr=0)
+    end = od[keys].assign(q=qb, r=rb, vx=od.ux * w, vy=od.uy * w, n=w, dep=0, arr=w)
+    return pd.concat([start, end]).groupby(keys + ["q", "r"]).sum().reset_index()
 
-    out = []
-    for key, g in od.groupby("window"):
-        days = g.days.iat[0]
-        w = g.trips
-        start = pd.DataFrame({"q": g.qa, "r": g.ra, "vx": g.ux * w, "vy": g.uy * w, "n": w, "dep": w, "arr": 0})
-        end = pd.DataFrame({"q": g.qb, "r": g.rb, "vx": g.ux * w, "vy": g.uy * w, "n": w, "dep": 0, "arr": w})
-        h = pd.concat([start, end]).groupby(["q", "r"]).sum()
-        h = h / days
-        h["window"] = key
-        h["days"] = days
-        out.append(h.reset_index())
-    h = pd.concat(out)
-    h["mag"] = np.hypot(h.vx, h.vy)
-    h["x"], h["y"] = hex_center(h.q, h.r)
 
-    # name each hex after its busiest station
+def hex_names(od, st):
+    """Name each hex after its busiest station (busy = trips in `od`)."""
     st = st.copy()
     st["q"], st["r"] = hex_of(st.x.values, st.y.values)
     busy = pd.concat([od.groupby("a").trips.sum(), od.groupby("b").trips.sum()]).groupby(level=0).sum()
     st["busy"] = busy.reindex(st.index).fillna(0)
-    names = st.sort_values("busy").groupby(["q", "r"]).name.last()
-    h = h.join(names, on=["q", "r"])
-    return h
+    return st.sort_values("busy").groupby(["q", "r"]).name.last()
+
+
+def flow(od, st):
+    """Per window and hex: summed unit vectors (per day), trip ends, departures, arrivals."""
+    h = hex_sums(od, st, ["window"])
+    days = od.groupby("window").days.first()
+    h["days"] = h.window.map(days)
+    for c in ("vx", "vy", "n", "dep", "arr"):
+        h[c] = h[c] / h.days
+    h["mag"] = np.hypot(h.vx, h.vy)
+    h["x"], h["y"] = hex_center(h.q, h.r)
+    return h.join(hex_names(od, st), on=["q", "r"])
 
 
 # ---------------------------------------------------------------- findings
@@ -310,6 +407,73 @@ def draw_png(h, f, boros, title, lede, out):
     print("wrote", out)
 
 
+def social_card(h, f, boros, out):
+    """1080x1350 (4:5) image for LinkedIn/Instagram feeds: morning vs evening side by side,
+    cropped to the busy core, type sized for a phone."""
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LinearSegmentedColormap, Normalize
+
+    W_IN, H_IN, DPI = 5.4, 6.75, 200
+    LW_REF = 100
+    cmap = LinearSegmentedColormap.from_list("blue", S.SEQUENTIAL_BLUE[1:])
+    norm = Normalize(0, LW_REF)
+    # crop: centred on the morning-flow-weighted centre, nudged north to keep Midtown + Harlem in frame
+    am = h[h.window == "am"]
+    cx = np.average(am.x, weights=am.mag)
+    cy = np.average(am.y, weights=am.mag) + 2200
+    HW, HH = 4300, 7900
+    x0, x1, y0, y1 = cx - HW, cx + HW, cy - HH, cy + HH
+    xs, ys = np.arange(x0 - 1000, x1 + 1000, 70), np.arange(y0 - 1000, y1 + 1000, 70)
+    land = boros.clip((x0 - 3000, y0 - 3000, x1 + 3000, y1 + 3000))
+
+    fig = plt.figure(figsize=(W_IN, H_IN), dpi=DPI)
+    fig.text(0.06, 0.955, "Citi Bike has a daily tide", ha="left", va="top", fontsize=19, fontweight="bold",
+             color=S.INK, fontfamily=S.HEAD_FONT)
+    fig.text(0.06, 0.898, "Every weekday morning, riders pour toward Midtown. By evening,\n"
+             f"the current runs back the way it came: in {round(f['flip_share'] * 5)} of every 5 busy spots,\n"
+             "the evening flow points roughly opposite the morning one.",
+             ha="left", va="top", fontsize=8.3, color=S.MUTED, linespacing=1.35)
+
+    panels = [("am", "Weekday mornings, 7–10am"), ("pm", "Weekday evenings, 4–7pm")]
+    for i, (key, label) in enumerate(panels):
+        ax = fig.add_axes([0.03 + i * 0.48, 0.155, 0.46, 0.635])
+        g = h[h.window == key]
+        land.plot(ax=ax, color=S.TOKENS["color"]["light"]["ctl"], edgecolor="none", zorder=0)
+        land.boundary.plot(ax=ax, color=S.INK, linewidth=0.3, alpha=0.4, zorder=1)
+        U, V = field(g, xs, ys)
+        speed = np.hypot(U, V)
+        ax.streamplot(xs, ys, U, V, density=1.7, color=speed, cmap=cmap, norm=norm,
+                      linewidth=0.3 + 1.6 * np.clip(speed / LW_REF, 0, 1), arrowsize=0.5,
+                      arrowstyle="-|>", minlength=0.08, maxlength=3, broken_streamlines=True, zorder=3)
+        ax.set_xlim(x0, x1); ax.set_ylim(y0, y1)
+        ax.set_aspect("equal"); ax.set_axis_off()
+        if key == "am":  # the extreme: biggest morning sink
+            r = f["am_sink"]
+            S.callout(ax, (r.x, r.y), (0.49, 0.935), "Grand Central",
+                      f"{r.arr - r.dep:.0f} more bikes in\nthan out each morning",
+                      outline=hex_polygon(r.x, r.y), halo=True)
+        fig.text(0.03 + i * 0.48 + 0.02, 0.80, label, fontsize=10, fontweight="semibold",
+                 fontfamily=S.HEAD_FONT, color=S.INK, va="bottom")
+
+    # width/shade key, one row along the bottom
+    fig.text(0.06, 0.118, "Net trips a day in that direction", fontsize=7.5, color=S.INK, fontweight="semibold",
+             va="bottom")
+    kax = fig.add_axes([0.06, 0.09, 0.6, 0.022])
+    kax.set_xlim(0, 30); kax.set_ylim(-1, 1); kax.set_axis_off()
+    for k, v in enumerate([10, 50, 100]):
+        x = k * 8
+        kax.plot([x, x + 3.2], [0, 0], color=cmap(norm(v)), lw=0.3 + 1.6 * min(v / LW_REF, 1), solid_capstyle="butt")
+        kax.text(x + 3.8, 0, f"{v}{'+' if v == LW_REF else ''}", va="center", fontsize=7.5, color=S.INK)
+
+    fig.text(0.06, 0.018, "Every Citi Bike trip, Sept 2026 (Labor Day excluded), as a straight line from start to end\n"
+             "station; directions summed per ~400 m area and smoothed. Data: Citi Bike System Data\n"
+             "#30DayMapChallenge Day 2: Lines  ·  daniellecarrick.github.io/30-day-map-challenge",
+             ha="left", va="bottom", fontsize=6.3, color=S.MUTED, linespacing=1.4)
+    fig.savefig(out, dpi=DPI)
+    plt.close(fig)
+    print("wrote", out)
+
+
 def main():
     S.apply()
     od, st, boros = load()
@@ -327,31 +491,121 @@ def main():
             f"In the morning, {100 * f['bk_midtown']:.0f}% of Brooklyn's arrows aim at Midtown.\n"
             "Weekend afternoons have no prevailing current: riders head every which way.")
     draw_png(h, f, boros, title, lede, OUT / "citibike_flow.png")
+    social_card(h, f, boros, OUT / "linkedin_citibike_flow.png")
 
-    # ---- interactive page: one record per hex, a [vx, vy, n, dep, arr] per window it's busy in ----
-    pad = 800
-    x0, y0, x1, y1 = h.x.min() - pad, h.y.min() - pad, h.x.max() + pad, h.y.max() + pad
-    b = boros.clip((x0 - 8000, y0 - 8000, x1 + 8000, y1 + 8000))  # loose: land must run past the edges when zoomed
-    b["geometry"] = b.geometry.simplify(20)
+    summary = web_page(od, st, boros)
+    windmap_page(od, st, boros, summary)
+
+
+def web_page(od, st, boros):
+    """The interactive page: arrows hour by hour through an average weekday / weekend day."""
+    fr = hourly_frames(load_hourly(st))
+    # headline numbers: pooled net flow toward Grand Central, per frame (share of trip ends)
+    gc = st.loc[st.name == "Park Ave & E 42 St"].iloc[0]
+    bx, by = gc.x - fr.x, gc.y - fr.y
+    fr["toward"] = (fr.vx * bx + fr.vy * by) / np.hypot(bx, by)
+    pull = {dt: [float(g[g.frame == i].toward.sum() / g[g.frame == i].n.sum()) for i in range(24)]
+            for dt, g in fr.groupby("daytype")}
+    wd = pull["wd"]
+    peak = int(np.argmax(wd))
+    turn = next(i for i in range(peak, peak + 24) if wd[i % 24] < 0) % 24  # first window pointing away
+    in_frames = [i for i in range(24) if wd[i] > 0]
+    ratio = max(pull["we"]) / max(wd)
+    print("pull toward Midtown, weekdays:", [round(100 * v, 1) for v in wd])
+    print(f"peak {hour_range(peak)}, turns {hour_range(turn)}, weekend/weekday peak {ratio:.2f}, "
+          f"toward-Midtown hours {in_frames}")
+    print("net trips/hour quantiles:", fr.mag.quantile([.5, .9, .98, 1]).round(1).tolist())
+    turn_clock = f"{turn % 12 or 12}{'am' if turn < 12 else 'pm'}"
+    title = f"Every weekday, Citi Bike flows toward Midtown until about {turn_clock}, then turns around"
+    lede = (f"Each frame is one hour of trips on an average day. On weekdays the net flow points toward Midtown from early "
+            f"morning until about {turn_clock}, strongest {hour_range(peak)}, then away from it through the evening "
+            f"and night. Weekends follow the same shape, "
+            f"{'about half' if 0.4 <= ratio <= 0.6 else f'{100 * ratio:.0f}%'} as strong.")
+    assert in_frames == list(range(in_frames[0], in_frames[-1] + 1)) and in_frames[0] <= 5, in_frames  # 'early morning' holds
+
+    names = hex_names(od, st)
+    # compact: hex grid position (q, r) instead of coordinates; whole trips per day per frame
     hexes = []
-    for (q, r), g in h.groupby(["q", "r"]):
-        row = g.iloc[0]
-        hexes.append({"x": round(row.x, 1), "y": round(row.y, 1), "name": row["name"],
-                      "w": {w.window: [round(w.vx, 2), round(w.vy, 2), round(w.n, 1), round(w.dep, 1), round(w.arr, 1)]
-                            for _, w in g.iterrows()}})
+    for (q, r), g in fr.groupby(["q", "r"]):
+        rec = {"q": int(q), "r": int(r), "name": names.get((q, r), "")}
+        for dt in DAYTYPES:
+            arr = [0] * 24  # 0 = fewer than MIN_TRIPS_PER_HOUR trips that hour
+            for _, w in g[g.daytype == dt].iterrows():
+                arr[int(w.frame)] = [int(round(v)) for v in (w.vx, w.vy, w.n, w.arr - w.dep)]
+            rec[dt] = arr
+        hexes.append(rec)
+    hh = load_hourly(st)
+    trips_by_hour = {dt: [round(float(g[g.hour == i].dep.sum() / g.days.iat[0])) for i in range(24)]
+                     for dt, g in hh.groupby("daytype")}
+    pad = 800
+    x0, y0, x1, y1 = fr.x.min() - pad, fr.y.min() - pad, fr.x.max() + pad, fr.y.max() + pad
+    b = boros.clip((x0 - 5000, y0 - 5000, x1 + 5000, y1 + 5000))
+    b["geometry"] = b.geometry.simplify(35)
     web = {
-        "title": title, "lede": lede.replace("\n", " "), "day": DAY, "source_url": SOURCE_URL,
-        "windows": [{"key": k, "label": v[0], "days": int(h[h.window == k].days.iat[0]),
-                     "trips": round(f["trips"][k])} for k, v in WINDOWS.items()],
-        "hex_r": HEX_R, "ref": 80, "min_trips": MIN_TRIPS_PER_DAY,
+        "title": title, "lede": lede, "day": DAY, "source_url": SOURCE_URL,
+        "daytypes": [{"key": k, "label": v} for k, v in DAYTYPES.items()],
+        "labels": [hour_range(i) for i in range(24)], "trips_by_hour": trips_by_hour,
+        "hex_r": HEX_R, "ref": REF_HOUR, "keys": [5, 15, REF_HOUR], "min_trips": MIN_TRIPS_PER_HOUR,
         "blues": S.SEQUENTIAL_BLUE[1:],
-        "hexes": hexes,
-        "boroughs": json.loads(b.to_json(drop_id=True)),
-        "extent": [x0, y0, x1, y1],
+        "hexes": hexes, "boroughs": json.loads(b.to_json(drop_id=True)), "extent": [x0, y0, x1, y1],
     }
+    # data.js lets web/index.html open straight from disk while editing (gitignored)
     (HERE / "web" / "data.js").write_text("window.DATA = " + json.dumps(web, separators=(",", ":")) + ";")
     size = S.build_page(HERE / "web" / "index.html", web, OUT / "citibike_flow.html")
     print("wrote", OUT / "citibike_flow.html", f"({size / 1e6:.2f} MB)")
+    return {"title": title, "turn_clock": turn_clock, "peak": peak, "ratio": ratio}
+
+
+def windmap_page(od, st, boros, summary):
+    """Experiment: particle wind map. 15-minute slots of net flow per hex, as a rate per hour on an
+    average day; the page smooths them into a field and lets particles drift along it."""
+    import base64
+    sl = load_slots(st)
+    per_hour = 60 // SLOT_MIN
+    nslot = 24 * per_hour
+    sl = sl.assign(vx=sl.vx / sl.days * per_hour, vy=sl.vy / sl.days * per_hour, n=sl.n / sl.days * per_hour)
+    sl = sl[sl.n >= MIN_TRIPS_PER_HOUR]  # rate per hour, same threshold as the hourly page
+    # frame: a fixed box around the busy core; hexes outside it are dropped
+    lo0, la0, lo1, la1 = WINDMAP_BBOX
+    corners = gpd.GeoSeries(gpd.points_from_xy([lo0, lo0, lo1, lo1], [la0, la1, la0, la1]), crs="EPSG:4326").to_crs(CRS_M)
+    x0, x1 = corners.x.min(), corners.x.max()
+    y0, y1 = corners.y.min(), corners.y.max()
+    cx, cy = hex_center(sl.q, sl.r)
+    sl = sl[(cx >= x0) & (cx <= x1) & (cy >= y0) & (cy <= y1)]
+    keep = sl.groupby(["q", "r"]).size().index
+    names = hex_names(od, st)
+    hexes = [{"q": int(q), "r": int(r), "name": names.get((q, r), "")} for q, r in keep]
+    idx = {k: i for i, k in enumerate(keep)}
+    flow = {}
+    for dt in DAYTYPES:
+        a = np.zeros((nslot, len(keep), 2), dtype=np.int8)  # net trips/hour, clamped to int8
+        g = sl[sl.daytype == dt]
+        hi = np.array([idx[k] for k in zip(g.q, g.r)])
+        a[g.slot.values, hi, 0] = np.clip(np.round(g.vx.values), -127, 127)
+        a[g.slot.values, hi, 1] = np.clip(np.round(g.vy.values), -127, 127)
+        flow[dt] = base64.b64encode(a.tobytes()).decode()
+    print("wind map: hexes", len(keep), "| |v| quantiles", np.hypot(sl.vx, sl.vy).quantile([.5, .9, .99]).round(1).tolist())
+    # trips started per hour (rate) for each 15-minute slot, for the timeline
+    trips = {dt: [round(float(g[g.slot == i].dep.sum() / g.days.iat[0] * per_hour)) for i in range(nslot)]
+             for dt, g in load_slots(st).groupby("daytype")}
+    b = boros.clip((x0, y0, x1, y1))  # land stops at the frame
+    b["geometry"] = b.geometry.simplify(25)
+    print(f"wind map frame: {(x1 - x0) / 1000:.1f} x {(y1 - y0) / 1000:.1f} km")
+    t = summary["turn_clock"]
+    web = {
+        "title": summary["title"],
+        "lede": (f"Each streak drifts with the net flow of bike trips. Faster and darker streaks represent more trips. "
+                 f"On weekdays the current runs toward Midtown from early morning until about {t}, "
+                 f"strongest {hour_range(summary['peak'])}, then back out through the evening and night."),
+        "day": DAY, "source_url": SOURCE_URL,
+        "daytypes": [{"key": k, "label": v} for k, v in DAYTYPES.items()],
+        "slot_min": SLOT_MIN, "trips": trips, "hex_r": HEX_R, "ref": REF_HOUR, "min_trips": MIN_TRIPS_PER_HOUR,
+        "blues": S.SEQUENTIAL_BLUE[1:], "hexes": hexes, "flow": flow,
+        "boroughs": json.loads(b.to_json(drop_id=True)), "extent": [x0, y0, x1, y1],
+    }
+    (HERE / "web" / "windmap_data.js").write_text("window.DATA = " + json.dumps(web, separators=(",", ":")) + ";")
+    size = S.build_page(HERE / "web" / "windmap.html", web, OUT / "citibike_windmap.html", data_src="windmap_data.js")
+    print("wrote", OUT / "citibike_windmap.html", f"({size / 1e6:.2f} MB)")
 
 
 if __name__ == "__main__":
