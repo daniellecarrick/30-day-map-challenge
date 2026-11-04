@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky Over New York</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/nyc_sky.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .page { max-width: 1280px; }
+  .lede { max-width: 720px; }
+  .map-wrap canvas { position: absolute; pointer-events: none; }
+  .map-wrap > svg { position: relative; cursor: grab; }
+  .zoom-hint { position: absolute; z-index: 2; right: 6px; bottom: 4px; padding: 2px 6px; border-radius: 4px;
+               background: var(--bg); color: var(--muted); pointer-events: none; }
+  @media (max-width: 640px) { .zoom-hint { display: none; } }
+  .hl { fill: none; stroke: var(--ink); stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-linecap: round; pointer-events: none; }
+  .skyc { display: block; margin-top: 6px; }
+  .refs { display: flex; gap: 14px; margin-top: 8px; }
+  .refs .m { color: var(--muted); }
+  .lg-note { color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+  </header>
+  <div class="map-wrap" id="map"><span class="zoom-hint">Scroll or pinch to zoom</span></div>
+  <footer><span id="how"></span> Data: <a id="src"></a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const [EW, EH] = D.extent;
+const tip = MapKit.tooltip();
+
+d3.select("#title").text(D.title);
+d3.select("#lede").text(D.lede);
+d3.select("#how").text(D.how);
+d3.select("#src").attr("href", D.source_url).text(D.source);
+d3.select("#day").text(D.day);
+
+// ---- data: undo the delta coding; sky circles stay in one string, read on demand ----
+const N = D.c.length;
+D.c.forEach(c => { for (let j = 2; j < c.length; j++) c[j] += c[j - 2]; });
+const skyPct = i => { const v = D.sky[i] / 10; return v < 1 ? "<1%" : `${Math.round(v)}%`; };
+
+/** A sky circle. Equal-area: the light shape's share of the disc is the block's share of the sky. */
+function skyCircle(i, size) {
+  const nb = D.nbins, step = (2 * Math.PI) / nb, R = size / 2 - 1;
+  const r = k => ((D.bins.charCodeAt(i * nb + k) - 48) / 63) * R;
+  const pt = (rr, a) => `${(R + 1 + rr * Math.sin(a)).toFixed(1)} ${(R + 1 - rr * Math.cos(a)).toFixed(1)}`;
+  let d = "";
+  for (let k = 0; k < nb; k++) {
+    const rr = r(k), a0 = k * step, a1 = (k + 1) * step;
+    d += `${k ? "L" : "M"}${pt(rr, a0)}A${rr.toFixed(1)} ${rr.toFixed(1)} 0 0 1 ${pt(rr, a1)}`;
+  }
+  return `<svg class="skyc" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${skyPct(i)} of the sky visible">` +
+    `<circle cx="${R + 1}" cy="${R + 1}" r="${R}" fill="${D.hidden}"/><path d="${d}Z" fill="${D.open}"/></svg>`;
+}
+
+// ---- map: viewBox units = metres, y flipped so north is up ----
+const wrap = d3.select("#map");
+const svg = wrap.append("svg").attr("viewBox", `0 0 ${EW} ${EH}`).attr("preserveAspectRatio", "xMidYMid meet")
+  .attr("role", "img").attr("aria-label", D.title);
+const gZoom = svg.append("g");
+const hl = gZoom.append("path").attr("class", "hl");
+svg.append("rect").attr("width", EW).attr("height", EH).attr("fill", "transparent");  // catches zoom + hover
+const canvas = wrap.insert("canvas", "svg").node(), ctx = canvas.getContext("2d");
+let s = 1, ox = 0, oy = 0, dpr = 1, zt = d3.zoomIdentity;
+function sizeCanvas() {
+  const r = svg.node().getBoundingClientRect(), h = wrap.node().getBoundingClientRect();
+  dpr = window.devicePixelRatio || 1;
+  Object.assign(canvas.style, { left: r.left - h.left + "px", top: r.top - h.top + "px", width: r.width + "px", height: r.height + "px" });
+  canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+  s = Math.min(r.width / EW, r.height / EH); ox = (r.width - EW * s) / 2; oy = (r.height - EH * s) / 2;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+const sx = x => ox + s * (zt.k * x + zt.x), sy = y => oy + s * (zt.k * (EH - y) + zt.y);
+
+// color: less sky = darker. On a dark page the darkest blue would vanish, so its scale stops short.
+const dark = () => getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() !== "#ffffff";
+const stops = dark() ? D.stops_dark : D.stops;
+const color = d3.scaleLinear().domain(stops.map(d => d[0])).range(stops.map(d => d[1])).clamp(true);
+
+// draw in 40 color buckets, most sky first, so canyons sit on top
+const BUCKETS = 40, groups = Array.from({ length: BUCKETS }, () => []);
+for (let i = 0; i < N; i++) groups[Math.min(BUCKETS - 1, Math.floor((D.sky[i] / 1000) * BUCKETS))].push(i);
+const bucketColor = groups.map((_, b) => color((b + 0.5) / BUCKETS));
+function draw() {
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.lineWidth = 0.75 * Math.min(5, Math.sqrt(zt.k));
+  for (let b = BUCKETS - 1; b >= 0; b--) {
+    ctx.strokeStyle = bucketColor[b]; ctx.beginPath();
+    for (const i of groups[b]) {
+      const c = D.c[i];
+      ctx.moveTo(sx(c[0]), sy(c[1]));
+      for (let j = 2; j < c.length; j += 2) ctx.lineTo(sx(c[j]), sy(c[j + 1]));
+    }
+    ctx.stroke();
+  }
+}
+
+// ---- hover: nearest point along any block, within ~15 px ----
+const px = [], py = [], owner = [];
+for (let i = 0; i < N; i++) {
+  const c = D.c[i];
+  for (let j = 0; j + 3 < c.length; j += 2) {
+    const len = Math.hypot(c[j + 2] - c[j], c[j + 3] - c[j + 1]), n = Math.max(1, Math.ceil(len / 40));
+    for (let q = 0; q <= n; q++) {
+      px.push(c[j] + ((c[j + 2] - c[j]) * q) / n); py.push(EH - (c[j + 1] + ((c[j + 3] - c[j + 1]) * q) / n)); owner.push(i);
+    }
+  }
+}
+const delaunay = new d3.Delaunay(Float64Array.from({ length: px.length * 2 }, (_, k) => (k % 2 ? py[(k - 1) / 2] : px[k / 2])));
+let hovered = -1, html = "";
+function hoverAt(ev) {
+  const [mx, my] = zt.invert(d3.pointer(ev, svg.node()));
+  const p = delaunay.find(mx, my);
+  const r = svg.node().getBoundingClientRect(), pxPerUnit = Math.min(r.width / EW, r.height / EH);
+  if (Math.hypot(px[p] - mx, py[p] - my) * zt.k * pxPerUnit > 15) return clearHover();
+  const i = owner[p];
+  if (i !== hovered) {
+    hovered = i;
+    const c = D.c[i], path = d3.path();
+    path.moveTo(c[0], EH - c[1]);
+    for (let j = 2; j < c.length; j += 2) path.lineTo(c[j], EH - c[j + 1]);
+    hl.attr("d", path.toString());
+    const [name, boro] = D.names[D.n[i]];
+    html = `<b>${name}</b><span class="m">${boro}</span><br>${skyPct(i)} of the sky${skyCircle(i, 110)}`;
+  }
+  tip.show(ev, html);
+}
+function clearHover() { if (hovered >= 0) { hovered = -1; hl.attr("d", null); tip.hide(); } }
+svg.on("pointermove", hoverAt).on("click", hoverAt).on("pointerleave", clearHover);
+
+// ---- zoom + views ----
+const zoom = d3.zoom().scaleExtent([1, 60]).translateExtent([[0, 0], [EW, EH]])
+  .on("zoom", ev => { zt = ev.transform; gZoom.attr("transform", zt); draw(); })
+  .filter(ev => !ev.touches || ev.touches.length > 1);
+svg.call(zoom).style("touch-action", "pan-y pinch-zoom");
+function frame([x0, y0, x1, y1]) {
+  const k = Math.min(EW / (x1 - x0), EH / (y1 - y0));
+  return d3.zoomIdentity.translate(EW / 2, EH / 2).scale(k).translate(-(x0 + x1) / 2, -(EH - (y0 + y1) / 2));
+}
+
+// ---- legend (top-left: New Jersey, empty on this map) ----
+const legend = MapKit.legend(svg, {
+  x: 0, y: EH * 0.01, width: 236,
+  title: "Share of the sky you can see",
+  stops, ticks: [[0, "0%"], [0.5, "50%"], [1, "100%"]],
+});
+legend.append("div").attr("class", "refs").html(D.refs.slice(0, 3).filter((_, k) => k !== 1).map(({ i, label }) =>
+  `<div><b>${label}</b><br><span class="m">${skyPct(i)}</span>${skyCircle(i, 96)}</div>`).join(""));
+legend.append("div").attr("class", "lg-note").text("Looking straight up: the center is overhead, the rim is the horizon.");
+
+new ResizeObserver(() => { sizeCanvas(); draw(); }).observe(svg.node());
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => location.reload());
+sizeCanvas();
+svg.call(zoom.transform, frame(D.manhattan));  // opens on Manhattan; zoom out for the whole city (also draws)
+</script>
+</body>
+</html>

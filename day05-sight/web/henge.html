@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Every Street's Henge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/nyc_henge.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .page { max-width: 1280px; }
+  .lede { max-width: 820px; }
+  .map-wrap canvas { position: absolute; pointer-events: none; }
+  .map-wrap > svg { position: relative; cursor: grab; }
+  .zoom-hint { position: absolute; right: 6px; bottom: 4px; color: var(--muted); pointer-events: none; }
+  @media (max-width: 640px) { .zoom-hint { display: none; } }
+  .readout { min-width: 72px; text-align: left; }
+  .hl { fill: none; stroke: var(--ink); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+
+  /* year strip: streets with a clear view of the sun in their frame, per day; current day highlighted */
+  .timeline { width: 100%; max-width: 900px; margin: 4px auto 2px; cursor: pointer; touch-action: none; }
+  .timeline:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .timeline svg { display: block; width: 100%; overflow: visible; }
+  .timeline .bar { fill: var(--ctl); }
+  .timeline .leaf { fill: color-mix(in srgb, var(--ink) 5%, transparent); }
+  .timeline .bar.on { fill: var(--ink); }
+  .timeline .tick, .timeline .cap { fill: var(--muted); font-size: 14px; }
+  .timeline .base { stroke: var(--muted); stroke-width: 1; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <div id="mode" aria-label="Sunset or sunrise"></div>
+      <button class="play" id="play" type="button"></button>
+      <span class="readout" id="date" aria-live="polite"></span>
+      <span class="stat" id="stat"></span>
+    </div>
+    <div class="timeline" id="timeline" tabindex="0" role="slider" aria-label="Day of the year"
+         aria-valuemin="0" aria-valuemax="364"></div>
+  </header>
+  <div class="map-wrap" id="map"><span class="zoom-hint">Scroll or pinch to zoom · hover a street</span></div>
+  <footer><span id="how"></span> Data: <a id="src"></a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const [EW, EH] = D.extent;
+const tip = MapKit.tooltip();
+const narrow = matchMedia("(max-width: 640px)").matches;
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+d3.select("#title").text(D.title);
+d3.select("#lede").text(D.lede);
+d3.select("#how").text(D.how);
+d3.select("#src").attr("href", D.source_url).text(D.source);
+d3.select("#day").text(D.day);
+
+// ---- dates ----
+const Y0 = Date.UTC(D.year, 0, 1);
+const dayDate = k => new Date(Y0 + ((k + 365) % 365) * 864e5);
+const fmtDay = k => dayDate(k).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const fmtTime = m => { const h = Math.floor(m / 60), mm = m % 60; return `${((h + 11) % 12) + 1}:${String(mm).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`; };
+const now = new Date();
+const today = Math.round((Date.UTC(D.year, now.getMonth(), now.getDate()) - Y0) / 864e5);
+
+// ---- geometry: viewBox units = metres, y flipped so north is up ----
+const wrap = d3.select("#map");
+const svg = wrap.append("svg").attr("viewBox", `0 0 ${EW} ${EH}`).attr("preserveAspectRatio", "xMidYMid meet")
+  .attr("role", "img").attr("aria-label", D.title);
+const gZoom = svg.append("g");
+const hl = gZoom.append("path").attr("class", "hl");
+svg.append("rect").attr("width", EW).attr("height", EH).attr("fill", "transparent");  // catches zoom + hover
+const canvas = wrap.insert("canvas", "svg").node(), ctx = canvas.getContext("2d");
+let s = 1, ox = 0, oy = 0, dpr = 1, zt = d3.zoomIdentity;
+function sizeCanvas() {
+  const r = svg.node().getBoundingClientRect(), h = wrap.node().getBoundingClientRect();
+  dpr = window.devicePixelRatio || 1;
+  Object.assign(canvas.style, { left: r.left - h.left + "px", top: r.top - h.top + "px", width: r.width + "px", height: r.height + "px" });
+  canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+  s = Math.min(r.width / EW, r.height / EH); ox = (r.width - EW * s) / 2; oy = (r.height - EH * s) / 2;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+const sx = x => ox + s * (zt.k * x + zt.x), sy = y => oy + s * (zt.k * (EH - y) + zt.y);
+
+// segment midpoints + samples along each henge segment, for easy hover
+const segs = D.seg.c.map((c, i) => {
+  const end = k => {
+    const E = D.seg[k], w = E.days[i], days = [];
+    for (let j = 0; j < w.length; j += 3) days.push([w[j], w[j + 1], !!w[j + 2]]);   // [first, last, visible]
+    const dates = [[E.d1[i], E.ok1[i], E.lv1[i], E.why1[i], E.tm1[i]], [E.d2[i], E.ok2[i], E.lv2[i], E.why2[i], E.tm2[i]]]
+      .filter(d => d[0] >= 0).map(([d, ok, lv, why, tm]) => ({ d, ok: !!ok, leaves: !!lv, why, tm }));
+    return { dates, t: E.t[i], days, any: dates.some(x => x.ok) };
+  };
+  return { c, n: D.seg.n[i], r: D.seg.r[i], w: end("w"), e: end("e") };
+});
+const samples = [];
+segs.forEach((g, i) => {
+  const c = g.c;
+  for (let j = 0; j + 3 < c.length; j += 2) {
+    const len = Math.hypot(c[j + 2] - c[j], c[j + 3] - c[j + 1]), n = Math.max(1, Math.ceil(len / 30));
+    for (let q = 0; q <= n; q++) samples.push([c[j] + (c[j + 2] - c[j]) * q / n, EH - (c[j + 1] + (c[j + 3] - c[j + 1]) * q / n), i]);
+  }
+});
+const runs = d3.group(d3.range(segs.length), i => segs[i].r);
+
+// ---- state ----
+let mode = "w", day = today, playing = false;
+const css = () => getComputedStyle(document.documentElement);
+const color = d3.scaleLinear().domain(D.stops.map(d => d[0])).range(D.stops.map(d => d[1])).clamp(true);
+// on day k: null (not lined up), true (lined up and visible), false (lined up, view blocked)
+const alignedOn = (g, k) => { const r = g[mode].days.find(([a, b]) => k >= a && k <= b); return r ? r[2] : null; };
+const leafOut = k => k >= D.leaf_on[0] && k <= D.leaf_on[1];
+
+function strokePath(c) {
+  ctx.moveTo(sx(c[0]), sy(c[1]));
+  for (let j = 2; j < c.length; j += 2) ctx.lineTo(sx(c[j]), sy(c[j + 1]));
+}
+function draw() {
+  const v = css(), ctl = v.getPropertyValue("--ctl").trim(), closed = v.getPropertyValue("--closed").trim(),
+        ink = v.getPropertyValue("--ink").trim();
+  const W = canvas.width / dpr, H = canvas.height / dpr, zk = Math.min(4, Math.sqrt(zt.k));
+  ctx.clearRect(0, 0, W, H);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  // streets that never line up
+  ctx.strokeStyle = ctl; ctx.lineWidth = 0.7 * zk; ctx.beginPath();
+  D.bg.forEach(strokePath); ctx.stroke();
+  // every henge street, faint, colored by its dates (blocked ones grey)
+  const on = [], onBlocked = [];
+  const byColor = new Map();
+  ctx.globalAlpha = 0.35;
+  segs.forEach(g => {
+    const e = g[mode];
+    const a = alignedOn(g, day);
+    if (a !== null) (a ? on : onBlocked).push(g);
+    const col = e.t == null ? ctl : e.any ? color(e.t) : closed;
+    if (!byColor.has(col)) byColor.set(col, []);
+    byColor.get(col).push(g.c);
+  });
+  ctx.lineWidth = 0.9 * zk;
+  byColor.forEach((list, col) => { ctx.strokeStyle = col; ctx.beginPath(); list.forEach(strokePath); ctx.stroke(); });
+  ctx.globalAlpha = 1;
+  // today's henge streets: thick, outlined in ink
+  ctx.strokeStyle = closed; ctx.lineWidth = 1.8 * zk; ctx.beginPath(); onBlocked.forEach(g => strokePath(g.c)); ctx.stroke();
+  ctx.strokeStyle = ink; ctx.lineWidth = 3.4 * zk; ctx.beginPath(); on.forEach(g => strokePath(g.c)); ctx.stroke();
+  on.forEach(g => { ctx.strokeStyle = color(g[mode].t); ctx.lineWidth = 2 * zk; ctx.beginPath(); strokePath(g.c); ctx.stroke(); });
+  const nRuns = new Set(on.map(g => g.r)).size;
+  d3.select("#stat").text(`${leafOut(day) ? "Leaves out. " : "Bare branches. "}${d3.format(",")(nRuns)} ${nRuns === 1 ? "street frames" : "streets frame"} the ${mode === "w" ? "sunset" : "sunrise"} with a clear view`);
+}
+
+// ---- hover ----
+const delaunay = d3.Delaunay.from(samples, d => d[0], d => d[1]);
+let hovered = -1;
+function describe(g) {
+  const [name, boro] = D.names[g.n];
+  const end = (k, label) => {
+    const e = g[k];
+    if (!e.dates.length) return `<div class="m">${label}: never lines up</div>`;
+    const lines = e.dates.map(x => {
+      const when = `${fmtDay(x.d)} (${x.leaves ? "leaves out" : "bare branches"})`;
+      if (x.ok) return `<div>${when}: <b style="display:inline">visible</b>, about ${fmtTime(x.tm)}</div>`;
+      const [kind, dist, sp] = x.why;
+      const where = dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist / 10) * 10} m`;
+      const thing = kind === 3 ? `a ${D.species[sp] ?? "tree"}` : ["a building", "a hill", "hills and buildings", "", "park trees"][kind] ?? "the skyline";
+      return `<div>${when}: <span class="m">hidden by ${thing} ${where} away</span></div>`;
+    }).join("");
+    return `<div style="margin-top:4px"><b style="display:inline">${label}</b></div>${lines}`;
+  };
+  const order = mode === "w" ? [["w", "Sunset henge"], ["e", "Sunrise henge"]] : [["e", "Sunrise henge"], ["w", "Sunset henge"]];
+  return `<b>${name}</b><div class="m" style="margin-bottom:4px">${boro}</div>` + order.map(([k, l]) => end(k, l)).join("");
+}
+svg.on("pointermove", ev => {
+  const [mx, my] = zt.invert(d3.pointer(ev, svg.node()));
+  const i = delaunay.find(mx, my), p = samples[i];
+  const r = svg.node().getBoundingClientRect(), unitsPerPx = 1 / Math.min(r.width / EW, r.height / EH);
+  const dist = Math.hypot(p[0] - mx, p[1] - my) * zt.k / unitsPerPx;
+  if (dist > 15) { if (hovered >= 0) { hovered = -1; hl.attr("d", null); tip.hide(); } return; }
+  const g = segs[p[2]];
+  if (p[2] !== hovered) {
+    hovered = p[2];
+    const path = d3.path();
+    runs.get(g.r).forEach(i => { const c = segs[i].c; path.moveTo(c[0], EH - c[1]); for (let j = 2; j < c.length; j += 2) path.lineTo(c[j], EH - c[j + 1]); });
+    hl.attr("d", path.toString());
+  }
+  tip.show(ev, describe(g));
+}).on("pointerleave", () => { hovered = -1; hl.attr("d", null); tip.hide(); });
+
+// ---- zoom ----
+const zoom = d3.zoom().scaleExtent([1, 40]).translateExtent([[0, 0], [EW, EH]])
+  .on("zoom", ev => { zt = ev.transform; gZoom.attr("transform", zt); draw(); })
+  .filter(ev => !ev.touches || ev.touches.length > 1);
+svg.call(zoom).style("touch-action", "pan-y pinch-zoom");
+
+// ---- legend (top-left: New Jersey, empty on this map) ----
+const ticks = D.ticks.map(([t, lab]) => [t, lab.replace(" · ", " / ")]);
+MapKit.legend(svg, {
+  x: 0, y: EH * 0.02, width: 250,
+  title: "Henge dates (each street gets two)",
+  stops: D.stops, ticks: [ticks[0], ticks[2], ticks[4]],
+  keys: [
+    { draw: g => g.append("line").attr("x1", -7).attr("x2", 7).attr("stroke", "var(--ink)").attr("stroke-width", 5).attr("stroke-linecap", "round")
+                 && g.append("line").attr("x1", -7).attr("x2", 7).attr("stroke", color(150)).attr("stroke-width", 3).attr("stroke-linecap", "round"),
+      label: "Sun in the frame on this day" },
+    { draw: g => g.append("line").attr("x1", -7).attr("x2", 7).attr("stroke", "var(--closed)").attr("stroke-width", 2.5), label: "Lines up, but buildings or leaves block it" },
+    { draw: g => g.append("line").attr("x1", -7).attr("x2", 7).attr("stroke", "var(--ctl)").attr("stroke-width", 3), label: "Never lines up (runs north–south)" },
+  ],
+});
+
+// ---- year strip ----
+const tl = d3.select("#timeline"), tlSvg = tl.append("svg"), TL = { h: 44, top: 22, bottom: 22 };
+let xBand = null;
+function drawTimeline() {
+  const w = tl.node().clientWidth || 600;
+  xBand = d3.scaleBand().domain(d3.range(365)).range([0, w]).paddingInner(0.1);
+  const counts = D.counts[mode];
+  const y = d3.scaleLinear().domain([0, d3.max([...D.counts.w, ...D.counts.e])]).range([0, TL.h]);
+  tlSvg.attr("height", TL.top + TL.h + TL.bottom);
+  const [l0, l1] = D.leaf_on;
+  tlSvg.selectAll("rect.leaf").data([0]).join("rect").attr("class", "leaf").lower()
+    .attr("x", xBand(l0)).attr("width", xBand(l1) + xBand.bandwidth() - xBand(l0)).attr("y", TL.top - 4).attr("height", TL.h + 4);
+  tlSvg.selectAll("text.leaflab").data([0]).join("text").attr("class", "tick leaflab").attr("text-anchor", "end")
+    .attr("x", xBand(l1) + xBand.bandwidth()).attr("y", 14).text(narrow ? "Leaves out" : "Leaves out (Apr 20 – Nov 15)");
+  tlSvg.selectAll("rect.bar").data(d3.range(365)).join("rect")
+    .attr("class", i => "bar" + (i === day ? " on" : ""))
+    .attr("x", i => xBand(i)).attr("width", Math.max(1, xBand.bandwidth()))
+    .attr("y", i => TL.top + TL.h - y(counts[i])).attr("height", i => counts[i] ? Math.max(1, y(counts[i])) : 0);
+  tlSvg.selectAll("line.base").data([0]).join("line").attr("class", "base")
+    .attr("x1", 0).attr("x2", w).attr("y1", TL.top + TL.h + 0.5).attr("y2", TL.top + TL.h + 0.5);
+  const months = d3.range(12).filter(m => !narrow || m % 3 === 0)
+    .map(m => Math.round((Date.UTC(D.year, m, 1) - Y0) / 864e5));
+  tlSvg.selectAll("text.tick").data(months).join("text").attr("class", "tick")
+    .attr("x", i => xBand(i)).attr("y", TL.top + TL.h + 17)
+    .text(i => dayDate(i).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }));
+  tlSvg.selectAll("text.cap").data([0]).join("text").attr("class", "cap").attr("x", 0).attr("y", 14)
+    .text(narrow ? `Streets framing the ${mode === "w" ? "sunset" : "sunrise"}` : `Streets that frame the ${mode === "w" ? "sunset" : "sunrise"}, each day`);
+}
+function setDay(k) {
+  day = (k + 365) % 365;
+  d3.select("#date").text(fmtDay(day) + (day === today ? " (today)" : ""));
+  tl.attr("aria-valuenow", day).attr("aria-valuetext", fmtDay(day));
+  tlSvg.selectAll("rect.bar").attr("class", i => "bar" + (i === day ? " on" : ""));
+  draw();
+}
+const dayAt = ev => Math.max(0, Math.min(364, Math.floor(d3.pointer(ev, tlSvg.node())[0] / xBand.step())));
+let dragging = false;
+tl.on("pointerdown", ev => { dragging = true; setPlaying(false); tl.node().setPointerCapture(ev.pointerId); setDay(dayAt(ev)); })
+  .on("pointermove", ev => {
+    const i = dayAt(ev);
+    if (dragging) { if (i !== day) setDay(i); return; }
+    const n = D.counts[mode][i];
+    tip.show(ev, `<b>${fmtDay(i)}</b>${d3.format(",")(n)} ${n === 1 ? "street frames" : "streets frame"} the ${mode === "w" ? "sunset" : "sunrise"}`);
+  })
+  .on("pointerup pointercancel", () => { dragging = false; })
+  .on("pointerleave", () => tip.hide())
+  .on("keydown", ev => {
+    if (ev.key === "ArrowRight" || ev.key === "ArrowLeft") { ev.preventDefault(); setPlaying(false); setDay(day + (ev.key === "ArrowRight" ? 1 : -1)); }
+  });
+
+// ---- play: a day every 120 ms ----
+const ICON = { play: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z"/></svg>Play the year',
+               pause: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>Pause' };
+let timer = null;
+function setPlaying(on) {
+  playing = on && !reduce;
+  d3.select("#play").html(playing ? ICON.pause : ICON.play).attr("aria-pressed", playing);
+  if (timer) { timer.stop(); timer = null; }
+  if (playing) { let last = 0; timer = d3.timer(t => { if (t - last > 120) { last = t; setDay(day + 1); } }); }
+}
+d3.select("#play").on("click", () => setPlaying(!playing));
+
+new ResizeObserver(() => { sizeCanvas(); draw(); }).observe(svg.node());
+new ResizeObserver(drawTimeline).observe(tl.node());
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+sizeCanvas(); drawTimeline();
+MapKit.segmented("#mode", [{ value: "w", label: "Sunset" }, { value: "e", label: "Sunrise" }], v => {
+  mode = v; drawTimeline(); setDay(day);
+}, "w");
+setPlaying(false);
+</script>
+</body>
+</html>

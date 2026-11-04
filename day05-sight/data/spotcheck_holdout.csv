@@ -1,0 +1,9 @@
+cat,street,boro,lat,lon,heading,sky_on,why,photo_season,seen,model,sky,match
+holdout: model clear in leaf,Northern Blvd,Queens,40.756593,-73.875605,262.1,2.7,tree:56:'mushashino' zelkova,leaf-on,clear,clear,2.7,yes
+holdout: model clear in leaf,Barlow Ave,Staten Island,40.559667,-74.15286,251.6,1.3,tree:361:london planetree,leaf-on,unclear,clear,1.3,?
+holdout: model clear in leaf,Fulton St,Brooklyn,40.683922,-73.968443,297.7,2.3,bldg:2150,,no imagery,clear,2.3,?
+holdout: model clear in leaf,Cross Bronx Expy,Bronx,40.824928,-73.826489,292.4,1.3,tree:853:red maple,leaf-on,unclear,clear,1.3,?
+holdout: model leaves block,69th Ave,Queens,40.742028,-73.759423,250.2,63.1,tree:142:london planetree,leaf-on,blocked,blocked,63.1,yes
+holdout: model leaves block,Maine Ave,Staten Island,40.620694,-74.12767,264.0,72.5,tree:201:american sycamore,leaf-on,blocked,blocked,72.5,yes
+holdout: model leaves block,Ave Y,Brooklyn,40.588886,-73.965732,261.8,11.1,tree:302:london planetree,leaf-off,clear,clear,1.1,yes
+holdout: model leaves block,Givan Ave,Bronx,40.874297,-73.846489,247.4,66.7,tree:90:mulberry,leaf-off,clear,clear,0.4,yes
