@@ -142,11 +142,11 @@ def web_data(s, st):
     # one character per sky-circle value: r 0..1 in 64 steps, starting at '0'
     codes = np.round(np.stack(h.bins.values) * 63).astype(int) + 48
     bins = "".join(map(chr, codes.ravel()))
-    zx0, zy0 = H.to_m.transform(-74.03, 40.695); zx1, zy1 = H.to_m.transform(-73.92, 40.88)
+    zx0, zy0 = H.to_m.transform(-74.02, 40.698); zx1, zy1 = H.to_m.transform(-73.77, 40.823)   # opening view
     return {
         "title": st["title"], "lede": st["lede"], "how": HOW, "day": DAY, "source": SOURCE, "source_url": SOURCE_URL,
         "extent": [float(s.total_bounds[2] - x0), float(s.total_bounds[3] - y0)],
-        "manhattan": [zx0 - x0, zy0 - y0, zx1 - x0, zy1 - y0],
+        "view": [zx0 - x0, zy0 - y0, zx1 - x0, zy1 - y0],
         "c": [delta(g) for g in h.geometry], "n": [ix[k] for k in zip(h.street, h.boro)],
         "sky": [int(round(v * 1000)) for v in h.sky], "bins": bins, "nbins": codes.shape[1],
         "names": [list(n) for n in names], "stops": STOPS, "stops_dark": STOPS_DARK,

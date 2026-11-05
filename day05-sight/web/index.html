@@ -14,6 +14,7 @@
   .lede { max-width: 720px; }
   .map-wrap canvas { position: absolute; pointer-events: none; }
   .map-wrap > svg { position: relative; cursor: grab; }
+  .legend { left: 0 !important; top: 0 !important; }  /* pinned to the map area's corner, whatever the zoom */
   .zoom-hint { position: absolute; z-index: 2; right: 6px; bottom: 4px; padding: 2px 6px; border-radius: 4px;
                background: var(--bg); color: var(--muted); pointer-events: none; }
   @media (max-width: 640px) { .zoom-hint { display: none; } }
@@ -73,7 +74,7 @@ const svg = wrap.append("svg").attr("viewBox", `0 0 ${EW} ${EH}`).attr("preserve
   .attr("role", "img").attr("aria-label", D.title);
 const gZoom = svg.append("g");
 const hl = gZoom.append("path").attr("class", "hl");
-svg.append("rect").attr("width", EW).attr("height", EH).attr("fill", "transparent");  // catches zoom + hover
+svg.append("rect").attr("x", -EW).attr("y", -EH).attr("width", 3 * EW).attr("height", 3 * EH).attr("fill", "transparent");  // catches zoom + hover, letterbox included
 const canvas = wrap.insert("canvas", "svg").node(), ctx = canvas.getContext("2d");
 let s = 1, ox = 0, oy = 0, dpr = 1, zt = d3.zoomIdentity;
 function sizeCanvas() {
@@ -145,15 +146,23 @@ svg.on("pointermove", hoverAt).on("click", hoverAt).on("pointerleave", clearHove
 
 // ---- zoom + views ----
 const zoom = d3.zoom().scaleExtent([1, 60]).translateExtent([[0, 0], [EW, EH]])
-  .on("zoom", ev => { zt = ev.transform; gZoom.attr("transform", zt); draw(); })
+  .on("zoom", ev => { if (ev.sourceEvent) moved = true; zt = ev.transform; gZoom.attr("transform", zt); draw(); })
   .filter(ev => !ev.touches || ev.touches.length > 1);
 svg.call(zoom).style("touch-action", "pan-y pinch-zoom");
-function frame([x0, y0, x1, y1]) {
-  const k = Math.min(EW / (x1 - x0), EH / (y1 - y0));
-  return d3.zoomIdentity.translate(EW / 2, EH / 2).scale(k).translate(-(x0 + x1) / 2, -(EH - (y0 + y1) / 2));
+// Opening view: D.view fills the height and its west edge (the Battery) moves right just far enough for
+// the legend to clear Manhattan, which leans about 0.32 px east per px north. Wider windows show more
+// Queens. Screen px = o + s * (k * coord + t).
+let moved = false;
+function frame() {
+  const r = svg.node().getBoundingClientRect(), [x0, y0, x1, y1] = D.view;
+  const lg = legend.node();
+  const room = getComputedStyle(lg).position === "absolute"
+    ? Math.max(60, lg.offsetWidth + 12 - 0.32 * (r.height - lg.offsetHeight)) : 0;  // phones: legend sits below the map
+  const k = Math.min((r.width - room) / (x1 - x0), r.height / (y1 - y0)) / s;
+  return d3.zoomIdentity.translate((room - ox) / s - k * x0, (r.height / 2 - oy) / s - k * (EH - (y0 + y1) / 2)).scale(k);
 }
 
-// ---- legend (top-left: New Jersey, empty on this map) ----
+// ---- legend (upper-left corner: New Jersey, empty on this map) ----
 const legend = MapKit.legend(svg, {
   x: 0, y: EH * 0.01, width: 236,
   title: "Share of the sky you can see",
@@ -163,10 +172,10 @@ legend.append("div").attr("class", "refs").html(D.refs.slice(0, 3).filter((_, k)
   `<div><b>${label}</b><br><span class="m">${skyPct(i)}</span>${skyCircle(i, 96)}</div>`).join(""));
 legend.append("div").attr("class", "lg-note").text("Looking straight up: the center is overhead, the rim is the horizon.");
 
-new ResizeObserver(() => { sizeCanvas(); draw(); }).observe(svg.node());
+new ResizeObserver(() => { sizeCanvas(); moved ? draw() : svg.call(zoom.transform, frame()); }).observe(svg.node());
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => location.reload());
 sizeCanvas();
-svg.call(zoom.transform, frame(D.manhattan));  // opens on Manhattan; zoom out for the whole city (also draws)
+svg.call(zoom.transform, frame());  // zoom out for the whole city (also draws)
 </script>
 </body>
 </html>
