@@ -54,6 +54,13 @@
   --era-1: #8c2f22; --era-2: #d9695c; --era-3: #dfb02f; --era-4: #6f9a5e; --era-5: #74b4d4; --era-6: #1c5a94;
 }
 
+/* Aged-paper palette (tokens.json vintage). Use with <html data-palette="vintage" data-theme="light">. */
+:root[data-palette="vintage"] {
+  --bg: #f4ecd9; --ink: #3a2c1e; --muted: #6b5a45; --edge: #f4ecd9; --closed: #8f8674;
+  --ctl: #e8dcc2; --ctl-on: #fbf6ea; --accent: #1c5a94; --land: #faf5e8; --water: #7f9aa3;
+  --era-1: #8c2f22; --era-2: #d9695c; --era-3: #dfb02f; --era-4: #6f9a5e; --era-5: #74b4d4; --era-6: #1c5a94;
+}
+
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink);
@@ -213,10 +220,10 @@ body { margin: 0; background: var(--bg); color: var(--ink);
       </div>
     </article>
     <article class="card">
-      <a class="thumb" href="day06/"><img src="day06/thumb.png" alt="In Crown Heights South, 96% of buildings predate 1940. In Spring Creek, 0.4%." loading="lazy"></a>
+      <a class="thumb" href="day06/"><img src="day06/thumb.png" alt="How old is your neighborhood?" loading="lazy"></a>
       <div class="body">
         <p class="kicker">Day 6 · Vintage</p>
-        <h2><a href="day06/">In Crown Heights South, 96% of buildings predate 1940. In Spring Creek, 0.4%.</a></h2>
+        <h2><a href="day06/">How old is your neighborhood?</a></h2>
         <p class="desc">Every building in New York City, colored by when it went up and drawn in the style of an old fire insurance atlas. Hover or tap any of the 862,360 buildings to see its listed construction year, or switch to neighborhoods to see each one&#x27;s share of buildings from before 1940. Garages are left out, and many older years are rounded estimates.</p>
       </div>
     </article>
