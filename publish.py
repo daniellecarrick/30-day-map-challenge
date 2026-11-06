@@ -96,7 +96,6 @@ def gallery(days: list[dict]) -> None:
       <div class="body">
         <p class="kicker">Day {m['day']} · {escape(m['theme'])}</p>
         <h2><a href="{m['slug']}/">{escape(m['title'])}</a></h2>
-        <p class="desc">{escape(m['description'])}</p>
       </div>
     </article>""")
     latest = max(days, key=lambda d: d["day"])
@@ -123,10 +122,9 @@ def gallery(days: list[dict]) -> None:
 .card .thumb img {{ width: 100%; height: 100%; object-fit: contain; display: block; }}
 .card .body {{ padding: 14px 16px 16px; }}
 .kicker {{ margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }}
-.card h2 {{ font-family: var(--font-head); font-size: 18px; line-height: 1.25; margin: 0 0 6px; }}
+.card h2 {{ font-family: var(--font-head); font-size: 18px; line-height: 1.25; margin: 0; }}
 .card h2 a {{ color: var(--ink); text-decoration: none; }}
 .card h2 a:hover {{ text-decoration: underline; }}
-.desc {{ margin: 0; color: var(--muted); font-size: 14px; }}
 .gallery > footer {{ text-align: center; color: var(--muted); font-size: 14px; margin-top: 28px; }}
 .gallery > footer a {{ color: inherit; }}
 </style>
