@@ -1,0 +1,9 @@
+{
+  "day": 6,
+  "theme": "Vintage",
+  "title": "In Crown Heights South, 96% of buildings predate 1940. In Spring Creek, 0.4%.",
+  "description": "Every building in New York City, colored by when it went up and drawn in the style of an old fire insurance atlas. Hover or tap any of the 862,360 buildings to see its listed construction year, or switch to neighborhoods to see each one's share of buildings from before 1940. Garages are left out, and many older years are rounded estimates.",
+  "html": "out/nyc_building_age.html",
+  "png": "out/nyc_building_age.png",
+  "published": "2026-11-04"
+}
