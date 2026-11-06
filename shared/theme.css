@@ -34,6 +34,13 @@
   --era-1: #8c2f22; --era-2: #d9695c; --era-3: #dfb02f; --era-4: #6f9a5e; --era-5: #74b4d4; --era-6: #1c5a94;
 }
 
+/* Aged-paper palette (tokens.json vintage). Use with <html data-palette="vintage" data-theme="light">. */
+:root[data-palette="vintage"] {
+  --bg: #f4ecd9; --ink: #3a2c1e; --muted: #6b5a45; --edge: #f4ecd9; --closed: #8f8674;
+  --ctl: #e8dcc2; --ctl-on: #fbf6ea; --accent: #1c5a94; --land: #faf5e8; --water: #7f9aa3;
+  --era-1: #8c2f22; --era-2: #d9695c; --era-3: #dfb02f; --era-4: #6f9a5e; --era-5: #74b4d4; --era-6: #1c5a94;
+}
+
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink);
