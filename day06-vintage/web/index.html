@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en" data-palette="vintage" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New York Building Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/nyc_building_age.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  /* aged paper: faint grain drawn by the browser, no image files */
+  body { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .12 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .page { max-width: 1280px; }
+  .kicker { margin: 0 0 4px; font-weight: 600; color: var(--muted); letter-spacing: .14em; text-transform: uppercase; }
+  .lede { max-width: 700px; }
+  .map-wrap { border: 3px double var(--ink); margin-top: 4px; background: transparent; }
+  .map-wrap canvas { position: absolute; pointer-events: none; }
+  .map-wrap > svg { position: relative; cursor: grab; }
+  .nta { stroke: var(--bg); stroke-width: .6; vector-effect: non-scaling-stroke; }
+  .nta:hover { stroke: var(--ink); stroke-width: 1.5; }
+  .hl { fill: none; stroke: var(--ink); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .zoom-hint { position: absolute; z-index: 2; right: 6px; bottom: 4px; padding: 2px 6px; border-radius: 4px;
+               background: var(--bg); color: var(--muted); pointer-events: none; }
+  .loading { position: absolute; z-index: 2; left: 6px; bottom: 4px; padding: 2px 6px; border-radius: 4px; background: var(--bg); color: var(--muted); pointer-events: none; }
+  .lg-share { color: var(--muted); margin-left: auto; }
+  .legend .lg-key span:last-child { flex: 1; }
+  .legend { left: 8px !important; top: 8px !important; padding: 8px 10px; background: var(--bg); border: 1px solid var(--ink); }  /* the map area's corner, whatever the zoom */
+  .hist { margin: 8px 0 2px; width: 230px; max-width: 100%; }
+  .hist-bars { display: flex; align-items: flex-end; gap: 2px; height: 56px; border-bottom: 1px solid var(--ink); }
+  .hist-bars i { flex: 1; display: block; }
+  .hist-ticks { position: relative; height: 20px; color: var(--muted); }
+  .hist-ticks span { position: absolute; top: 1px; transform: translateX(-50%); }
+  .legend .lg-row { display: flex; justify-content: space-between; gap: 10px; }
+  @media (max-width: 640px) { .zoom-hint { display: none; } .map-wrap { border-width: 3px; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <p class="kicker">An atlas of New York City's buildings</p>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <div id="view"></div>
+    </div>
+  </header>
+  <div class="map-wrap" id="map">
+    <div class="loading" id="loading" role="status">Drawing the map…</div>
+    <span class="zoom-hint">Scroll or pinch to zoom</span>
+  </div>
+  <footer><span id="how"></span> Data: <a id="src"></a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="earcut.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+(async function () {
+const D = window.DATA;
+const [EW, EH] = D.extent;
+const tip = MapKit.tooltip();
+d3.select("#title").text(D.title);
+d3.select("#lede").text(D.lede);
+d3.select("#how").text(D.how);
+d3.select("#src").attr("href", D.source_url).text(D.source);
+d3.select("#day").text(D.day);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const eraOf = y => { let e = 0; while (e < D.era_edges.length && y >= D.era_edges[e]) e++; return e; };
+
+// ---- layers: base canvas (land, water), building canvas, svg on top for hover + neighborhoods ----
+const wrap = d3.select("#map");
+const svg = wrap.append("svg").attr("viewBox", `0 0 ${EW} ${EH}`).attr("preserveAspectRatio", "xMidYMid meet")
+  .attr("role", "img").attr("aria-label", D.title);
+const baseC = wrap.insert("canvas", "svg").node(), bldC = wrap.insert("canvas", "svg").node();
+const base = baseC.getContext("2d");
+const gl = bldC.getContext("webgl2", { antialias: true, alpha: true, premultipliedAlpha: true });
+if (!gl) { d3.select("#loading").text("This map needs WebGL, which this browser has turned off."); return; }
+const shader = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+const prog = gl.createProgram();
+gl.attachShader(prog, shader(gl.VERTEX_SHADER, `#version 300 es
+  in vec2 pos; in vec4 col; uniform vec2 k; uniform vec2 t; out vec4 c;
+  void main() { gl_Position = vec4(pos * k + t, 0, 1); gl_PointSize = 1.0; c = col; }`));
+gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, `#version 300 es
+  precision mediump float; in vec4 c; out vec4 o; void main() { o = c; }`));
+gl.bindAttribLocation(prog, 0, "pos"); gl.bindAttribLocation(prog, 1, "col");
+gl.linkProgram(prog); gl.useProgram(prog);
+const uK = gl.getUniformLocation(prog, "k"), uT = gl.getUniformLocation(prog, "t");
+const eraGL = D.eras.map(h => { const c = d3.rgb(h); return [c.r / 255, c.g / 255, c.b / 255, 1]; });
+gl.clearColor(0, 0, 0, 0);
+const gZoom = svg.append("g");
+const seq = d3.scaleLinear().domain(D.seq.map((_, i) => (i / (D.seq.length - 1)) * 100)).range(D.seq);
+const ntaSel = gZoom.append("g").attr("class", "ntas").style("display", "none").selectAll("path").data(D.feats).join("path")
+  .attr("class", "nta").attr("d", d => d.d).attr("fill", d => (d.pre === undefined ? css("--land") : seq(d.pre)))
+  .on("pointermove", (ev, d) => tip.show(ev, ntaTip(d))).on("pointerleave", () => tip.hide());
+const hl = gZoom.append("path").attr("class", "hl");
+const landPath = new Path2D(D.land), ringPaths = D.rings.map(r => new Path2D(r));
+
+let view = "bldg", s = 1, ox = 0, oy = 0, dpr = 1, zt = d3.zoomIdentity, cw = 0, ch = 0;
+function sizeCanvas() {
+  const r = svg.node().getBoundingClientRect(), h = wrap.node().getBoundingClientRect();
+  dpr = window.devicePixelRatio || 1;
+  // the wrap's border offsets absolutely placed children
+  const left = r.left - h.left - wrap.node().clientLeft, top = r.top - h.top - wrap.node().clientTop;
+  for (const c of [baseC, bldC]) {
+    Object.assign(c.style, { left: left + "px", top: top + "px", width: r.width + "px", height: r.height + "px" });
+    c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
+  }
+  cw = baseC.width; ch = baseC.height; gl.viewport(0, 0, cw, ch);
+  s = Math.min(r.width / EW, r.height / EH); ox = (r.width - EW * s) / 2; oy = (r.height - EH * s) / 2;
+}
+
+function drawBase() {
+  const k = s * zt.k * dpr;
+  base.setTransform(1, 0, 0, 1, 0, 0); base.clearRect(0, 0, cw, ch);
+  base.setTransform(k, 0, 0, k, dpr * (ox + s * zt.x), dpr * (oy + s * zt.y));
+  base.lineJoin = "round";
+  base.strokeStyle = css("--water");
+  ringPaths.forEach((p, i) => { base.globalAlpha = 0.85 - i * 0.18; base.lineWidth = (dpr * (0.8 - i * 0.1)) / k; base.stroke(p); });
+  base.globalAlpha = 1;
+  base.fillStyle = css("--land"); base.fill(landPath, "evenodd");
+  base.strokeStyle = css("--ink"); base.lineWidth = (dpr * 0.6) / k; base.stroke(landPath);
+}
+
+const DOTS_BELOW = 0.25;  // device px per metre: past this even small houses are bigger than a dot
+const loaded = [];       // one entry per borough that has arrived
+function drawBuildings() {
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  if (view !== "bldg") return;
+  const k = s * zt.k * dpr, tx = dpr * (ox + s * zt.x), ty = dpr * (oy + s * zt.y);
+  gl.uniform2f(uK, (2 * k) / cw, (-2 * k) / ch);
+  gl.uniform2f(uT, (2 * tx) / cw - 1, 1 - (2 * ty) / ch);
+  for (const C of loaded) {
+    gl.bindVertexArray(C.vao);
+    eraGL.forEach((c, e) => {
+      gl.vertexAttrib4f(1, c[0], c[1], c[2], c[3]);
+      gl.drawElements(gl.TRIANGLES, C.eraCount[e], gl.UNSIGNED_INT, C.eraAt[e] * 4);
+    });
+  }
+  if (k < DOTS_BELOW) for (const C of loaded) { gl.bindVertexArray(C.dots); gl.drawArrays(gl.POINTS, 0, C.N); }
+}
+
+let queued = false;
+function draw() {
+  if (queued) return;
+  queued = true;
+  requestAnimationFrame(() => { queued = false; drawBase(); drawBuildings(); });
+}
+
+// ---- hover: the building under or nearest the pointer, within ~12 px ----
+function footDist(C, i, mx, my) {   // 0 inside the footprint (courtyards count as outside), else metres to its edge
+  const { firstRing, ringAt, V } = C;
+  let inside = false, d2 = Infinity;
+  for (let r = firstRing[i]; r < firstRing[i + 1]; r++) {
+    const a = ringAt[r], b = ringAt[r + 1];
+    for (let v = a, u = b - 1; v < b; u = v++) {
+      const x1 = V[2 * u], y1 = V[2 * u + 1], x2 = V[2 * v], y2 = V[2 * v + 1];
+      if ((y1 > my) !== (y2 > my) && mx < ((x2 - x1) * (my - y1)) / (y2 - y1) + x1) inside = !inside;
+      const ex = x2 - x1, ey = y2 - y1, len = ex * ex + ey * ey;
+      const q = len ? Math.max(0, Math.min(1, ((mx - x1) * ex + (my - y1) * ey) / len)) : 0;
+      const px = x1 + q * ex - mx, py = y1 + q * ey - my, e2 = px * px + py * py;
+      if (e2 < d2) d2 = e2;
+    }
+  }
+  return inside ? 0 : Math.sqrt(d2);
+}
+function nearest(mx, my, rad) {
+  let best = null, bd = rad;
+  const r = rad + D.cell, cx0 = Math.floor((mx - r) / D.cell), cx1 = Math.floor((mx + r) / D.cell);
+  const cy0 = Math.floor((my - r) / D.cell), cy1 = Math.floor((my + r) / D.cell);
+  for (const C of loaded) {
+    const scan = i => {
+      const j = 4 * i;   // the bounding box rules out almost everything cheaply
+      if (Math.hypot(Math.max(C.Box[j] - mx, 0, mx - C.Box[j + 2]), Math.max(C.Box[j + 1] - my, 0, my - C.Box[j + 3])) >= bd) return;
+      const d = footDist(C, i, mx, my); if (d < bd) { bd = d; best = [C, i]; }
+    };
+    for (let gy = cy0; gy <= cy1; gy++) for (let gx = cx0; gx <= cx1; gx++) {
+      if (gx < 0 || gx >= D.ncol) continue;
+      const e = C.cellStart.get(gy * D.ncol + gx);
+      if (e) for (let i = e[0], end = e[0] + e[1]; i < end; i++) scan(i);
+    }
+    C.big.forEach(scan);
+  }
+  return best;
+}
+function footPath(C, i) {
+  const { firstRing, ringAt, V } = C;
+  let d = "";
+  for (let r = firstRing[i]; r < firstRing[i + 1]; r++) {
+    for (let v = ringAt[r]; v < ringAt[r + 1]; v++) d += (v === ringAt[r] ? "M" : "L") + V[2 * v] + " " + V[2 * v + 1];
+    d += "Z";
+  }
+  return d;
+}
+const fmtPre = v => (v < 1 ? v.toFixed(1) : Math.round(v)) + "%";
+function bldgTip(C, i) {
+  const nm = D.names[C.bn[i]];
+  const where = nm ? `<br><span class="m">${nm[0]}, ${nm[1]}: ${fmtPre(nm[2])} of buildings predate 1940</span>` : "";
+  return `<b>Built ${C.year[i]}</b>${D.era_labels[C.Era[i]]}${where}`;
+}
+function miniHist(h) {
+  const total = d3.sum(h), top = d3.max(h), n = h.length, cut = D.hist_edges.indexOf(1940) + 1;
+  const bars = h.map((v, i) => `<i style="height:${v ? Math.max(2, (v / top) * 100) : 0}%;background:${i < cut ? D.seq[D.seq.length - 1] : D.seq[2]}"></i>`).join("");
+  const ticks = [1880, 1940, 2000].map(y => `<span style="left:${((D.hist_edges.indexOf(y) + 1) / n) * 100}%">${y}</span>`).join("");
+  const peak = h.indexOf(top);
+  return `<div class="hist"><div class="hist-bars">${bars}</div><div class="hist-ticks">${ticks}</div></div>` +
+    `<span class="m">Most built ${D.hist_labels[peak]}: ${fmtPre((top / total) * 100)}. Dark bars predate 1940.</span>`;
+}
+function ntaTip(d) {
+  if (d.pre === undefined) return `<b>${d.name}</b><span class="m">${d.boro}: a park, airport or similar area, not ranked</span>`;
+  return `<b>${d.name}</b><span class="m">${d.boro}</span><br>${fmtPre(d.pre)} of buildings predate 1940${miniHist(d.h)}<br><span class="m">Median year ${d.med}; ${fmtPre(d.post)} since 2000; ${d.n.toLocaleString()} buildings</span>`;
+}
+function hoverAt(ev) {
+  if (view !== "bldg") return;
+  const r = svg.node().getBoundingClientRect(), ppm = Math.min(r.width / EW, r.height / EH) * zt.k;
+  const [mx, my] = zt.invert(d3.pointer(ev, svg.node()));
+  const hit = nearest(mx, my, Math.min(12 / ppm, 400));
+  if (!hit) { hl.attr("d", null); tip.hide(); return; }
+  hl.attr("d", footPath(...hit));
+  tip.show(ev, bldgTip(...hit));
+}
+const catcher = svg.append("rect").attr("width", EW).attr("height", EH).attr("fill", "transparent");
+svg.on("pointermove", hoverAt).on("click", hoverAt).on("pointerleave", () => { hl.attr("d", null); tip.hide(); });
+
+// ---- zoom + views ----
+const zoom = d3.zoom().scaleExtent([1, 120]).translateExtent([[0, 0], [EW, EH]])
+  .on("zoom", ev => { zt = ev.transform; gZoom.attr("transform", zt); draw(); })
+  .filter(ev => !ev.touches || ev.touches.length > 1);
+svg.call(zoom).style("touch-action", "pan-y pinch-zoom");
+
+// ---- legends: NJ, the top-left of the map, is empty ----
+const eraLegend = MapKit.legend(svg, {
+  x: 0, y: EH * 0.01, width: 228, title: "Year built, and share\nof all buildings",
+  keys: D.era_labels.map((l, i) => ({ label: `${l} · ${Math.round(D.share[i])}%`, draw: g => g.append("rect").attr("x", -7).attr("y", -7).attr("width", 14).attr("height", 14).attr("fill", D.eras[i]).attr("stroke", css("--ink")).attr("stroke-width", .4) })),
+});
+const shareLegend = MapKit.legend(svg, {
+  x: 0, y: EH * 0.01, width: 228, title: "Share of each neighborhood's\nbuildings built before 1940",
+  stops: D.seq.map((c, i) => [(i / (D.seq.length - 1)) * 100, c]),
+  ticks: [[0, "0%"], [100, "100%"]],
+});
+shareLegend.style("display", "none");
+
+function setView(v) {
+  view = v;
+  ntaSel.style("display", null);
+  gZoom.select(".ntas").style("display", v === "nta" ? null : "none");
+  catcher.style("pointer-events", v === "nta" ? "none" : null);
+  // neighborhoods sit under the catcher only in building view
+  eraLegend.style("display", v === "bldg" ? null : "none");
+  shareLegend.style("display", v === "nta" ? null : "none");
+  hl.attr("d", null); tip.hide();
+  draw();
+}
+
+new ResizeObserver(() => { sizeCanvas(); draw(); }).observe(svg.node());
+sizeCanvas();
+MapKit.segmented("#view", [{ value: "bldg", label: "Every building" }, { value: "nta", label: "By neighborhood" }], setView, "bldg");
+draw();
+
+// ---- buildings: each borough arrives as its own script tag, is unpacked, then appears ----
+const pause = () => new Promise(r => setTimeout(r, 0));
+async function loadChunk(spec) {
+  const text = atob(spec.blob), raw = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) raw[i] = text.charCodeAt(i);
+  const buf = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+  const N = spec.count, NC = spec.ncell, NR = spec.nring, NV = spec.nvert;
+  let o = 0;
+  const take = (T, n) => { const a = new T(buf.slice(o, o + n * T.BYTES_PER_ELEMENT)); o += n * T.BYTES_PER_ELEMENT; return a; };
+  const cellId = take(Uint32Array, NC), cellN = take(Uint16Array, NC);
+  const ringsOf = take(Uint16Array, N), bn = take(Uint8Array, N), year = take(Uint16Array, N), ringLen = take(Uint16Array, NR);
+  const bytes = () => { const a = new Uint8Array(buf, o, NV); o += NV; return a; };
+  const x0b = bytes(), x1b = bytes(), x2b = bytes(), y0b = bytes(), y1b = bytes(), y2b = bytes();
+
+  // V: every vertex in metres. ringAt: where each ring starts in V. firstRing: each building's first ring.
+  const V = new Float32Array(NV * 2), ringAt = new Uint32Array(NR + 1), firstRing = new Uint32Array(N + 1);
+  for (let i = 0, x = 0, y = 0; i < NV; i++) {
+    const zx = x0b[i] | (x1b[i] << 8) | (x2b[i] << 16), zy = y0b[i] | (y1b[i] << 8) | (y2b[i] << 16);
+    x += (zx >>> 1) ^ -(zx & 1); y += (zy >>> 1) ^ -(zy & 1);
+    V[2 * i] = x / 2; V[2 * i + 1] = y / 2;
+  }
+  for (let r = 0; r < NR; r++) ringAt[r + 1] = ringAt[r] + ringLen[r];
+  for (let i = 0; i < N; i++) firstRing[i + 1] = firstRing[i] + ringsOf[i];
+
+  const Era = new Uint8Array(N), Box = new Float32Array(N * 4), big = [], cellStart = new Map();
+  const triCap = new Uint32Array(D.eras.length);
+  for (let i = 0; i < N; i++) {
+    const e = eraOf(year[i]), r0 = firstRing[i], v0 = ringAt[r0], v1 = ringAt[r0 + 1], end = ringAt[firstRing[i + 1]];
+    Era[i] = e;
+    triCap[e] += (end - v0) - 2 + 2 * (ringsOf[i] - 1);
+    let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+    for (let v = v0; v < v1; v++) { const x = V[2 * v], y = V[2 * v + 1]; if (x < a) a = x; if (x > c) c = x; if (y < b) b = y; if (y > d) d = y; }
+    Box[4 * i] = a; Box[4 * i + 1] = b; Box[4 * i + 2] = c; Box[4 * i + 3] = d;
+    if (Math.max(c - a, d - b) > D.cell) big.push(i);
+  }
+  for (let c = 0, i = 0; c < NC; i += cellN[c++]) cellStart.set(cellId[c], [i, cellN[c]]);
+
+  // triangles for the GPU, grouped by era so each era is one draw call
+  const eraAt = new Uint32Array(D.eras.length), eraCount = new Uint32Array(D.eras.length);
+  for (let e = 1; e < eraAt.length; e++) eraAt[e] = eraAt[e - 1] + triCap[e - 1] * 3;
+  const Idx = new Uint32Array(eraAt[eraAt.length - 1] + triCap[triCap.length - 1] * 3);
+  let last = performance.now();
+  for (let i = 0; i < N; i++) {
+    const e = Era[i], r0 = firstRing[i], r1 = firstRing[i + 1], v0 = ringAt[r0], v1 = ringAt[r1];
+    let at = eraAt[e] + eraCount[e];
+    const holes = [];
+    for (let r = r0 + 1; r < r1; r++) holes.push(ringAt[r] - v0);
+    const tri = earcut(V.subarray(2 * v0, 2 * v1), holes.length ? holes : null);
+    for (let t = 0; t < tri.length; t++) Idx[at++] = tri[t] + v0;
+    eraCount[e] += tri.length;
+    // keep zoom and hover responsive on slower machines
+    if (!(i & 4095) && performance.now() - last > 30) { await pause(); last = performance.now(); }
+  }
+
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, V, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, Idx, gl.STATIC_DRAW);
+  // far out, most buildings are under a pixel: one dot each, in map order so no era is always on top
+  const dotPos = new Float32Array(N * 2), dotCol = new Uint8Array(N * 4);
+  for (let i = 0; i < N; i++) {
+    dotPos[2 * i] = (Box[4 * i] + Box[4 * i + 2]) / 2; dotPos[2 * i + 1] = (Box[4 * i + 1] + Box[4 * i + 3]) / 2;
+    const c = eraGL[Era[i]];
+    dotCol[4 * i] = c[0] * 255; dotCol[4 * i + 1] = c[1] * 255; dotCol[4 * i + 2] = c[2] * 255; dotCol[4 * i + 3] = 255;
+  }
+  const dots = gl.createVertexArray(); gl.bindVertexArray(dots);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, dotPos, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, dotCol, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, true, 0, 0);
+  gl.bindVertexArray(null);
+  return { N, bn, year, V, ringAt, firstRing, Era, Box, big, cellStart, eraAt, eraCount, vao, dots };
+}
+
+const status = document.getElementById("loading"), timing = window.__timing = { ready: performance.now(), boroughs: {} };
+const queue = window.__chunks = window.__chunks || [];
+let next = 0, busy = false;
+async function pump() {
+  if (busy) return;
+  busy = true;
+  try {
+    while (next < queue.length) {
+      const spec = queue[next++];
+      status.textContent = `Adding buildings: ${spec.name}…`;
+      await pause();
+      loaded.push(await loadChunk(spec));
+      timing.boroughs[spec.name] = Math.round(performance.now());
+      draw();
+      await pause();
+    }
+  } catch (err) { fail(err); return; } finally { busy = false; }
+  if (next >= D.chunk_names.length) status.remove();
+}
+queue.push = c => { Array.prototype.push.call(queue, c); pump(); };
+pump();
+window.__atlas = { loaded, draw, footPath, nearest };
+})().catch(fail);
+function fail(err) {
+  const el = document.getElementById("loading");
+  if (el) el.textContent = `The map couldn't finish loading (${err.message}). Try reloading, or another browser.`;
+  console.error(err);
+}
+</script>
+</body>
+</html>

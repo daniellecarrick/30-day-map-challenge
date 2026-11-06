@@ -34,11 +34,17 @@ SEQUENTIAL_AMBER = TOKENS["scales"]["sequential_amber"]
 CATEGORICAL = TOKENS["scales"]["categorical_light"]
 SUBWAY = {k: v for k, v in TOKENS["scales"]["subway"].items()}   # trunk -> {color, text}
 MAP = TOKENS["map"]
+VINTAGE = TOKENS["vintage"]              # aged-paper palette: S.apply(palette="vintage")
 
 
-def apply() -> None:
+def apply(palette: str | None = None) -> None:
     """Register the series fonts and set matplotlib defaults so every PNG looks the same.
-    Body text defaults to Raleway; S.title / S.panel_heading use Bitter."""
+    Body text defaults to Raleway; S.title / S.panel_heading use Bitter.
+    palette="vintage" swaps the paper and ink colors for the aged-paper palette."""
+    global BG, INK, MUTED, EDGE, CLOSED
+    if palette == "vintage":
+        v = VINTAGE["color"]
+        BG, INK, MUTED, EDGE, CLOSED = v["bg"], v["ink"], v["muted"], v["edge"], v["closed"]
     for f in TOKENS["font"]["files"]:
         font_manager.fontManager.addfont(str(SHARED / f))
     rcParams.update({

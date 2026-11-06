@@ -7,7 +7,9 @@
     return {
       show(ev, html) {
         el.html(html).style("opacity", 1);
-        el.style("left", Math.min(ev.clientX + 14, innerWidth - 270) + "px").style("top", ev.clientY + 14 + "px");
+        const h = el.node().offsetHeight, below = ev.clientY + 14 + h <= innerHeight;  // flip above the pointer near the bottom
+        el.style("left", Math.min(ev.clientX + 14, innerWidth - 270) + "px")
+          .style("top", (below ? ev.clientY + 14 : Math.max(4, ev.clientY - 14 - h)) + "px");
       },
       hide() { el.style("opacity", 0); },
     };
