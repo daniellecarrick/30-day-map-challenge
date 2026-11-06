@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OMNY vs MetroCard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .station { fill-opacity: .85; stroke: var(--edge); stroke-width: .5; }
+  .station.on { stroke: var(--ink); stroke-width: 1.5; }
+  .boundary { fill: none; }
+  .size-key { display: block; margin-top: 8px; overflow: visible; }
+  .size-key circle { fill: none; stroke: var(--muted); }
+  .size-key text { fill: var(--muted); font-size: 14px; font-family: var(--font); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <div id="year" aria-label="Which period to show"></div>
+      <span class="stat" id="stat"></span>
+    </div>
+  </header>
+  <div class="map-wrap" id="map"></div>
+  <footer>Dot size is the gap between OMNY and MetroCard entries, on one scale for both periods. Stations are MTA station complexes; the Roosevelt Island Tramway is left out.
+    Data: <a href="https://data.ny.gov/d/wujg-7c2s">MTA Subway Hourly Ridership 2020–2024</a> and <a href="https://data.ny.gov/d/5wq4-mkjj">2025 onward</a>; MetroCard sales date: <a href="https://www.mta.info/press-release/mta-sunset-metrocard-sales-end-of-year">MTA</a> · Remake of my <a href="https://public.tableau.com/views/OMNYvsMetrocardbystationin2024/Map">2024 Tableau map</a> · #30DayMapChallenge Day 7: 10 minute map</footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const W = 640, H = 640;
+// Frame the four main boroughs plus Staten Island's two stations; the rest of Staten Island runs off the map.
+const frame = { type: "GeometryCollection", geometries: [
+  ...D.boroughs.features.filter(f => f.properties.boroname !== "Staten Island").map(f => f.geometry),
+  { type: "MultiPoint", coordinates: D.stations.filter(s => s.boro === "Staten Island").map(s => [s.x, s.y]) },
+] };
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[12, 12], [W - 12, H - 12]], frame);
+const path = d3.geoPath(proj);
+const tip = MapKit.tooltip();
+const fmt = d3.format(",");
+
+d3.select("#title").html(D.title.replace(". See", ".<br />See"));
+
+const stations = D.stations.map(s => { const [px, py] = proj([s.x, s.y]); return { ...s, px, py }; });
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
+svg.append("g").selectAll("path").data(D.boroughs.features).join("path").attr("class", "boundary").attr("d", path);
+const dots = svg.append("g").selectAll("circle").data(stations).join("circle")
+  .attr("class", "station").attr("cx", d => d.px).attr("cy", d => d.py);
+
+// One scale across both years, so dots stay comparable when you switch years.
+const radius = d3.scaleSqrt().domain([0, d3.max(stations, s => Math.max(s[2024]?.gap ?? 0, s[2026]?.gap ?? 0))]).range([0, 18]);
+const SIZE_KEYS = [[100000, "100,000"], [1000000, "1,000,000 more entries"]];
+const RMIN = 1.9;
+let year = "2024", first = true;
+
+// Left of Manhattan, over the empty New Jersey side
+const legend = MapKit.legend(svg, {
+  x: 10, y: 10, width: 240,
+  keys: [
+    { draw: g => g.append("circle").attr("r", 6).attr("fill", D.colors.OMNY), label: "More OMNY entries" },
+    { draw: g => g.append("circle").attr("r", 6).attr("fill", D.colors.MetroCard), label: "More MetroCard entries" },
+  ],
+});
+const sizeKey = legend.append("svg").attr("class", "size-key");
+
+function drawSizeKey() {
+  const r = svg.node().getBoundingClientRect();
+  const k = Math.min(r.width / W, r.height / H) || 1;   // legend is HTML, so match the map's drawn scale
+  const rows = SIZE_KEYS.map(([v, label]) => ({ r: radius(v) * k, label }));
+  const big = rows[1].r, h = Math.max(big * 2 + 4, 36);
+  sizeKey.attr("width", 240).attr("height", h);
+  sizeKey.selectAll("circle").data(rows).join("circle")
+    .attr("cx", big + 1).attr("cy", d => h - 2 - d.r).attr("r", d => d.r);
+  sizeKey.selectAll("text").data(rows).join("text")
+    .attr("x", big * 2 + 10).attr("y", (d, i) => (i ? 14 : h - 2)).text(d => d.label);
+}
+new ResizeObserver(drawSizeKey).observe(svg.node());
+
+function render() {
+  const s = D.summary[year], val = d => d[year]?.gap ?? 0;
+  d3.select("#lede").text(`Each dot is a subway station, colored by whether OMNY or MetroCard had more entries, ${D.period[year]}. `
+    + `OMNY made up ${s.share}% of entries citywide and was the majority at ${s.wins} of ${s.n} stations.`
+    + " MetroCard sales ended on December 31, 2025.");
+  d3.select("#stat").text("OMNY majority: " + D.tally[year].map(t => `${t.boro} ${t.omny} of ${t.stations}`).join(" · "));
+  dots.sort((a, b) => val(b) - val(a));   // largest first so small stations stay on top
+  const motion = !first && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  (motion ? dots.transition().duration(500) : dots)
+    .attr("r", d => (d[year] ? Math.max(RMIN, radius(val(d))) : 0))
+    .attr("fill", d => (d[year] ? D.colors[d[year].winner] : "none"));
+  first = false;
+  drawSizeKey();
+}
+
+function tipHtml(d) {
+  const v = d[year];
+  if (!v) return `<b>${d.name}</b><span class="m">${d.boro}</span><br>No entries in ${D.period[year]}`;
+  const share = v.winner === "OMNY" ? v.pct : +(100 - v.pct).toFixed(1);
+  return `<b>${d.name}</b><span class="m">${d.boro}</span><br>${share}% of entries on ${v.winner}, ${D.period[year]}<br>`
+    + `OMNY ${fmt(v.omny)}<br>MetroCard ${fmt(v.mc)}<br>Gap: ${fmt(v.gap)} entries`;
+}
+MapKit.nearestHover(svg, stations, {
+  x: d => d.px, y: d => d.py, radius: 18,
+  onEnter(ev, d) { dots.classed("on", s => s === d); tip.show(ev, tipHtml(d)); },
+  onLeave() { dots.classed("on", false); tip.hide(); },
+});
+
+MapKit.segmented("#year", [{ value: "2024", label: "2024" }, { value: "2026", label: "2026" }],
+  v => { year = v; render(); }, "2024");
+</script>
+</body>
+</html>

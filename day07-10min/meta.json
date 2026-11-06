@@ -1,0 +1,9 @@
+{
+  "day": 7,
+  "theme": "10 minute map",
+  "title": "MetroCard sales ended in 2025. See how OMNY adoption changed across the city.",
+  "description": "A remake of my 2024 Tableau map, updated with the latest data. Each dot is a subway station, colored by whether OMNY or MetroCard had more entries and sized by the gap between them. The 2024 view shows how unevenly OMNY had caught on across the city. The 2026 view shows where things stand after MetroCard sales ended on December 31, 2025.",
+  "html": "out/omny_vs_metrocard.html",
+  "png": "out/omny_vs_metrocard.png",
+  "published": "2026-11-06"
+}
