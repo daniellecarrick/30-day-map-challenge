@@ -103,7 +103,7 @@ def make_png(boroughs, years, title):
                fontsize=S.SIZE["legend"], title="Bigger dot = wider gap, same scale on both maps",
                title_fontsize=S.SIZE["legend"])
     S.title(fig, title, y=0.985)
-    S.credit(fig, "Data: MTA Subway Hourly Ridership  ·  Remake of my 2024 Tableau map  ·  "
+    S.credit(fig, "Data: MTA Subway Hourly Ridership  ·  Staten Island Railway collects fares at only 2 of its 21 stations  ·  Remake of my 2024 Tableau map  ·  "
                   f"#30DayMapChallenge {DAY}")
     fig.savefig(OUT / "omny_vs_metrocard.png", dpi=S.MAP["png_dpi"])
 
