@@ -1,0 +1,855 @@
+station_complex_id,station_complex,borough,latitude,longitude,transit_mode,payment_method,entries
+1,"Astoria-Ditmars Blvd (N,W)",Queens,40.775036,-73.91203,subway,metrocard,135
+1,"Astoria-Ditmars Blvd (N,W)",Queens,40.775036,-73.91203,subway,omny,315885
+10,"49 St (N,R,W)",Manhattan,40.7599,-73.98414,subway,metrocard,768
+10,"49 St (N,R,W)",Manhattan,40.7599,-73.98414,subway,omny,673691
+100,"Hewes St (M,J)",Brooklyn,40.70687,-73.95343,subway,metrocard,121
+100,"Hewes St (M,J)",Brooklyn,40.70687,-73.95343,subway,omny,61233
+101,"Marcy Av (M,J,Z)",Brooklyn,40.70836,-73.957756,subway,metrocard,449
+101,"Marcy Av (M,J,Z)",Brooklyn,40.70836,-73.957756,subway,omny,300218
+103,"Bowery (J,Z)",Manhattan,40.72028,-73.99391,subway,metrocard,170
+103,"Bowery (J,Z)",Manhattan,40.72028,-73.99391,subway,omny,87363
+107,"Broad St (J,Z)",Manhattan,40.706474,-74.011055,subway,metrocard,373
+107,"Broad St (J,Z)",Manhattan,40.706474,-74.011055,subway,omny,125016
+108,Middle Village-Metropolitan Av (M),Queens,40.711395,-73.8896,subway,metrocard,821
+108,Middle Village-Metropolitan Av (M),Queens,40.711395,-73.8896,subway,omny,84031
+109,Fresh Pond Rd (M),Queens,40.706184,-73.895874,subway,metrocard,140
+109,Fresh Pond Rd (M),Queens,40.706184,-73.895874,subway,omny,127280
+110,Forest Av (M),Queens,40.704422,-73.903076,subway,metrocard,152
+110,Forest Av (M),Queens,40.704422,-73.903076,subway,omny,102690
+111,Seneca Av (M),Queens,40.702763,-73.90774,subway,metrocard,64
+111,Seneca Av (M),Queens,40.702763,-73.90774,subway,omny,67616
+113,Knickerbocker Av (M),Brooklyn,40.698666,-73.91971,subway,metrocard,672
+113,Knickerbocker Av (M),Brooklyn,40.698666,-73.91971,subway,omny,102487
+114,Central Av (M),Brooklyn,40.697857,-73.9274,subway,metrocard,176
+114,Central Av (M),Brooklyn,40.697857,-73.9274,subway,omny,96527
+118,3 Av (L),Manhattan,40.73285,-73.98612,subway,metrocard,134
+118,3 Av (L),Manhattan,40.73285,-73.98612,subway,omny,155122
+119,1 Av (L),Manhattan,40.730953,-73.98163,subway,metrocard,564
+119,1 Av (L),Manhattan,40.730953,-73.98163,subway,omny,581516
+120,Bedford Av (L),Brooklyn,40.717304,-73.95687,subway,metrocard,413
+120,Bedford Av (L),Brooklyn,40.717304,-73.95687,subway,omny,774933
+122,Graham Av (L),Brooklyn,40.714565,-73.94405,subway,metrocard,212
+122,Graham Av (L),Brooklyn,40.714565,-73.94405,subway,omny,212428
+123,Grand St (L),Brooklyn,40.711926,-73.94067,subway,metrocard,574
+123,Grand St (L),Brooklyn,40.711926,-73.94067,subway,omny,133635
+124,Montrose Av (L),Brooklyn,40.70774,-73.93985,subway,metrocard,147
+124,Montrose Av (L),Brooklyn,40.70774,-73.93985,subway,omny,162890
+125,Morgan Av (L),Brooklyn,40.706154,-73.93314,subway,metrocard,260
+125,Morgan Av (L),Brooklyn,40.706154,-73.93314,subway,omny,182412
+126,Jefferson St (L),Brooklyn,40.706608,-73.92291,subway,metrocard,441
+126,Jefferson St (L),Brooklyn,40.706608,-73.92291,subway,omny,216372
+127,DeKalb Av (L),Brooklyn,40.70381,-73.91843,subway,metrocard,441
+127,DeKalb Av (L),Brooklyn,40.70381,-73.91843,subway,omny,274539
+129,Halsey St (L),Queens,40.695602,-73.90408,subway,metrocard,443
+129,Halsey St (L),Queens,40.695602,-73.90408,subway,omny,179570
+13,"28 St (R,W)",Manhattan,40.745495,-73.98869,subway,metrocard,186
+13,"28 St (R,W)",Manhattan,40.745495,-73.98869,subway,omny,293016
+130,Wilson Av (L),Brooklyn,40.688763,-73.904045,subway,metrocard,193
+130,Wilson Av (L),Brooklyn,40.688763,-73.904045,subway,omny,105841
+131,Bushwick Av-Aberdeen St (L),Brooklyn,40.68283,-73.90525,subway,metrocard,175
+131,Bushwick Av-Aberdeen St (L),Brooklyn,40.68283,-73.90525,subway,omny,59221
+133,Atlantic Av (L),Brooklyn,40.675346,-73.9031,subway,metrocard,302
+133,Atlantic Av (L),Brooklyn,40.675346,-73.9031,subway,omny,51155
+134,Sutter Av (L),Brooklyn,40.66937,-73.90198,subway,metrocard,295
+134,Sutter Av (L),Brooklyn,40.66937,-73.90198,subway,omny,55874
+135,Livonia Av (L),Brooklyn,40.66404,-73.90057,subway,metrocard,450
+135,Livonia Av (L),Brooklyn,40.66404,-73.90057,subway,omny,60312
+136,New Lots Av (L),Brooklyn,40.658733,-73.89923,subway,metrocard,590
+136,New Lots Av (L),Brooklyn,40.658733,-73.89923,subway,omny,76725
+137,East 105 St (L),Brooklyn,40.650574,-73.89948,subway,metrocard,306
+137,East 105 St (L),Brooklyn,40.650574,-73.89948,subway,omny,56849
+138,Canarsie-Rockaway Pkwy (L),Brooklyn,40.646652,-73.90185,subway,metrocard,2557
+138,Canarsie-Rockaway Pkwy (L),Brooklyn,40.646652,-73.90185,subway,omny,241909
+14,"23 St (R,W)",Manhattan,40.741302,-73.98934,subway,metrocard,433
+14,"23 St (R,W)",Manhattan,40.741302,-73.98934,subway,omny,463239
+141,Park Pl (S),Brooklyn,40.67477,-73.95763,subway,metrocard,104
+141,Park Pl (S),Brooklyn,40.67477,-73.95763,subway,omny,36810
+143,Inwood-207 St (A),Manhattan,40.868073,-73.9199,subway,metrocard,2621
+143,Inwood-207 St (A),Manhattan,40.868073,-73.9199,subway,omny,179061
+144,Dyckman St (A),Manhattan,40.86549,-73.92727,subway,metrocard,305
+144,Dyckman St (A),Manhattan,40.86549,-73.92727,subway,omny,139660
+145,190 St (A),Manhattan,40.85902,-73.93418,subway,metrocard,65
+145,190 St (A),Manhattan,40.85902,-73.93418,subway,omny,95378
+146,181 St (A),Manhattan,40.851696,-73.937965,subway,metrocard,583
+146,181 St (A),Manhattan,40.851696,-73.937965,subway,omny,207390
+147,175 St (A),Manhattan,40.84739,-73.939705,subway,metrocard,657
+147,175 St (A),Manhattan,40.84739,-73.939705,subway,omny,215429
+149,163 St-Amsterdam Av (C),Manhattan,40.836014,-73.939896,subway,metrocard,495
+149,163 St-Amsterdam Av (C),Manhattan,40.836014,-73.939896,subway,omny,77438
+150,155 St (C),Manhattan,40.830517,-73.94151,subway,metrocard,189
+150,155 St (C),Manhattan,40.830517,-73.94151,subway,omny,50197
+151,"145 St (A,C,B,D)",Manhattan,40.824783,-73.944214,subway,metrocard,975
+151,"145 St (A,C,B,D)",Manhattan,40.824783,-73.944214,subway,omny,484669
+152,"135 St (C,B)",Manhattan,40.817894,-73.94765,subway,metrocard,390
+152,"135 St (C,B)",Manhattan,40.817894,-73.94765,subway,omny,115655
+153,"125 St (A,C,B,D)",Manhattan,40.811108,-73.95235,subway,metrocard,857
+153,"125 St (A,C,B,D)",Manhattan,40.811108,-73.95235,subway,omny,609187
+154,"116 St (C,B)",Manhattan,40.805084,-73.95488,subway,metrocard,545
+154,"116 St (C,B)",Manhattan,40.805084,-73.95488,subway,omny,128043
+155,"Cathedral Pkwy (110 St) (C,B)",Manhattan,40.800602,-73.95816,subway,metrocard,301
+155,"Cathedral Pkwy (110 St) (C,B)",Manhattan,40.800602,-73.95816,subway,omny,170295
+156,"103 St (C,B)",Manhattan,40.796093,-73.96146,subway,metrocard,301
+156,"103 St (C,B)",Manhattan,40.796093,-73.96146,subway,omny,99033
+157,"96 St (C,B)",Manhattan,40.79164,-73.9647,subway,metrocard,423
+157,"96 St (C,B)",Manhattan,40.79164,-73.9647,subway,omny,203234
+158,"86 St (C,B)",Manhattan,40.78587,-73.96892,subway,metrocard,366
+158,"86 St (C,B)",Manhattan,40.78587,-73.96892,subway,omny,236451
+159,"81 St-Museum of Natural History (C,B)",Manhattan,40.781433,-73.972145,subway,metrocard,323
+159,"81 St-Museum of Natural History (C,B)",Manhattan,40.781433,-73.972145,subway,omny,285144
+16,"8 St-NYU (R,W)",Manhattan,40.730328,-73.99263,subway,metrocard,766
+16,"8 St-NYU (R,W)",Manhattan,40.730328,-73.99263,subway,omny,425695
+160,"72 St (C,B)",Manhattan,40.775593,-73.97641,subway,metrocard,407
+160,"72 St (C,B)",Manhattan,40.775593,-73.97641,subway,omny,244340
+162,"50 St (C,E)",Manhattan,40.762455,-73.985985,subway,metrocard,663
+162,"50 St (C,E)",Manhattan,40.762455,-73.985985,subway,omny,510421
+164,"34 St-Penn Station (A,C,E)",Manhattan,40.75229,-73.99339,subway,metrocard,3320
+164,"34 St-Penn Station (A,C,E)",Manhattan,40.75229,-73.99339,subway,omny,1804246
+165,"23 St (C,E)",Manhattan,40.745907,-73.99804,subway,metrocard,1062
+165,"23 St (C,E)",Manhattan,40.745907,-73.99804,subway,omny,478156
+167,"W 4 St-Wash Sq (A,C,E,B,D,F,M)",Manhattan,40.732338,-74.000496,subway,metrocard,1912
+167,"W 4 St-Wash Sq (A,C,E,B,D,F,M)",Manhattan,40.732338,-74.000496,subway,omny,1179057
+168,"Spring St (C,E)",Manhattan,40.726227,-74.00374,subway,metrocard,881
+168,"Spring St (C,E)",Manhattan,40.726227,-74.00374,subway,omny,369518
+169,"Canal St (A,C,E)",Manhattan,40.720825,-74.005226,subway,metrocard,750
+169,"Canal St (A,C,E)",Manhattan,40.720825,-74.005226,subway,omny,402514
+17,"Prince St (R,W)",Manhattan,40.72433,-73.9977,subway,metrocard,519
+17,"Prince St (R,W)",Manhattan,40.72433,-73.9977,subway,omny,387113
+173,"High St (A,C)",Brooklyn,40.699337,-73.99053,subway,metrocard,427
+173,"High St (A,C)",Brooklyn,40.699337,-73.99053,subway,omny,267744
+175,"Hoyt-Schermerhorn Sts (A,C,G)",Brooklyn,40.688484,-73.985,subway,metrocard,590
+175,"Hoyt-Schermerhorn Sts (A,C,G)",Brooklyn,40.688484,-73.985,subway,omny,283691
+176,Lafayette Av (C),Brooklyn,40.68611,-73.973946,subway,metrocard,413
+176,Lafayette Av (C),Brooklyn,40.68611,-73.973946,subway,omny,121503
+177,Clinton-Washington Avs (C),Brooklyn,40.68326,-73.965836,subway,metrocard,328
+177,Clinton-Washington Avs (C),Brooklyn,40.68326,-73.965836,subway,omny,181401
+179,"Nostrand Av (A,C)",Brooklyn,40.68044,-73.950424,subway,metrocard,467
+179,"Nostrand Av (A,C)",Brooklyn,40.68044,-73.950424,subway,omny,404852
+180,Kingston-Throop Avs (C),Brooklyn,40.67992,-73.94086,subway,metrocard,434
+180,Kingston-Throop Avs (C),Brooklyn,40.67992,-73.94086,subway,omny,148830
+181,"Utica Av (A,C)",Brooklyn,40.679363,-73.93073,subway,metrocard,1415
+181,"Utica Av (A,C)",Brooklyn,40.679363,-73.93073,subway,omny,309487
+182,Ralph Av (C),Brooklyn,40.67882,-73.920784,subway,metrocard,303
+182,Ralph Av (C),Brooklyn,40.67882,-73.920784,subway,omny,116285
+183,Rockaway Av (C),Brooklyn,40.67834,-73.91195,subway,metrocard,580
+183,Rockaway Av (C),Brooklyn,40.67834,-73.91195,subway,omny,101141
+185,Liberty Av (C),Brooklyn,40.67454,-73.896545,subway,metrocard,323
+185,Liberty Av (C),Brooklyn,40.67454,-73.896545,subway,omny,58600
+186,Van Siclen Av (C),Brooklyn,40.67271,-73.89036,subway,metrocard,606
+186,Van Siclen Av (C),Brooklyn,40.67271,-73.89036,subway,omny,64243
+187,Shepherd Av (C),Brooklyn,40.67413,-73.88075,subway,metrocard,248
+187,Shepherd Av (C),Brooklyn,40.67413,-73.88075,subway,omny,56731
+188,"Euclid Av (A,C)",Brooklyn,40.675377,-73.87211,subway,metrocard,1143
+188,"Euclid Av (A,C)",Brooklyn,40.675377,-73.87211,subway,omny,143225
+189,Grant Av (A),Brooklyn,40.677044,-73.86505,subway,metrocard,623
+189,Grant Av (A),Brooklyn,40.677044,-73.86505,subway,omny,99878
+190,80 St (A),Queens,40.67937,-73.85899,subway,metrocard,180
+190,80 St (A),Queens,40.67937,-73.85899,subway,omny,82190
+191,88 St (A),Queens,40.679844,-73.85147,subway,metrocard,296
+191,88 St (A),Queens,40.679844,-73.85147,subway,omny,53578
+192,Rockaway Blvd (A),Queens,40.680428,-73.84386,subway,metrocard,691
+192,Rockaway Blvd (A),Queens,40.680428,-73.84386,subway,omny,126746
+193,104 St (A),Queens,40.68171,-73.837685,subway,metrocard,270
+193,104 St (A),Queens,40.68171,-73.837685,subway,omny,33432
+194,111 St (A),Queens,40.68433,-73.83216,subway,metrocard,343
+194,111 St (A),Queens,40.68433,-73.83216,subway,omny,37946
+195,Ozone Park-Lefferts Blvd (A),Queens,40.68595,-73.8258,subway,metrocard,1186
+195,Ozone Park-Lefferts Blvd (A),Queens,40.68595,-73.8258,subway,omny,111801
+196,Aqueduct Racetrack (A),Queens,40.672096,-73.83592,subway,metrocard,102
+196,Aqueduct Racetrack (A),Queens,40.672096,-73.83592,subway,omny,17608
+197,Aqueduct-N Conduit Av (A),Queens,40.668236,-73.83406,subway,metrocard,80
+197,Aqueduct-N Conduit Av (A),Queens,40.668236,-73.83406,subway,omny,17266
+198,Howard Beach-JFK Airport (A),Queens,40.660477,-73.8303,subway,metrocard,120
+198,Howard Beach-JFK Airport (A),Queens,40.660477,-73.8303,subway,omny,88868
+199,"Broad Channel (A,S)",Queens,40.608383,-73.815926,subway,metrocard,39
+199,"Broad Channel (A,S)",Queens,40.608383,-73.815926,subway,omny,5703
+2,"Astoria Blvd (N,W)",Queens,40.77026,-73.91785,subway,metrocard,583
+2,"Astoria Blvd (N,W)",Queens,40.77026,-73.91785,subway,omny,220988
+20,"City Hall (R,W)",Manhattan,40.713284,-74.00698,subway,metrocard,189
+20,"City Hall (R,W)",Manhattan,40.713284,-74.00698,subway,omny,124054
+200,"Beach 90 St (A,S)",Queens,40.588036,-73.813644,subway,metrocard,77
+200,"Beach 90 St (A,S)",Queens,40.588036,-73.813644,subway,omny,16654
+201,"Beach 98 St (A,S)",Queens,40.585308,-73.82056,subway,metrocard,73
+201,"Beach 98 St (A,S)",Queens,40.585308,-73.82056,subway,omny,7881
+202,"Beach 105 St (A,S)",Queens,40.58321,-73.82756,subway,metrocard,45
+202,"Beach 105 St (A,S)",Queens,40.58321,-73.82756,subway,omny,4686
+203,"Rockaway Park-Beach 116 St (A,S)",Queens,40.580902,-73.835594,subway,metrocard,484
+203,"Rockaway Park-Beach 116 St (A,S)",Queens,40.580902,-73.835594,subway,omny,15027
+204,Beach 67 St (A),Queens,40.590927,-73.79692,subway,metrocard,162
+204,Beach 67 St (A),Queens,40.590927,-73.79692,subway,omny,38845
+205,Beach 60 St (A),Queens,40.592373,-73.78852,subway,metrocard,301
+205,Beach 60 St (A),Queens,40.592373,-73.78852,subway,omny,32028
+206,Beach 44 St (A),Queens,40.59294,-73.77602,subway,metrocard,174
+206,Beach 44 St (A),Queens,40.59294,-73.77602,subway,omny,9278
+207,Beach 36 St (A),Queens,40.595398,-73.76817,subway,metrocard,110
+207,Beach 36 St (A),Queens,40.595398,-73.76817,subway,omny,19075
+208,Beach 25 St (A),Queens,40.600067,-73.76135,subway,metrocard,188
+208,Beach 25 St (A),Queens,40.600067,-73.76135,subway,omny,28013
+209,Far Rockaway-Mott Av (A),Queens,40.603996,-73.7554,subway,metrocard,556
+209,Far Rockaway-Mott Av (A),Queens,40.603996,-73.7554,subway,omny,91130
+210,Norwood-205 St (D),Bronx,40.87481,-73.87885,subway,metrocard,579
+210,Norwood-205 St (D),Bronx,40.87481,-73.87885,subway,omny,116793
+211,"Bedford Park Blvd (B,D)",Bronx,40.873245,-73.88714,subway,metrocard,212
+211,"Bedford Park Blvd (B,D)",Bronx,40.873245,-73.88714,subway,omny,132230
+212,"Kingsbridge Rd (B,D)",Bronx,40.866978,-73.89351,subway,metrocard,192
+212,"Kingsbridge Rd (B,D)",Bronx,40.866978,-73.89351,subway,omny,110738
+213,"Fordham Rd (B,D)",Bronx,40.861298,-73.89775,subway,metrocard,879
+213,"Fordham Rd (B,D)",Bronx,40.861298,-73.89775,subway,omny,152753
+214,"182-183 Sts (B,D)",Bronx,40.856094,-73.90074,subway,metrocard,274
+214,"182-183 Sts (B,D)",Bronx,40.856094,-73.90074,subway,omny,85044
+215,"Tremont Av (B,D)",Bronx,40.85041,-73.90523,subway,metrocard,986
+215,"Tremont Av (B,D)",Bronx,40.85041,-73.90523,subway,omny,148748
+216,"174-175 Sts (B,D)",Bronx,40.8459,-73.91013,subway,metrocard,327
+216,"174-175 Sts (B,D)",Bronx,40.8459,-73.91013,subway,omny,74412
+217,"170 St (B,D)",Bronx,40.839306,-73.9134,subway,metrocard,456
+217,"170 St (B,D)",Bronx,40.839306,-73.9134,subway,omny,124152
+218,"167 St (B,D)",Bronx,40.83377,-73.91844,subway,metrocard,341
+218,"167 St (B,D)",Bronx,40.83377,-73.91844,subway,omny,149082
+22,"Rector St (R,W)",Manhattan,40.70722,-74.01334,subway,metrocard,443
+22,"Rector St (R,W)",Manhattan,40.70722,-74.01334,subway,omny,137308
+220,"155 St (B,D)",Manhattan,40.830135,-73.93821,subway,metrocard,254
+220,"155 St (B,D)",Manhattan,40.830135,-73.93821,subway,omny,48989
+221,21 St-Queensbridge (M),Queens,40.754204,-73.94283,subway,metrocard,589
+221,21 St-Queensbridge (M),Queens,40.754204,-73.94283,subway,omny,224184
+222,Roosevelt Island (M),Manhattan,40.759144,-73.95326,subway,metrocard,696
+222,Roosevelt Island (M),Manhattan,40.759144,-73.95326,subway,omny,197084
+223,"Lexington Av/63 St (M,Q)",Manhattan,40.76463,-73.96611,subway,metrocard,1225
+223,"Lexington Av/63 St (M,Q)",Manhattan,40.76463,-73.96611,subway,omny,376270
+224,57 St (M),Manhattan,40.763973,-73.97745,subway,metrocard,440
+224,57 St (M),Manhattan,40.763973,-73.97745,subway,omny,265687
+225,"47-50 Sts-Rockefeller Ctr (B,D,F,M)",Manhattan,40.758663,-73.98133,subway,metrocard,1771
+225,"47-50 Sts-Rockefeller Ctr (B,D,F,M)",Manhattan,40.758663,-73.98133,subway,omny,1159244
+228,"23 St (F,M)",Manhattan,40.742878,-73.99282,subway,metrocard,672
+228,"23 St (F,M)",Manhattan,40.742878,-73.99282,subway,omny,650094
+231,"Grand St (B,D)",Manhattan,40.718266,-73.99375,subway,metrocard,677
+231,"Grand St (B,D)",Manhattan,40.718266,-73.99375,subway,omny,527703
+232,2 Av (F),Manhattan,40.7234,-73.98994,subway,metrocard,631
+232,2 Av (F),Manhattan,40.7234,-73.98994,subway,omny,419957
+234,East Broadway (F),Manhattan,40.713715,-73.99017,subway,metrocard,960
+234,East Broadway (F),Manhattan,40.713715,-73.99017,subway,omny,339986
+235,York St (F),Brooklyn,40.701397,-73.98675,subway,metrocard,289
+235,York St (F),Brooklyn,40.701397,-73.98675,subway,omny,374848
+236,"Bergen St (F,G)",Brooklyn,40.686146,-73.99086,subway,metrocard,730
+236,"Bergen St (F,G)",Brooklyn,40.686146,-73.99086,subway,omny,268809
+237,"Carroll St (F,G)",Brooklyn,40.6803,-73.99505,subway,metrocard,345
+237,"Carroll St (F,G)",Brooklyn,40.6803,-73.99505,subway,omny,286671
+238,"Smith-9 Sts (F,G)",Brooklyn,40.67358,-73.99596,subway,metrocard,622
+238,"Smith-9 Sts (F,G)",Brooklyn,40.67358,-73.99596,subway,omny,99692
+240,"7 Av (F,G)",Brooklyn,40.66627,-73.98031,subway,metrocard,630
+240,"7 Av (F,G)",Brooklyn,40.66627,-73.98031,subway,omny,268037
+241,"15 St-Prospect Park (F,G)",Brooklyn,40.660366,-73.97949,subway,metrocard,307
+241,"15 St-Prospect Park (F,G)",Brooklyn,40.660366,-73.97949,subway,omny,127319
+242,"Fort Hamilton Pkwy (F,G)",Brooklyn,40.650784,-73.97578,subway,metrocard,399
+242,"Fort Hamilton Pkwy (F,G)",Brooklyn,40.650784,-73.97578,subway,omny,123146
+243,"Church Av (F,G)",Brooklyn,40.64404,-73.979675,subway,metrocard,1259
+243,"Church Av (F,G)",Brooklyn,40.64404,-73.979675,subway,omny,189922
+244,Ditmas Av (F),Brooklyn,40.63612,-73.97817,subway,metrocard,126
+244,Ditmas Av (F),Brooklyn,40.63612,-73.97817,subway,omny,78536
+245,18 Av (F),Brooklyn,40.629753,-73.976974,subway,metrocard,207
+245,18 Av (F),Brooklyn,40.629753,-73.976974,subway,omny,73323
+246,Avenue I (F),Brooklyn,40.62532,-73.97613,subway,metrocard,389
+246,Avenue I (F),Brooklyn,40.62532,-73.97613,subway,omny,30094
+247,Bay Pkwy (F),Brooklyn,40.62077,-73.975266,subway,metrocard,123
+247,Bay Pkwy (F),Brooklyn,40.62077,-73.975266,subway,omny,21404
+248,Avenue N (F),Brooklyn,40.61514,-73.9742,subway,metrocard,141
+248,Avenue N (F),Brooklyn,40.61514,-73.9742,subway,omny,52475
+249,Avenue P (F),Brooklyn,40.608944,-73.97302,subway,metrocard,194
+249,Avenue P (F),Brooklyn,40.608944,-73.97302,subway,omny,47970
+250,Kings Hwy (F),Brooklyn,40.603218,-73.97236,subway,metrocard,350
+250,Kings Hwy (F),Brooklyn,40.603218,-73.97236,subway,omny,69686
+251,Avenue U (F),Brooklyn,40.59606,-73.97336,subway,metrocard,281
+251,Avenue U (F),Brooklyn,40.59606,-73.97336,subway,omny,43103
+252,Avenue X (F),Brooklyn,40.58962,-73.97425,subway,metrocard,494
+252,Avenue X (F),Brooklyn,40.58962,-73.97425,subway,omny,52559
+253,Neptune Av (F),Brooklyn,40.581013,-73.97457,subway,metrocard,100
+253,Neptune Av (F),Brooklyn,40.581013,-73.97457,subway,omny,32926
+254,Jamaica-179 St (F),Queens,40.712646,-73.78381,subway,metrocard,1615
+254,Jamaica-179 St (F),Queens,40.712646,-73.78381,subway,omny,354170
+255,169 St (F),Queens,40.71047,-73.7936,subway,metrocard,549
+255,169 St (F),Queens,40.71047,-73.7936,subway,omny,159495
+256,Parsons Blvd (F),Queens,40.707565,-73.80333,subway,metrocard,954
+256,Parsons Blvd (F),Queens,40.707565,-73.80333,subway,omny,137478
+257,Sutphin Blvd (F),Queens,40.70546,-73.81071,subway,metrocard,357
+257,Sutphin Blvd (F),Queens,40.70546,-73.81071,subway,omny,85431
+258,"Briarwood (E,F)",Queens,40.70918,-73.82057,subway,metrocard,694
+258,"Briarwood (E,F)",Queens,40.70918,-73.82057,subway,omny,107017
+259,"Kew Gardens-Union Tpke (E,F)",Queens,40.71444,-73.83101,subway,metrocard,1315
+259,"Kew Gardens-Union Tpke (E,F)",Queens,40.71444,-73.83101,subway,omny,463736
+26,"DeKalb Av (B,Q,R)",Brooklyn,40.690636,-73.98183,subway,metrocard,1262
+26,"DeKalb Av (B,Q,R)",Brooklyn,40.690636,-73.98183,subway,omny,559485
+260,"75 Av (E,F)",Queens,40.71833,-73.837326,subway,metrocard,362
+260,"75 Av (E,F)",Queens,40.71833,-73.837326,subway,omny,70939
+261,"Forest Hills-71 Av (E,F,M,R)",Queens,40.72169,-73.84452,subway,metrocard,663
+261,"Forest Hills-71 Av (E,F,M,R)",Queens,40.72169,-73.84452,subway,omny,589600
+262,"67 Av (M,R)",Queens,40.726524,-73.85272,subway,metrocard,841
+262,"67 Av (M,R)",Queens,40.726524,-73.85272,subway,omny,166969
+263,"63 Dr-Rego Park (M,R)",Queens,40.729847,-73.8616,subway,metrocard,1286
+263,"63 Dr-Rego Park (M,R)",Queens,40.729847,-73.8616,subway,omny,281036
+264,"Woodhaven Blvd (M,R)",Queens,40.733105,-73.86923,subway,metrocard,825
+264,"Woodhaven Blvd (M,R)",Queens,40.733105,-73.86923,subway,omny,389433
+265,"Grand Av-Newtown (M,R)",Queens,40.737015,-73.87722,subway,metrocard,1209
+265,"Grand Av-Newtown (M,R)",Queens,40.737015,-73.87722,subway,omny,389856
+266,"Elmhurst Av (M,R)",Queens,40.742455,-73.88202,subway,metrocard,1059
+266,"Elmhurst Av (M,R)",Queens,40.742455,-73.88202,subway,omny,276592
+268,"65 St (M,R)",Queens,40.74967,-73.89845,subway,metrocard,184
+268,"65 St (M,R)",Queens,40.74967,-73.89845,subway,omny,75511
+269,"Northern Blvd (M,R)",Queens,40.752884,-73.906006,subway,metrocard,637
+269,"Northern Blvd (M,R)",Queens,40.752884,-73.906006,subway,omny,144539
+270,"46 St (M,R)",Queens,40.756313,-73.91333,subway,metrocard,251
+270,"46 St (M,R)",Queens,40.756313,-73.91333,subway,omny,178926
+271,"Steinway St (M,R)",Queens,40.756878,-73.92074,subway,metrocard,581
+271,"Steinway St (M,R)",Queens,40.756878,-73.92074,subway,omny,249332
+272,"36 St (M,R)",Queens,40.75204,-73.92878,subway,metrocard,402
+272,"36 St (M,R)",Queens,40.75204,-73.92878,subway,omny,88352
+273,"Queens Plaza (E,F,R)",Queens,40.748974,-73.93724,subway,metrocard,1805
+273,"Queens Plaza (E,F,R)",Queens,40.748974,-73.93724,subway,omny,426502
+276,"5 Av/53 St (E,F)",Manhattan,40.760166,-73.97523,subway,metrocard,447
+276,"5 Av/53 St (E,F)",Manhattan,40.760166,-73.97523,subway,omny,444325
+277,"7 Av (E,B,D)",Manhattan,40.762863,-73.981636,subway,metrocard,1003
+277,"7 Av (E,B,D)",Manhattan,40.762863,-73.981636,subway,omny,383605
+278,"Jamaica Center-Parsons/Archer (E,J,Z)",Queens,40.70215,-73.80111,subway,metrocard,4165
+278,"Jamaica Center-Parsons/Archer (E,J,Z)",Queens,40.70215,-73.80111,subway,omny,544243
+279,"Sutphin Blvd-Archer Av-JFK Airport (E,J,Z)",Queens,40.700485,-73.80797,subway,metrocard,2048
+279,"Sutphin Blvd-Archer Av-JFK Airport (E,J,Z)",Queens,40.700485,-73.80797,subway,omny,648240
+28,Union St (R),Brooklyn,40.677315,-73.98311,subway,metrocard,281
+28,Union St (R),Brooklyn,40.677315,-73.98311,subway,omny,206546
+280,Jamaica-Van Wyck (E),Queens,40.702564,-73.81686,subway,metrocard,135
+280,Jamaica-Van Wyck (E),Queens,40.702564,-73.81686,subway,omny,90614
+282,21 St (G),Queens,40.744064,-73.94972,subway,metrocard,135
+282,21 St (G),Queens,40.744064,-73.94972,subway,omny,46216
+283,Greenpoint Av (G),Brooklyn,40.731354,-73.95445,subway,metrocard,498
+283,Greenpoint Av (G),Brooklyn,40.731354,-73.95445,subway,omny,247034
+284,Nassau Av (G),Brooklyn,40.724636,-73.95128,subway,metrocard,414
+284,Nassau Av (G),Brooklyn,40.724636,-73.95128,subway,omny,255510
+286,Broadway (G),Brooklyn,40.706093,-73.95031,subway,metrocard,191
+286,Broadway (G),Brooklyn,40.706093,-73.95031,subway,omny,105410
+287,Flushing Av (G),Brooklyn,40.70038,-73.95023,subway,metrocard,115
+287,Flushing Av (G),Brooklyn,40.70038,-73.95023,subway,omny,67616
+288,Myrtle-Willoughby Avs (G),Brooklyn,40.69457,-73.94904,subway,metrocard,382
+288,Myrtle-Willoughby Avs (G),Brooklyn,40.69457,-73.94904,subway,omny,105062
+289,Bedford-Nostrand Avs (G),Brooklyn,40.68963,-73.95352,subway,metrocard,502
+289,Bedford-Nostrand Avs (G),Brooklyn,40.68963,-73.95352,subway,omny,200463
+290,Classon Av (G),Brooklyn,40.688873,-73.96007,subway,metrocard,298
+290,Classon Av (G),Brooklyn,40.688873,-73.96007,subway,omny,117081
+291,Clinton-Washington Avs (G),Brooklyn,40.688087,-73.96684,subway,metrocard,1044
+291,Clinton-Washington Avs (G),Brooklyn,40.688087,-73.96684,subway,omny,128678
+292,Fulton St (G),Brooklyn,40.68712,-73.97537,subway,metrocard,289
+292,Fulton St (G),Brooklyn,40.68712,-73.97537,subway,omny,152939
+293,Van Cortlandt Park-242 St (1),Bronx,40.889248,-73.89858,subway,metrocard,715
+293,Van Cortlandt Park-242 St (1),Bronx,40.889248,-73.89858,subway,omny,123265
+294,238 St (1),Bronx,40.884666,-73.90087,subway,metrocard,461
+294,238 St (1),Bronx,40.884666,-73.90087,subway,omny,99696
+295,231 St (1),Bronx,40.878857,-73.90483,subway,metrocard,604
+295,231 St (1),Bronx,40.878857,-73.90483,subway,omny,179923
+296,Marble Hill-225 St (1),Manhattan,40.87456,-73.90983,subway,metrocard,240
+296,Marble Hill-225 St (1),Manhattan,40.87456,-73.90983,subway,omny,100857
+297,215 St (1),Manhattan,40.869446,-73.915276,subway,metrocard,653
+297,215 St (1),Manhattan,40.869446,-73.915276,subway,omny,55219
+298,207 St (1),Manhattan,40.86462,-73.91882,subway,metrocard,600
+298,207 St (1),Manhattan,40.86462,-73.91882,subway,omny,144729
+299,Dyckman St (1),Manhattan,40.86053,-73.92554,subway,metrocard,535
+299,Dyckman St (1),Manhattan,40.86053,-73.92554,subway,omny,133760
+3,"30 Av (N,W)",Queens,40.76678,-73.92148,subway,metrocard,418
+3,"30 Av (N,W)",Queens,40.76678,-73.92148,subway,omny,282353
+30,Prospect Av (R),Brooklyn,40.665413,-73.992874,subway,metrocard,154
+30,Prospect Av (R),Brooklyn,40.665413,-73.992874,subway,omny,132953
+300,191 St (1),Manhattan,40.855225,-73.92941,subway,metrocard,319
+300,191 St (1),Manhattan,40.855225,-73.92941,subway,omny,150053
+301,181 St (1),Manhattan,40.849506,-73.93359,subway,metrocard,900
+301,181 St (1),Manhattan,40.849506,-73.93359,subway,omny,213437
+303,157 St (1),Manhattan,40.83404,-73.94489,subway,metrocard,451
+303,157 St (1),Manhattan,40.83404,-73.94489,subway,omny,205392
+304,145 St (1),Manhattan,40.82655,-73.95036,subway,metrocard,636
+304,145 St (1),Manhattan,40.82655,-73.95036,subway,omny,174532
+305,137 St-City College (1),Manhattan,40.822006,-73.953674,subway,metrocard,1628
+305,137 St-City College (1),Manhattan,40.822006,-73.953674,subway,omny,276507
+306,125 St (1),Manhattan,40.815582,-73.958374,subway,metrocard,365
+306,125 St (1),Manhattan,40.815582,-73.958374,subway,omny,150980
+307,116 St-Columbia University (1),Manhattan,40.80772,-73.96411,subway,metrocard,741
+307,116 St-Columbia University (1),Manhattan,40.80772,-73.96411,subway,omny,346164
+308,Cathedral Pkwy (110 St) (1),Manhattan,40.803967,-73.96685,subway,metrocard,808
+308,Cathedral Pkwy (110 St) (1),Manhattan,40.803967,-73.96685,subway,omny,253902
+309,103 St (1),Manhattan,40.799446,-73.968376,subway,metrocard,532
+309,103 St (1),Manhattan,40.799446,-73.968376,subway,omny,231982
+31,25 St (R),Brooklyn,40.660397,-73.99809,subway,metrocard,130
+31,25 St (R),Brooklyn,40.660397,-73.99809,subway,omny,88653
+310,"96 St (1,2,3)",Manhattan,40.79392,-73.97232,subway,metrocard,1463
+310,"96 St (1,2,3)",Manhattan,40.79392,-73.97232,subway,omny,837028
+311,86 St (1),Manhattan,40.788643,-73.97622,subway,metrocard,894
+311,86 St (1),Manhattan,40.788643,-73.97622,subway,omny,389793
+312,79 St (1),Manhattan,40.783936,-73.97992,subway,metrocard,448
+312,79 St (1),Manhattan,40.783936,-73.97992,subway,omny,354107
+313,"72 St (1,2,3)",Manhattan,40.778454,-73.98197,subway,metrocard,891
+313,"72 St (1,2,3)",Manhattan,40.778454,-73.98197,subway,omny,902014
+314,66 St-Lincoln Center (1),Manhattan,40.77344,-73.98221,subway,metrocard,658
+314,66 St-Lincoln Center (1),Manhattan,40.77344,-73.98221,subway,omny,491356
+316,50 St (1),Manhattan,40.761726,-73.98385,subway,metrocard,555
+316,50 St (1),Manhattan,40.761726,-73.98385,subway,omny,590659
+318,"34 St-Penn Station (1,2,3)",Manhattan,40.750374,-73.99106,subway,metrocard,2691
+318,"34 St-Penn Station (1,2,3)",Manhattan,40.750374,-73.99106,subway,omny,1584195
+319,28 St (1),Manhattan,40.747215,-73.99336,subway,omny,298838
+32,"36 St (D,N,R)",Brooklyn,40.655144,-74.00355,subway,metrocard,599
+32,"36 St (D,N,R)",Brooklyn,40.655144,-74.00355,subway,omny,348150
+320,23 St (1),Manhattan,40.74408,-73.99566,subway,metrocard,661
+320,23 St (1),Manhattan,40.74408,-73.99566,subway,omny,320755
+321,18 St (1),Manhattan,40.74104,-73.99787,subway,metrocard,298
+321,18 St (1),Manhattan,40.74104,-73.99787,subway,omny,188319
+323,Christopher St-Stonewall (1),Manhattan,40.73342,-74.00291,subway,metrocard,501
+323,Christopher St-Stonewall (1),Manhattan,40.73342,-74.00291,subway,omny,326237
+324,Houston St (1),Manhattan,40.728252,-74.00536,subway,metrocard,333
+324,Houston St (1),Manhattan,40.728252,-74.00536,subway,omny,329661
+325,Canal St (1),Manhattan,40.722855,-74.00628,subway,metrocard,235
+325,Canal St (1),Manhattan,40.722855,-74.00628,subway,omny,132726
+326,Franklin St (1),Manhattan,40.71932,-74.00689,subway,metrocard,257
+326,Franklin St (1),Manhattan,40.71932,-74.00689,subway,omny,142061
+327,"Chambers St (1,2,3)",Manhattan,40.715477,-74.00927,subway,metrocard,783
+327,"Chambers St (1,2,3)",Manhattan,40.715477,-74.00927,subway,omny,405125
+328,WTC Cortlandt (1),Manhattan,40.711834,-74.01219,subway,metrocard,722
+328,WTC Cortlandt (1),Manhattan,40.711834,-74.01219,subway,omny,434323
+329,Rector St (1),Manhattan,40.70751,-74.01379,subway,metrocard,336
+329,Rector St (1),Manhattan,40.70751,-74.01379,subway,omny,175989
+33,45 St (R),Brooklyn,40.648937,-74.01001,subway,metrocard,182
+33,45 St (R),Brooklyn,40.648937,-74.01001,subway,omny,177706
+333,"Wall St (2,3)",Manhattan,40.70682,-74.0091,subway,metrocard,866
+333,"Wall St (2,3)",Manhattan,40.70682,-74.0091,subway,omny,412405
+334,"Clark St (2,3)",Brooklyn,40.697468,-73.99309,subway,metrocard,378
+334,"Clark St (2,3)",Brooklyn,40.697468,-73.99309,subway,omny,157408
+336,"Hoyt St (2,3)",Brooklyn,40.690544,-73.98506,subway,metrocard,415
+336,"Hoyt St (2,3)",Brooklyn,40.690544,-73.98506,subway,omny,151062
+337,"Nevins St (2,3,4,5)",Brooklyn,40.688248,-73.98049,subway,metrocard,1038
+337,"Nevins St (2,3,4,5)",Brooklyn,40.688248,-73.98049,subway,omny,223007
+339,"Bergen St (2,3)",Brooklyn,40.68083,-73.9751,subway,metrocard,203
+339,"Bergen St (2,3)",Brooklyn,40.68083,-73.9751,subway,omny,106570
+34,53 St (R),Brooklyn,40.64507,-74.01403,subway,metrocard,335
+34,53 St (R),Brooklyn,40.64507,-74.01403,subway,omny,198510
+340,"Grand Army Plaza (2,3)",Brooklyn,40.675236,-73.97105,subway,metrocard,147
+340,"Grand Army Plaza (2,3)",Brooklyn,40.675236,-73.97105,subway,omny,159845
+341,"Eastern Pkwy-Brooklyn Museum (2,3)",Brooklyn,40.671986,-73.96438,subway,metrocard,296
+341,"Eastern Pkwy-Brooklyn Museum (2,3)",Brooklyn,40.671986,-73.96438,subway,omny,109935
+343,Nostrand Av (3),Brooklyn,40.669846,-73.95046,subway,metrocard,259
+343,Nostrand Av (3),Brooklyn,40.669846,-73.95046,subway,omny,74638
+344,Kingston Av (3),Brooklyn,40.6694,-73.94216,subway,metrocard,273
+344,Kingston Av (3),Brooklyn,40.6694,-73.94216,subway,omny,95400
+345,"Crown Hts-Utica Av (3,4)",Brooklyn,40.668896,-73.932945,subway,metrocard,581
+345,"Crown Hts-Utica Av (3,4)",Brooklyn,40.668896,-73.932945,subway,omny,478261
+346,Sutter Av-Rutland Rd (3),Brooklyn,40.66472,-73.92261,subway,metrocard,1983
+346,Sutter Av-Rutland Rd (3),Brooklyn,40.66472,-73.92261,subway,omny,116717
+347,Saratoga Av (3),Brooklyn,40.661453,-73.91633,subway,metrocard,577
+347,Saratoga Av (3),Brooklyn,40.661453,-73.91633,subway,omny,92809
+348,Rockaway Av (3),Brooklyn,40.662548,-73.90894,subway,metrocard,2090
+348,Rockaway Av (3),Brooklyn,40.662548,-73.90894,subway,omny,85280
+349,Junius St (3),Brooklyn,40.663513,-73.90245,subway,metrocard,298
+349,Junius St (3),Brooklyn,40.663513,-73.90245,subway,omny,49683
+35,"59 St (N,R)",Brooklyn,40.64136,-74.01788,subway,metrocard,655
+35,"59 St (N,R)",Brooklyn,40.64136,-74.01788,subway,omny,279266
+350,Pennsylvania Av (3),Brooklyn,40.664635,-73.8949,subway,metrocard,293
+350,Pennsylvania Av (3),Brooklyn,40.664635,-73.8949,subway,omny,68853
+351,Van Siclen Av (3),Brooklyn,40.665447,-73.8894,subway,metrocard,236
+351,Van Siclen Av (3),Brooklyn,40.665447,-73.8894,subway,omny,47154
+352,New Lots Av (3),Brooklyn,40.666237,-73.88408,subway,metrocard,1144
+352,New Lots Av (3),Brooklyn,40.666237,-73.88408,subway,omny,100191
+353,"President St-Medgar Evers College (2,5)",Brooklyn,40.667885,-73.95068,subway,metrocard,385
+353,"President St-Medgar Evers College (2,5)",Brooklyn,40.667885,-73.95068,subway,omny,75741
+354,"Sterling St (2,5)",Brooklyn,40.662743,-73.95085,subway,metrocard,284
+354,"Sterling St (2,5)",Brooklyn,40.662743,-73.95085,subway,omny,124776
+355,"Winthrop St (2,5)",Brooklyn,40.65665,-73.9502,subway,metrocard,396
+355,"Winthrop St (2,5)",Brooklyn,40.65665,-73.9502,subway,omny,179531
+356,"Church Av (2,5)",Brooklyn,40.650845,-73.94958,subway,metrocard,829
+356,"Church Av (2,5)",Brooklyn,40.650845,-73.94958,subway,omny,194719
+357,"Beverly Rd (2,5)",Brooklyn,40.6451,-73.94896,subway,metrocard,436
+357,"Beverly Rd (2,5)",Brooklyn,40.6451,-73.94896,subway,omny,102410
+358,"Newkirk Av-Little Haiti (2,5)",Brooklyn,40.63997,-73.94841,subway,metrocard,413
+358,"Newkirk Av-Little Haiti (2,5)",Brooklyn,40.63997,-73.94841,subway,omny,130684
+359,"Flatbush Av-Brooklyn College (2,5)",Brooklyn,40.632835,-73.94764,subway,metrocard,2943
+359,"Flatbush Av-Brooklyn College (2,5)",Brooklyn,40.632835,-73.94764,subway,omny,350424
+36,Bay Ridge Av (R),Brooklyn,40.634968,-74.02338,subway,metrocard,554
+36,Bay Ridge Av (R),Brooklyn,40.634968,-74.02338,subway,omny,173449
+360,Pelham Bay Park (6),Bronx,40.852463,-73.82812,subway,metrocard,776
+360,Pelham Bay Park (6),Bronx,40.852463,-73.82812,subway,omny,96015
+361,Buhre Av (6),Bronx,40.84681,-73.832565,subway,metrocard,416
+361,Buhre Av (6),Bronx,40.84681,-73.832565,subway,omny,64111
+362,Middletown Rd (6),Bronx,40.843864,-73.83632,subway,metrocard,361
+362,Middletown Rd (6),Bronx,40.843864,-73.83632,subway,omny,34220
+363,Westchester Sq-E Tremont Av (6),Bronx,40.839893,-73.84295,subway,metrocard,624
+363,Westchester Sq-E Tremont Av (6),Bronx,40.839893,-73.84295,subway,omny,81377
+364,Zerega Av (6),Bronx,40.836487,-73.84704,subway,metrocard,198
+364,Zerega Av (6),Bronx,40.836487,-73.84704,subway,omny,40081
+365,Castle Hill Av (6),Bronx,40.834255,-73.85122,subway,metrocard,674
+365,Castle Hill Av (6),Bronx,40.834255,-73.85122,subway,omny,92164
+366,Parkchester (6),Bronx,40.833225,-73.86082,subway,metrocard,183
+366,Parkchester (6),Bronx,40.833225,-73.86082,subway,omny,229097
+367,St Lawrence Av (6),Bronx,40.83151,-73.867615,subway,metrocard,272
+367,St Lawrence Av (6),Bronx,40.83151,-73.867615,subway,omny,66898
+368,Morrison Av-Soundview (6),Bronx,40.82952,-73.87452,subway,metrocard,206
+368,Morrison Av-Soundview (6),Bronx,40.82952,-73.87452,subway,omny,94099
+369,Elder Av (6),Bronx,40.828583,-73.87916,subway,metrocard,232
+369,Elder Av (6),Bronx,40.828583,-73.87916,subway,omny,99129
+37,77 St (R),Brooklyn,40.62974,-74.02551,subway,metrocard,357
+37,77 St (R),Brooklyn,40.62974,-74.02551,subway,omny,120968
+370,Whitlock Av (6),Bronx,40.826527,-73.886284,subway,metrocard,120
+370,Whitlock Av (6),Bronx,40.826527,-73.886284,subway,omny,29134
+371,Hunts Point Av (6),Bronx,40.82095,-73.89055,subway,metrocard,536
+371,Hunts Point Av (6),Bronx,40.82095,-73.89055,subway,omny,159079
+372,Longwood Av (6),Bronx,40.816105,-73.89644,subway,metrocard,187
+372,Longwood Av (6),Bronx,40.816105,-73.89644,subway,omny,51419
+373,E 149 St (6),Bronx,40.81212,-73.9041,subway,metrocard,637
+373,E 149 St (6),Bronx,40.81212,-73.9041,subway,omny,68564
+374,E 143 St-St Mary's St (6),Bronx,40.80872,-73.90765,subway,metrocard,10
+374,E 143 St-St Mary's St (6),Bronx,40.80872,-73.90765,subway,omny,27005
+375,Cypress Av (6),Bronx,40.805367,-73.91404,subway,metrocard,374
+375,Cypress Av (6),Bronx,40.805367,-73.91404,subway,omny,46208
+376,Brook Av (6),Bronx,40.807568,-73.91924,subway,metrocard,385
+376,Brook Av (6),Bronx,40.807568,-73.91924,subway,omny,82700
+377,3 Av-138 St (6),Bronx,40.810474,-73.92614,subway,metrocard,527
+377,3 Av-138 St (6),Bronx,40.810474,-73.92614,subway,omny,138164
+378,Woodlawn (4),Bronx,40.886036,-73.87875,subway,metrocard,1192
+378,Woodlawn (4),Bronx,40.886036,-73.87875,subway,omny,120718
+379,Mosholu Pkwy (4),Bronx,40.87975,-73.88466,subway,metrocard,668
+379,Mosholu Pkwy (4),Bronx,40.87975,-73.88466,subway,omny,135165
+38,86 St (R),Brooklyn,40.62269,-74.0284,subway,metrocard,1111
+38,86 St (R),Brooklyn,40.62269,-74.0284,subway,omny,237352
+380,Bedford Park Blvd-Lehman College (4),Bronx,40.873413,-73.89006,subway,metrocard,929
+380,Bedford Park Blvd-Lehman College (4),Bronx,40.873413,-73.89006,subway,omny,103712
+381,Kingsbridge Rd (4),Bronx,40.86776,-73.89717,subway,metrocard,420
+381,Kingsbridge Rd (4),Bronx,40.86776,-73.89717,subway,omny,157829
+382,Fordham Rd (4),Bronx,40.862804,-73.90103,subway,metrocard,757
+382,Fordham Rd (4),Bronx,40.862804,-73.90103,subway,omny,166000
+383,183 St (4),Bronx,40.858406,-73.90388,subway,metrocard,246
+383,183 St (4),Bronx,40.858406,-73.90388,subway,omny,99518
+384,Burnside Av (4),Bronx,40.853455,-73.907684,subway,metrocard,733
+384,Burnside Av (4),Bronx,40.853455,-73.907684,subway,omny,126103
+385,176 St (4),Bronx,40.84848,-73.9118,subway,metrocard,330
+385,176 St (4),Bronx,40.84848,-73.9118,subway,omny,104298
+386,Mt Eden Av (4),Bronx,40.844433,-73.91469,subway,metrocard,490
+386,Mt Eden Av (4),Bronx,40.844433,-73.91469,subway,omny,80091
+387,170 St (4),Bronx,40.840076,-73.91779,subway,metrocard,711
+387,170 St (4),Bronx,40.840076,-73.91779,subway,omny,128310
+388,167 St (4),Bronx,40.835537,-73.9214,subway,metrocard,721
+388,167 St (4),Bronx,40.835537,-73.9214,subway,omny,153714
+39,Bay Ridge-95 St (R),Brooklyn,40.616623,-74.030876,subway,metrocard,952
+39,Bay Ridge-95 St (R),Brooklyn,40.616623,-74.030876,subway,omny,115744
+391,"138 St-Grand Concourse (4,5)",Bronx,40.813225,-73.92985,subway,metrocard,307
+391,"138 St-Grand Concourse (4,5)",Bronx,40.813225,-73.92985,subway,omny,98228
+392,"125 St (4,5,6)",Manhattan,40.80414,-73.93759,subway,metrocard,1885
+392,"125 St (4,5,6)",Manhattan,40.80414,-73.93759,subway,omny,482680
+393,116 St (6),Manhattan,40.79863,-73.94162,subway,metrocard,1196
+393,116 St (6),Manhattan,40.79863,-73.94162,subway,omny,270120
+394,110 St (6),Manhattan,40.79502,-73.94425,subway,metrocard,1457
+394,110 St (6),Manhattan,40.79502,-73.94425,subway,omny,219848
+395,103 St (6),Manhattan,40.7906,-73.94748,subway,metrocard,575
+395,103 St (6),Manhattan,40.7906,-73.94748,subway,omny,247401
+396,96 St (6),Manhattan,40.78567,-73.95107,subway,metrocard,632
+396,96 St (6),Manhattan,40.78567,-73.95107,subway,omny,364469
+397,"86 St (4,5,6)",Manhattan,40.77949,-73.95559,subway,metrocard,1335
+397,"86 St (4,5,6)",Manhattan,40.77949,-73.95559,subway,omny,930645
+398,77 St (6),Manhattan,40.77362,-73.95988,subway,metrocard,523
+398,77 St (6),Manhattan,40.77362,-73.95988,subway,omny,640859
+399,68 St-Hunter College (6),Manhattan,40.768143,-73.96387,subway,metrocard,396
+399,68 St-Hunter College (6),Manhattan,40.768143,-73.96387,subway,omny,549320
+4,"Broadway (N,W)",Queens,40.76182,-73.92551,subway,metrocard,341
+4,"Broadway (N,W)",Queens,40.76182,-73.92551,subway,omny,256935
+403,33 St (6),Manhattan,40.746082,-73.98208,subway,metrocard,232
+403,33 St (6),Manhattan,40.746082,-73.98208,subway,omny,587213
+404,28 St (6),Manhattan,40.74307,-73.98426,subway,metrocard,385
+404,28 St (6),Manhattan,40.74307,-73.98426,subway,omny,421837
+405,23 St-Baruch College (6),Manhattan,40.739864,-73.9866,subway,metrocard,297
+405,23 St-Baruch College (6),Manhattan,40.739864,-73.9866,subway,omny,582801
+407,Astor Pl (6),Manhattan,40.730053,-73.99107,subway,metrocard,290
+407,Astor Pl (6),Manhattan,40.730053,-73.99107,subway,omny,369829
+409,Spring St (6),Manhattan,40.7223,-73.99714,subway,metrocard,486
+409,Spring St (6),Manhattan,40.7223,-73.99714,subway,omny,309645
+41,"7 Av (B,Q)",Brooklyn,40.67705,-73.97237,subway,metrocard,187
+41,"7 Av (B,Q)",Brooklyn,40.67705,-73.97237,subway,omny,218094
+413,"Wall St (4,5)",Manhattan,40.707558,-74.01186,subway,metrocard,369
+413,"Wall St (4,5)",Manhattan,40.707558,-74.01186,subway,omny,344985
+414,"Bowling Green (4,5)",Manhattan,40.70482,-74.01407,subway,metrocard,2029
+414,"Bowling Green (4,5)",Manhattan,40.70482,-74.01407,subway,omny,458041
+416,Wakefield-241 St (2),Bronx,40.903126,-73.85062,subway,metrocard,1085
+416,Wakefield-241 St (2),Bronx,40.903126,-73.85062,subway,omny,80234
+417,"Nereid Av (2,5)",Bronx,40.89838,-73.85438,subway,metrocard,398
+417,"Nereid Av (2,5)",Bronx,40.89838,-73.85438,subway,omny,51104
+418,"233 St (2,5)",Bronx,40.893192,-73.857475,subway,metrocard,212
+418,"233 St (2,5)",Bronx,40.893192,-73.857475,subway,omny,64884
+419,"225 St (2,5)",Bronx,40.888023,-73.860344,subway,metrocard,265
+419,"225 St (2,5)",Bronx,40.888023,-73.860344,subway,omny,52783
+42,"Prospect Park (B,Q,S)",Brooklyn,40.661613,-73.96225,subway,metrocard,1514
+42,"Prospect Park (B,Q,S)",Brooklyn,40.661613,-73.96225,subway,omny,238295
+420,"219 St (2,5)",Bronx,40.883896,-73.86263,subway,metrocard,372
+420,"219 St (2,5)",Bronx,40.883896,-73.86263,subway,omny,46889
+421,"Gun Hill Rd (2,5)",Bronx,40.87785,-73.86626,subway,metrocard,543
+421,"Gun Hill Rd (2,5)",Bronx,40.87785,-73.86626,subway,omny,106529
+422,"Burke Av (2,5)",Bronx,40.871357,-73.867165,subway,metrocard,298
+422,"Burke Av (2,5)",Bronx,40.871357,-73.867165,subway,omny,44142
+423,"Allerton Av (2,5)",Bronx,40.865463,-73.867355,subway,metrocard,581
+423,"Allerton Av (2,5)",Bronx,40.865463,-73.867355,subway,omny,70663
+424,"Pelham Pkwy (2,5)",Bronx,40.857193,-73.867615,subway,metrocard,554
+424,"Pelham Pkwy (2,5)",Bronx,40.857193,-73.867615,subway,omny,126718
+425,"Bronx Park East (2,5)",Bronx,40.848827,-73.868454,subway,metrocard,293
+425,"Bronx Park East (2,5)",Bronx,40.848827,-73.868454,subway,omny,43247
+426,"E 180 St (2,5)",Bronx,40.841892,-73.87349,subway,metrocard,806
+426,"E 180 St (2,5)",Bronx,40.841892,-73.87349,subway,omny,187016
+427,"West Farms Sq-E Tremont Av (2,5)",Bronx,40.840294,-73.88005,subway,metrocard,579
+427,"West Farms Sq-E Tremont Av (2,5)",Bronx,40.840294,-73.88005,subway,omny,112655
+428,"174 St (2,5)",Bronx,40.837288,-73.88773,subway,metrocard,3029
+428,"174 St (2,5)",Bronx,40.837288,-73.88773,subway,omny,126503
+429,"Freeman St (2,5)",Bronx,40.829994,-73.89187,subway,metrocard,712
+429,"Freeman St (2,5)",Bronx,40.829994,-73.89187,subway,omny,83697
+43,Parkside Av (Q),Brooklyn,40.655293,-73.961494,subway,metrocard,303
+43,Parkside Av (Q),Brooklyn,40.655293,-73.961494,subway,omny,118414
+430,"Simpson St (2,5)",Bronx,40.824074,-73.89307,subway,metrocard,600
+430,"Simpson St (2,5)",Bronx,40.824074,-73.89307,subway,omny,153174
+431,"Intervale Av (2,5)",Bronx,40.82218,-73.896736,subway,metrocard,406
+431,"Intervale Av (2,5)",Bronx,40.82218,-73.896736,subway,omny,65143
+432,"Prospect Av (2,5)",Bronx,40.819584,-73.90177,subway,metrocard,927
+432,"Prospect Av (2,5)",Bronx,40.819584,-73.90177,subway,omny,125857
+433,"Jackson Av (2,5)",Bronx,40.81649,-73.90781,subway,metrocard,748
+433,"Jackson Av (2,5)",Bronx,40.81649,-73.90781,subway,omny,107533
+434,"3 Av-149 St (2,5)",Bronx,40.81611,-73.917755,subway,metrocard,1750
+434,"3 Av-149 St (2,5)",Bronx,40.81611,-73.917755,subway,omny,344780
+436,Harlem-148 St (3),Manhattan,40.82388,-73.93647,subway,metrocard,515
+436,Harlem-148 St (3),Manhattan,40.82388,-73.93647,subway,omny,61851
+437,145 St (3),Manhattan,40.82042,-73.93625,subway,metrocard,488
+437,145 St (3),Manhattan,40.82042,-73.93625,subway,omny,59415
+438,"135 St (2,3)",Manhattan,40.814228,-73.94077,subway,metrocard,1057
+438,"135 St (2,3)",Manhattan,40.814228,-73.94077,subway,omny,217832
+439,"125 St (2,3)",Manhattan,40.807755,-73.945496,subway,metrocard,1737
+439,"125 St (2,3)",Manhattan,40.807755,-73.945496,subway,omny,322936
+44,"Church Av (B,Q)",Brooklyn,40.650528,-73.96298,subway,metrocard,701
+44,"Church Av (B,Q)",Brooklyn,40.650528,-73.96298,subway,omny,292089
+440,"116 St (2,3)",Manhattan,40.802097,-73.94962,subway,metrocard,1380
+440,"116 St (2,3)",Manhattan,40.802097,-73.94962,subway,omny,191825
+441,"110 St-Malcolm X Plaza (2,3)",Manhattan,40.799076,-73.95182,subway,metrocard,385
+441,"110 St-Malcolm X Plaza (2,3)",Manhattan,40.799076,-73.95182,subway,omny,163050
+442,Eastchester-Dyre Av (5),Bronx,40.8883,-73.83083,subway,metrocard,874
+442,Eastchester-Dyre Av (5),Bronx,40.8883,-73.83083,subway,omny,80776
+443,Baychester Av (5),Bronx,40.878662,-73.83859,subway,metrocard,341
+443,Baychester Av (5),Bronx,40.878662,-73.83859,subway,omny,57301
+444,Gun Hill Rd (5),Bronx,40.869526,-73.84638,subway,metrocard,427
+444,Gun Hill Rd (5),Bronx,40.869526,-73.84638,subway,omny,70551
+445,Pelham Pkwy (5),Bronx,40.858986,-73.85536,subway,metrocard,1009
+445,Pelham Pkwy (5),Bronx,40.858986,-73.85536,subway,omny,60993
+446,Morris Park (5),Bronx,40.854362,-73.8605,subway,metrocard,446
+446,Morris Park (5),Bronx,40.854362,-73.8605,subway,omny,51532
+447,Flushing-Main St (7),Queens,40.7596,-73.83003,subway,metrocard,3275
+447,Flushing-Main St (7),Queens,40.7596,-73.83003,subway,omny,1214022
+448,Mets-Willets Point (7),Queens,40.754623,-73.84563,subway,metrocard,418
+448,Mets-Willets Point (7),Queens,40.754623,-73.84563,subway,omny,150494
+449,111 St (7),Queens,40.75173,-73.85533,subway,metrocard,772
+449,111 St (7),Queens,40.75173,-73.85533,subway,omny,320462
+45,Beverley Rd (Q),Brooklyn,40.64403,-73.96449,subway,metrocard,483
+45,Beverley Rd (Q),Brooklyn,40.64403,-73.96449,subway,omny,76642
+450,103 St-Corona Plaza (7),Queens,40.749866,-73.8627,subway,metrocard,3530
+450,103 St-Corona Plaza (7),Queens,40.749866,-73.8627,subway,omny,436052
+451,Junction Blvd (7),Queens,40.749146,-73.86953,subway,metrocard,731
+451,Junction Blvd (7),Queens,40.749146,-73.86953,subway,omny,528395
+452,90 St-Elmhurst Av (7),Queens,40.74841,-73.87661,subway,metrocard,606
+452,90 St-Elmhurst Av (7),Queens,40.74841,-73.87661,subway,omny,370996
+453,82 St-Jackson Hts (7),Queens,40.747658,-73.8837,subway,metrocard,757
+453,82 St-Jackson Hts (7),Queens,40.747658,-73.8837,subway,omny,315704
+455,69 St (7),Queens,40.746326,-73.8964,subway,metrocard,353
+455,69 St (7),Queens,40.746326,-73.8964,subway,omny,59043
+456,61 St-Woodside (7),Queens,40.74563,-73.902985,subway,omny,354902
+457,52 St (7),Queens,40.74415,-73.91255,subway,metrocard,416
+457,52 St (7),Queens,40.74415,-73.91255,subway,omny,98238
+458,46 St-Bliss St (7),Queens,40.743134,-73.918434,subway,metrocard,443
+458,46 St-Bliss St (7),Queens,40.743134,-73.918434,subway,omny,292246
+459,40 St-Lowery St (7),Queens,40.743782,-73.92402,subway,metrocard,242
+459,40 St-Lowery St (7),Queens,40.743782,-73.92402,subway,omny,223991
+46,Cortelyou Rd (Q),Brooklyn,40.640926,-73.96389,subway,metrocard,229
+46,Cortelyou Rd (Q),Brooklyn,40.640926,-73.96389,subway,omny,119207
+460,33 St-Rawson St (7),Queens,40.744587,-73.931,subway,metrocard,1007
+460,33 St-Rawson St (7),Queens,40.744587,-73.931,subway,omny,206679
+461,"Queensboro Plaza (7,N,W)",Queens,40.750584,-73.9402,subway,metrocard,1086
+461,"Queensboro Plaza (7,N,W)",Queens,40.750584,-73.9402,subway,omny,334177
+463,Hunters Point Av (7),Queens,40.742214,-73.94891,subway,metrocard,832
+463,Hunters Point Av (7),Queens,40.742214,-73.94891,subway,omny,86757
+464,Vernon Blvd-Jackson Av (7),Queens,40.742626,-73.95358,subway,metrocard,442
+464,Vernon Blvd-Jackson Av (7),Queens,40.742626,-73.95358,subway,omny,422065
+47,"Newkirk Plaza (B,Q)",Brooklyn,40.635082,-73.96279,subway,metrocard,786
+47,"Newkirk Plaza (B,Q)",Brooklyn,40.635082,-73.96279,subway,omny,200087
+471,34 St-Hudson Yards (7),Manhattan,40.755882,-74.00191,subway,metrocard,1567
+471,34 St-Hudson Yards (7),Manhattan,40.755882,-74.00191,subway,omny,681635
+475,96 St (Q),Manhattan,40.784317,-73.94715,subway,metrocard,1579
+475,96 St (Q),Manhattan,40.784317,-73.94715,subway,omny,387018
+476,86 St (Q),Manhattan,40.77789,-73.95179,subway,metrocard,1596
+476,86 St (Q),Manhattan,40.77789,-73.95179,subway,omny,564144
+477,72 St (Q),Manhattan,40.7688,-73.95843,subway,metrocard,934
+477,72 St (Q),Manhattan,40.7688,-73.95843,subway,omny,658093
+48,Avenue H (Q),Brooklyn,40.62927,-73.96164,subway,metrocard,191
+48,Avenue H (Q),Brooklyn,40.62927,-73.96164,subway,omny,52222
+49,Avenue J (Q),Brooklyn,40.62504,-73.9608,subway,metrocard,527
+49,Avenue J (Q),Brooklyn,40.62504,-73.9608,subway,omny,108195
+5,"36 Av (N,W)",Queens,40.756805,-73.92957,subway,metrocard,327
+5,"36 Av (N,W)",Queens,40.756805,-73.92957,subway,omny,147741
+50,Avenue M (Q),Brooklyn,40.61762,-73.9594,subway,metrocard,297
+50,Avenue M (Q),Brooklyn,40.61762,-73.9594,subway,omny,111591
+501,St George (SIR),Staten Island,40.64375,-74.07365,staten_island_railway,metrocard,596
+501,St George (SIR),Staten Island,40.64375,-74.07365,staten_island_railway,omny,189843
+502,Tompkinsville (SIR),Staten Island,40.636948,-74.07484,staten_island_railway,metrocard,32
+502,Tompkinsville (SIR),Staten Island,40.636948,-74.07484,staten_island_railway,omny,15107
+51,"Kings Hwy (B,Q)",Brooklyn,40.60867,-73.95773,subway,metrocard,522
+51,"Kings Hwy (B,Q)",Brooklyn,40.60867,-73.95773,subway,omny,379243
+52,Avenue U (Q),Brooklyn,40.5993,-73.95593,subway,metrocard,376
+52,Avenue U (Q),Brooklyn,40.5993,-73.95593,subway,omny,130593
+53,Neck Rd (Q),Brooklyn,40.595245,-73.95516,subway,metrocard,265
+53,Neck Rd (Q),Brooklyn,40.595245,-73.95516,subway,omny,84663
+54,"Sheepshead Bay (B,Q)",Brooklyn,40.586895,-73.954155,subway,metrocard,860
+54,"Sheepshead Bay (B,Q)",Brooklyn,40.586895,-73.954155,subway,omny,243637
+55,"Brighton Beach (B,Q)",Brooklyn,40.57762,-73.96137,subway,metrocard,822
+55,"Brighton Beach (B,Q)",Brooklyn,40.57762,-73.96137,subway,omny,217328
+56,Ocean Pkwy (Q),Brooklyn,40.576313,-73.9685,subway,metrocard,276
+56,Ocean Pkwy (Q),Brooklyn,40.576313,-73.9685,subway,omny,52957
+57,"W 8 St-NY Aquarium (F,Q)",Brooklyn,40.576126,-73.97594,subway,metrocard,197
+57,"W 8 St-NY Aquarium (F,Q)",Brooklyn,40.576126,-73.97594,subway,omny,47749
+58,"Coney Island-Stillwell Av (D,F,N,Q)",Brooklyn,40.577423,-73.98123,subway,metrocard,2188
+58,"Coney Island-Stillwell Av (D,F,N,Q)",Brooklyn,40.577423,-73.98123,subway,omny,275537
+59,9 Av (D),Brooklyn,40.646294,-73.99432,subway,metrocard,141
+59,9 Av (D),Brooklyn,40.646294,-73.99432,subway,omny,119776
+6,"39 Av-Dutch Kills (N,W)",Queens,40.75288,-73.932755,subway,metrocard,369
+6,"39 Av-Dutch Kills (N,W)",Queens,40.75288,-73.932755,subway,omny,87801
+60,Fort Hamilton Pkwy (D),Brooklyn,40.640915,-73.9943,subway,metrocard,445
+60,Fort Hamilton Pkwy (D),Brooklyn,40.640915,-73.9943,subway,omny,93911
+601,"14 St/6 Av (1,2,3,L,F,M)",Manhattan,40.737797,-73.997734,subway,metrocard,3270
+601,"14 St/6 Av (1,2,3,L,F,M)",Manhattan,40.737797,-73.997734,subway,omny,1154989
+602,"14 St-Union Sq (4,5,6,L,N,Q,R,W)",Manhattan,40.735065,-73.99042,subway,metrocard,3105
+602,"14 St-Union Sq (4,5,6,L,N,Q,R,W)",Manhattan,40.735065,-73.99042,subway,omny,2270792
+603,"149 St-Grand Concourse (2,4,5)",Bronx,40.818394,-73.92703,subway,metrocard,1543
+603,"149 St-Grand Concourse (2,4,5)",Bronx,40.818394,-73.92703,subway,omny,266268
+604,"161 St-Yankee Stadium (4,B,D)",Bronx,40.82795,-73.92574,subway,metrocard,264
+604,"161 St-Yankee Stadium (4,B,D)",Bronx,40.82795,-73.92574,subway,omny,396202
+605,"168 St-Washington Hts (1,A,C)",Manhattan,40.840637,-73.93985,subway,metrocard,688
+605,"168 St-Washington Hts (1,A,C)",Manhattan,40.840637,-73.93985,subway,omny,462075
+606,"Court Sq-23 St (7,E,F,G)",Queens,40.747143,-73.94503,subway,metrocard,514
+606,"Court Sq-23 St (7,E,F,G)",Queens,40.747143,-73.94503,subway,omny,624210
+607,"34 St-Herald Sq (B,D,F,M,N,Q,R,W)",Manhattan,40.74964,-73.987885,subway,metrocard,3388
+607,"34 St-Herald Sq (B,D,F,M,N,Q,R,W)",Manhattan,40.74964,-73.987885,subway,omny,2363102
+608,"4 Av-9 St (F,G,R)",Brooklyn,40.67056,-73.989044,subway,metrocard,786
+608,"4 Av-9 St (F,G,R)",Brooklyn,40.67056,-73.989044,subway,omny,288891
+609,"42 St-Bryant Pk/5 Av (7,B,D,F,M)",Manhattan,40.75402,-73.98327,subway,metrocard,1972
+609,"42 St-Bryant Pk/5 Av (7,B,D,F,M)",Manhattan,40.75402,-73.98327,subway,omny,1158381
+61,50 St (D),Brooklyn,40.63626,-73.99479,subway,metrocard,255
+61,50 St (D),Brooklyn,40.63626,-73.99479,subway,omny,68746
+610,"Grand Central-42 St (4,5,6,7,S)",Manhattan,40.75199,-73.977356,subway,metrocard,4684
+610,"Grand Central-42 St (4,5,6,7,S)",Manhattan,40.75199,-73.977356,subway,omny,3281554
+611,"Times Sq-42 St/Port Authority Bus Terminal (1,2,3,7,A,C,E,N,Q,R,W,S)",Manhattan,40.755745,-73.98758,subway,metrocard,8953
+611,"Times Sq-42 St/Port Authority Bus Terminal (1,2,3,7,A,C,E,N,Q,R,W,S)",Manhattan,40.755745,-73.98758,subway,omny,4218762
+612,"Lexington Av/51-53 Sts (6,E,F)",Manhattan,40.757328,-73.97049,subway,metrocard,2149
+612,"Lexington Av/51-53 Sts (6,E,F)",Manhattan,40.757328,-73.97049,subway,omny,1324825
+613,"Lexington Av/59 St (4,5,6,N,R,W)",Manhattan,40.762592,-73.96761,subway,metrocard,1234
+613,"Lexington Av/59 St (4,5,6,N,R,W)",Manhattan,40.762592,-73.96761,subway,omny,1030767
+614,"59 St-Columbus Circle (1,A,C,B,D)",Manhattan,40.768272,-73.981834,subway,metrocard,2488
+614,"59 St-Columbus Circle (1,A,C,B,D)",Manhattan,40.768272,-73.981834,subway,omny,1621171
+615,"62 St/New Utrecht Av (D,N)",Brooklyn,40.625656,-73.99663,subway,metrocard,480
+615,"62 St/New Utrecht Av (D,N)",Brooklyn,40.625656,-73.99663,subway,omny,106891
+616,"Jackson Hts-Roosevelt Av/74 St-Broadway (7,E,F,M,R)",Queens,40.746746,-73.891365,subway,metrocard,1908
+616,"Jackson Hts-Roosevelt Av/74 St-Broadway (7,E,F,M,R)",Queens,40.746746,-73.891365,subway,omny,1274899
+617,"Atlantic Av-Barclays Ctr (2,3,4,5,B,D,N,Q,R)",Brooklyn,40.684162,-73.97779,subway,metrocard,2571
+617,"Atlantic Av-Barclays Ctr (2,3,4,5,B,D,N,Q,R)",Brooklyn,40.684162,-73.97779,subway,omny,997360
+618,"14 St/8 Av (A,C,E,L)",Manhattan,40.740334,-74.00214,subway,metrocard,2373
+618,"14 St/8 Av (A,C,E,L)",Manhattan,40.740334,-74.00214,subway,omny,1082105
+619,"Broadway-Lafayette St/Bleecker St (6,B,D,F,M)",Manhattan,40.725605,-73.99543,subway,metrocard,924
+619,"Broadway-Lafayette St/Bleecker St (6,B,D,F,M)",Manhattan,40.725605,-73.99543,subway,omny,1004234
+62,55 St (D),Brooklyn,40.631435,-73.995476,subway,metrocard,44
+62,55 St (D),Brooklyn,40.631435,-73.995476,subway,omny,39871
+620,"Borough Hall/Court St (2,3,4,5,R)",Brooklyn,40.69324,-73.99064,subway,metrocard,3474
+620,"Borough Hall/Court St (2,3,4,5,R)",Brooklyn,40.69324,-73.99064,subway,omny,614627
+621,"Broadway Junction (A,C,J,Z,L)",Brooklyn,40.678898,-73.90436,subway,metrocard,1677
+621,"Broadway Junction (A,C,J,Z,L)",Brooklyn,40.678898,-73.90436,subway,omny,183378
+622,"Brooklyn Bridge-City Hall/Chambers St (4,5,6,J,Z)",Manhattan,40.713154,-74.00377,subway,metrocard,1593
+622,"Brooklyn Bridge-City Hall/Chambers St (4,5,6,J,Z)",Manhattan,40.713154,-74.00377,subway,omny,565493
+623,"Canal St (6,J,Z,N,Q,R,W)",Manhattan,40.7187,-74.00058,subway,metrocard,2303
+623,"Canal St (6,J,Z,N,Q,R,W)",Manhattan,40.7187,-74.00058,subway,omny,1073823
+624,"Chambers St/WTC/Park Place/Cortlandt St (2,3,A,C,E,R,W)",Manhattan,40.712605,-74.00955,subway,metrocard,3515
+624,"Chambers St/WTC/Park Place/Cortlandt St (2,3,A,C,E,R,W)",Manhattan,40.712605,-74.00955,subway,omny,1299700
+625,"Delancey St-Essex St (F,M,J,Z)",Manhattan,40.718464,-73.98778,subway,metrocard,835
+625,"Delancey St-Essex St (F,M,J,Z)",Manhattan,40.718464,-73.98778,subway,omny,733025
+626,"Franklin Av-Medgar Evers College/Botanic Garden (2,3,4,5,S)",Brooklyn,40.670513,-73.95869,subway,metrocard,694
+626,"Franklin Av-Medgar Evers College/Botanic Garden (2,3,4,5,S)",Brooklyn,40.670513,-73.95869,subway,omny,343157
+627,"Franklin Av (C,S)",Brooklyn,40.68099,-73.95634,subway,metrocard,534
+627,"Franklin Av (C,S)",Brooklyn,40.68099,-73.95634,subway,omny,126123
+628,"Fulton St (2,3,4,5,A,C,J,Z)",Manhattan,40.71009,-74.007835,subway,metrocard,3706
+628,"Fulton St (2,3,4,5,A,C,J,Z)",Manhattan,40.71009,-74.007835,subway,omny,1796056
+629,"Metropolitan Av/Lorimer St (G,L)",Brooklyn,40.71343,-73.95084,subway,metrocard,105
+629,"Metropolitan Av/Lorimer St (G,L)",Brooklyn,40.71343,-73.95084,subway,omny,420892
+630,"Myrtle-Wyckoff Avs (M,L)",Brooklyn,40.699623,-73.91199,subway,metrocard,1007
+630,"Myrtle-Wyckoff Avs (M,L)",Brooklyn,40.699623,-73.91199,subway,omny,483958
+635,"Whitehall St-South Ferry (1,R,W)",Manhattan,40.702576,-74.01333,subway,metrocard,2397
+635,"Whitehall St-South Ferry (1,R,W)",Manhattan,40.702576,-74.01333,subway,omny,617383
+636,"Jay St-MetroTech (A,C,F,R)",Brooklyn,40.69226,-73.98664,subway,metrocard,3732
+636,"Jay St-MetroTech (A,C,F,R)",Brooklyn,40.69226,-73.98664,subway,omny,825187
+64,71 St (D),Brooklyn,40.61959,-73.99886,subway,metrocard,188
+64,71 St (D),Brooklyn,40.61959,-73.99886,subway,omny,104998
+65,79 St (D),Brooklyn,40.613503,-74.00061,subway,metrocard,217
+65,79 St (D),Brooklyn,40.613503,-74.00061,subway,omny,128151
+66,18 Av (D),Brooklyn,40.607952,-74.00174,subway,metrocard,263
+66,18 Av (D),Brooklyn,40.607952,-74.00174,subway,omny,121723
+67,20 Av (D),Brooklyn,40.604557,-73.99817,subway,metrocard,184
+67,20 Av (D),Brooklyn,40.604557,-73.99817,subway,omny,110701
+68,Bay Pkwy (D),Brooklyn,40.601875,-73.99373,subway,metrocard,414
+68,Bay Pkwy (D),Brooklyn,40.601875,-73.99373,subway,omny,152291
+69,25 Av (D),Brooklyn,40.597706,-73.98683,subway,metrocard,304
+69,25 Av (D),Brooklyn,40.597706,-73.98683,subway,omny,84090
+70,Bay 50 St (D),Brooklyn,40.58884,-73.983765,subway,metrocard,209
+70,Bay 50 St (D),Brooklyn,40.58884,-73.983765,subway,omny,71393
+71,8 Av (N),Brooklyn,40.635063,-74.01172,subway,metrocard,362
+71,8 Av (N),Brooklyn,40.635063,-74.01172,subway,omny,230858
+72,Fort Hamilton Pkwy (N),Brooklyn,40.631386,-74.00535,subway,metrocard,495
+72,Fort Hamilton Pkwy (N),Brooklyn,40.631386,-74.00535,subway,omny,136811
+74,18 Av (N),Brooklyn,40.62067,-73.99042,subway,metrocard,298
+74,18 Av (N),Brooklyn,40.62067,-73.99042,subway,omny,102723
+75,20 Av (N),Brooklyn,40.61741,-73.98502,subway,metrocard,195
+75,20 Av (N),Brooklyn,40.61741,-73.98502,subway,omny,92087
+76,Bay Pkwy (N),Brooklyn,40.611816,-73.98185,subway,metrocard,423
+76,Bay Pkwy (N),Brooklyn,40.611816,-73.98185,subway,omny,137958
+77,Kings Hwy (N),Brooklyn,40.603924,-73.980354,subway,metrocard,619
+77,Kings Hwy (N),Brooklyn,40.603924,-73.980354,subway,omny,115667
+78,Avenue U (N),Brooklyn,40.597473,-73.97913,subway,metrocard,315
+78,Avenue U (N),Brooklyn,40.597473,-73.97913,subway,omny,82818
+79,86 St (N),Brooklyn,40.59272,-73.97823,subway,metrocard,362
+79,86 St (N),Brooklyn,40.59272,-73.97823,subway,omny,42967
+8,"5 Av/59 St (N,R,W)",Manhattan,40.764812,-73.97335,subway,metrocard,569
+8,"5 Av/59 St (N,R,W)",Manhattan,40.764812,-73.97335,subway,omny,369124
+80,"121 St (J,Z)",Queens,40.700493,-73.82829,subway,metrocard,137
+80,"121 St (J,Z)",Queens,40.700493,-73.82829,subway,omny,47067
+81,111 St (J),Queens,40.69742,-73.83634,subway,metrocard,827
+81,111 St (J),Queens,40.69742,-73.83634,subway,omny,53118
+82,"104 St (J,Z)",Queens,40.69518,-73.84433,subway,metrocard,123
+82,"104 St (J,Z)",Queens,40.69518,-73.84433,subway,omny,54375
+83,"Woodhaven Blvd (J,Z)",Queens,40.69388,-73.85158,subway,metrocard,333
+83,"Woodhaven Blvd (J,Z)",Queens,40.69388,-73.85158,subway,omny,94187
+84,85 St-Forest Pkwy (J),Queens,40.692436,-73.86001,subway,metrocard,136
+84,85 St-Forest Pkwy (J),Queens,40.692436,-73.86001,subway,omny,72720
+85,"75 St-Elderts Ln (J,Z)",Queens,40.691322,-73.86714,subway,metrocard,132
+85,"75 St-Elderts Ln (J,Z)",Queens,40.691322,-73.86714,subway,omny,74626
+86,Cypress Hills (J),Brooklyn,40.68994,-73.87255,subway,metrocard,144
+86,Cypress Hills (J),Brooklyn,40.68994,-73.87255,subway,omny,24726
+87,"Crescent St (J,Z)",Brooklyn,40.683193,-73.87379,subway,metrocard,201
+87,"Crescent St (J,Z)",Brooklyn,40.683193,-73.87379,subway,omny,76556
+88,"Norwood Av (J,Z)",Brooklyn,40.68141,-73.880035,subway,metrocard,201
+88,"Norwood Av (J,Z)",Brooklyn,40.68141,-73.880035,subway,omny,57319
+89,Cleveland St (J),Brooklyn,40.679947,-73.884636,subway,metrocard,175
+89,Cleveland St (J),Brooklyn,40.679947,-73.884636,subway,omny,47548
+9,"57 St-7 Av (N,Q,R,W)",Manhattan,40.764664,-73.98066,subway,metrocard,891
+9,"57 St-7 Av (N,Q,R,W)",Manhattan,40.764664,-73.98066,subway,omny,807222
+90,"Van Siclen Av (J,Z)",Brooklyn,40.678024,-73.891685,subway,metrocard,422
+90,"Van Siclen Av (J,Z)",Brooklyn,40.678024,-73.891685,subway,omny,58230
+91,"Alabama Av (J,Z)",Brooklyn,40.67699,-73.89865,subway,metrocard,297
+91,"Alabama Av (J,Z)",Brooklyn,40.67699,-73.89865,subway,omny,44252
+93,"Chauncey St (J,Z)",Brooklyn,40.68289,-73.91045,subway,metrocard,270
+93,"Chauncey St (J,Z)",Brooklyn,40.68289,-73.91045,subway,omny,57543
+94,Halsey St (J),Brooklyn,40.68637,-73.91656,subway,metrocard,250
+94,Halsey St (J),Brooklyn,40.68637,-73.91656,subway,omny,124005
+95,"Gates Av (J,Z)",Brooklyn,40.68963,-73.92227,subway,metrocard,331
+95,"Gates Av (J,Z)",Brooklyn,40.68963,-73.92227,subway,omny,132682
+96,Kosciuszko St (J),Brooklyn,40.69334,-73.92882,subway,metrocard,212
+96,Kosciuszko St (J),Brooklyn,40.69334,-73.92882,subway,omny,104573
+97,"Myrtle Av (M,J,Z)",Brooklyn,40.69721,-73.93565,subway,metrocard,552
+97,"Myrtle Av (M,J,Z)",Brooklyn,40.69721,-73.93565,subway,omny,265314
+98,"Flushing Av (M,J)",Brooklyn,40.70026,-73.941124,subway,metrocard,745
+98,"Flushing Av (M,J)",Brooklyn,40.70026,-73.941124,subway,omny,163051
+99,"Lorimer St (M,J)",Brooklyn,40.70387,-73.94741,subway,metrocard,188
+99,"Lorimer St (M,J)",Brooklyn,40.70387,-73.94741,subway,omny,96713
+TRAM1,RI Tramway (Manhattan),Manhattan,40.761337,-73.96416,tram,metrocard,30
+TRAM1,RI Tramway (Manhattan),Manhattan,40.761337,-73.96416,tram,omny,144468
+TRAM2,RI Tramway (Roosevelt),Manhattan,40.75734,-73.95412,tram,metrocard,44
+TRAM2,RI Tramway (Roosevelt),Manhattan,40.75734,-73.95412,tram,omny,124021
