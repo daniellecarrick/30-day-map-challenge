@@ -11,7 +11,12 @@
 <style>
   .station { fill-opacity: .85; stroke: var(--edge); stroke-width: .5; }
   .station.on { stroke: var(--ink); stroke-width: 1.5; }
-  .boundary { fill: none; }
+  .boundary { fill: none; vector-effect: non-scaling-stroke; }
+  .station { vector-effect: non-scaling-stroke; }
+  .zoom-hint { position: absolute; right: 6px; bottom: 4px; color: var(--muted); pointer-events: none; }
+  .zoomed .legend { background: var(--bg); padding: 4px 8px 6px; border-radius: 6px; }
+  .zoom-reset { position: absolute; right: 6px; top: 4px; z-index: 2; display: none; }
+  @media (max-width: 640px) { .zoom-hint { display: none; } }
   .size-key { display: block; margin-top: 8px; overflow: visible; }
   .size-key circle { fill: none; stroke: var(--muted); }
   .size-key text { fill: var(--muted); font-size: 14px; font-family: var(--font); }
@@ -27,8 +32,11 @@
       <span class="stat" id="stat"></span>
     </div>
   </header>
-  <div class="map-wrap" id="map"></div>
-  <footer>Dot size is the gap between OMNY and MetroCard entries, on one scale for both periods. Stations are MTA station complexes; the Roosevelt Island Tramway is left out.
+  <div class="map-wrap" id="map">
+    <span class="zoom-hint" id="zoom-hint"></span>
+    <div class="seg zoom-reset" id="zoom-reset"><button type="button">Reset zoom</button></div>
+  </div>
+  <footer>Dot size is the gap between OMNY and MetroCard entries, on one scale for both periods. Stations are MTA station complexes; the Roosevelt Island Tramway is left out. Staten Island Railway collects fares at only 2 of its 21 stations.
     Data: <a href="https://data.ny.gov/d/wujg-7c2s">MTA Subway Hourly Ridership 2020–2024</a> and <a href="https://data.ny.gov/d/5wq4-mkjj">2025 onward</a>; MetroCard sales date: <a href="https://www.mta.info/press-release/mta-sunset-metrocard-sales-end-of-year">MTA</a> · Remake of my <a href="https://public.tableau.com/views/OMNYvsMetrocardbystationin2024/Map">2024 Tableau map</a> · #30DayMapChallenge Day 7: 10 minute map</footer>
 </div>
 
@@ -53,15 +61,17 @@ d3.select("#title").html(D.title.replace(". See", ".<br />See"));
 const stations = D.stations.map(s => { const [px, py] = proj([s.x, s.y]); return { ...s, px, py }; });
 const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
   .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
-svg.append("g").selectAll("path").data(D.boroughs.features).join("path").attr("class", "boundary").attr("d", path);
-const dots = svg.append("g").selectAll("circle").data(stations).join("circle")
+const gZoom = svg.append("g");
+gZoom.append("g").selectAll("path").data(D.boroughs.features).join("path").attr("class", "boundary").attr("d", path);
+const dots = gZoom.append("g").selectAll("circle").data(stations).join("circle")
   .attr("class", "station").attr("cx", d => d.px).attr("cy", d => d.py);
 
 // One scale across both years, so dots stay comparable when you switch years.
 const radius = d3.scaleSqrt().domain([0, d3.max(stations, s => Math.max(s[2024]?.gap ?? 0, s[2026]?.gap ?? 0))]).range([0, 18]);
 const SIZE_KEYS = [[100000, "100,000"], [1000000, "1,000,000 more entries"]];
 const RMIN = 1.9;
-let year = "2024", first = true;
+let year = "2024", first = true, zt = d3.zoomIdentity;
+const dotRadius = d => (d[year] ? Math.max(RMIN, radius(d[year].gap)) / zt.k : 0);  // dots keep their on-screen size when zoomed
 
 // Left of Manhattan, over the empty New Jersey side
 const legend = MapKit.legend(svg, {
@@ -87,6 +97,7 @@ function drawSizeKey() {
 new ResizeObserver(drawSizeKey).observe(svg.node());
 
 function render() {
+  tip.hide();
   const s = D.summary[year], val = d => d[year]?.gap ?? 0;
   d3.select("#lede").text(`Each dot is a subway station, colored by whether OMNY or MetroCard had more entries, ${D.period[year]}. `
     + `OMNY made up ${s.share}% of entries citywide and was the majority at ${s.wins} of ${s.n} stations.`
@@ -95,7 +106,7 @@ function render() {
   dots.sort((a, b) => val(b) - val(a));   // largest first so small stations stay on top
   const motion = !first && !matchMedia("(prefers-reduced-motion: reduce)").matches;
   (motion ? dots.transition().duration(500) : dots)
-    .attr("r", d => (d[year] ? Math.max(RMIN, radius(val(d))) : 0))
+    .attr("r", dotRadius)
     .attr("fill", d => (d[year] ? D.colors[d[year].winner] : "none"));
   first = false;
   drawSizeKey();
@@ -109,10 +120,32 @@ function tipHtml(d) {
     + `OMNY ${fmt(v.omny)}<br>MetroCard ${fmt(v.mc)}<br>Gap: ${fmt(v.gap)} entries`;
 }
 MapKit.nearestHover(svg, stations, {
-  x: d => d.px, y: d => d.py, radius: 18,
+  x: d => d.px, y: d => d.py, radius: 18, transform: () => zt,
   onEnter(ev, d) { dots.classed("on", s => s === d); tip.show(ev, tipHtml(d)); },
   onLeave() { dots.classed("on", false); tip.hide(); },
 });
+
+// ---- zoom ----
+// Inside an embed, a plain scroll wheel must keep scrolling the host page; a trackpad pinch arrives as ctrl+wheel.
+const embedded = window.self !== window.top;
+d3.select("#zoom-hint").text(embedded ? "Pinch to zoom" : "Scroll or pinch to zoom");
+const zoom = d3.zoom().scaleExtent([1, 12]).translateExtent([[0, 0], [W, H]])
+  .filter(ev => {
+    if (ev.type === "wheel") return !embedded || ev.ctrlKey;
+    if (ev.type.startsWith("touch")) return ev.touches.length > 1 || zt.k > 1;  // one finger scrolls the page until zoomed in
+    return !ev.ctrlKey && !ev.button;
+  })
+  .on("zoom", ev => {
+    zt = ev.transform;
+    gZoom.attr("transform", zt);
+    dots.interrupt().attr("r", dotRadius);
+    tip.hide();
+    svg.style("touch-action", zt.k > 1 ? "none" : "pan-y");
+    d3.select("#zoom-reset").style("display", zt.k > 1 ? "inline-flex" : "none");
+    d3.select("#map").classed("zoomed", zt.k > 1);   // legend gets a backing so dots don't run under its text
+  });
+svg.call(zoom).style("touch-action", "pan-y");
+d3.select("#zoom-reset button").on("click", () => svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity));
 
 MapKit.segmented("#year", [{ value: "2024", label: "2024" }, { value: "2026", label: "2026" }],
   v => { year = v; render(); }, "2024");
