@@ -4,6 +4,7 @@ fire insurance atlas.
 Writes:
   - out/nyc_building_age.png   (static, for posting)
   - out/nyc_building_age.html  (interactive, self-contained; every building)
+  - out/nyc_building_age_linkedin.png  (1080x1350 portrait for the LinkedIn feed; bigger type, whole city)
 
 Data: NYC Building Footprints (5zhs-2jue), 2020 Neighborhood Tabulation Areas (9nt8-h7nd).
 Run:  sh fetch.sh, then ../.venv/bin/python build.py
@@ -47,7 +48,6 @@ ERA_EDGES = [1915, 1940, 1965, 1990, 2015]
 ERA_LABELS = ["Before 1915", "1915–1939", "1940–1964", "1965–1989", "1990–2014", "2015 and later"]
 ERAS = S.VINTAGE["eras"]
 OLDEST, NEWEST = "Crown Heights (South)", "Spring Creek-Starrett City"
-SHORT = {OLDEST: "Crown Heights South", NEWEST: "Spring Creek"}
 PLATE_M = 1600  # both PNG plates show the same ground distance
 # Neighborhood tooltip histogram: 20-year spans, placed so one edge falls on the headline's 1940.
 HIST_EDGES = list(range(1880, 2021, 20))
@@ -284,6 +284,56 @@ def make_png(b, era, nta, city, rings, st, title, share):
     plt.close(fig)
 
 
+def draw_linkedin(b, era, nta, city, rings, st, title, share):
+    """4:5 portrait, the largest shape the LinkedIn feed shows, with type sized to read on a phone."""
+    S.apply(palette="vintage")
+    fig = plt.figure(figsize=(5.4, 6.75), facecolor=S.BG)
+    add_paper(fig)
+    fig.patch.set_alpha(0)
+    ax = fig.add_axes([.035, .085, .93, .745]); ax.set_axis_off(); ax.patch.set_alpha(0)
+    x0, y0, x1, y1 = city.bounds
+    pos = ax.get_position()
+    aspect = (pos.width * fig.get_figwidth()) / (pos.height * fig.get_figheight())
+    h = max(y1 - y0, (x1 - x0) / aspect) * 1.05
+    w = h * aspect
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    ax.set_xlim(cx - w / 2, cx + w / 2); ax.set_ylim(cy - h / 2, cy + h / 2); ax.set_aspect("equal")
+    for k, (d, ring) in enumerate(rings):
+        gpd.GeoSeries([ring]).plot(ax=ax, color=S.VINTAGE["color"]["water"], linewidth=.3 - k * .05, alpha=.8 - k * .17, zorder=1)
+    land(ax, city, lw=.35)
+    draw_buildings(ax, b, era, fatten=.12)
+    ax.add_patch(Rectangle((0, 0), 1, 1, transform=ax.transAxes, fill=False, ec=S.INK, lw=1.1, clip_on=False, zorder=9))
+    ax.add_patch(Rectangle((-.008, -.008), 1.016, 1.016, transform=ax.transAxes, fill=False, ec=S.INK, lw=.35, clip_on=False, zorder=9))
+    compass(ax, .9, .13, r=.05)
+
+    t = ax.transAxes
+    lx, ly = .03, .97
+    ax.text(lx, ly, "Year built", transform=t, fontsize=11, fontfamily=S.HEAD_FONT, fontweight="semibold", va="top", zorder=9)
+    for k, lab in enumerate(ERA_LABELS):
+        yy = ly - .068 - k * .037
+        ax.add_patch(Rectangle((lx, yy - .002), .026, .026, transform=t, fc=ERAS[k], ec=S.INK, lw=.3, zorder=9))
+        ax.text(lx + .036, yy + .011, lab, transform=t, fontsize=9, va="center", zorder=9)
+        ax.text(lx + .285, yy + .011, f"{share[k]:.0f}%", transform=t, fontsize=9, va="center", ha="right", color=S.MUTED, zorder=9)
+
+    named = nta.set_index("ntaname").geometry
+    old_g, new_g = named[OLDEST], named[NEWEST]
+    op, np_ = old_g.representative_point(), new_g.representative_point()
+    S.callout(ax, (op.x, op.y), (.025, .46), "Oldest: Crown Heights South",
+              f"{st.pre1940[OLDEST]:.0f}% of buildings predate 1940", ha="left", outline=old_g, halo=True)
+    S.callout(ax, (np_.x, np_.y), (.53, .045), "Newest: Spring Creek",
+              f"{st.pre1940[NEWEST]:.1f}% predate 1940", ha="left", outline=new_g, halo=True)
+
+    fig.text(.5, .968, title, ha="center", va="top", fontsize=22,
+             fontweight="bold", color=S.INK, fontfamily=S.HEAD_FONT)
+    fig.text(.5, .882, "Every one of New York City's 862,360 buildings, by the year it went up".replace("862,360", f"{len(b):,}"),
+             ha="center", va="center", fontsize=9, color=S.MUTED)
+    S.credit(fig, "Counted by listed construction year, garages excluded; many older years are rounded.\n"
+                  f"Data: {SOURCE}, NYC Open Data  ·  #30DayMapChallenge {DAY}\n"
+                  "daniellecarrick.github.io/30-day-map-challenge/day06", y=.012)
+    fig.savefig(OUT / "nyc_building_age_linkedin.png", dpi=200, facecolor=S.BG)
+    plt.close(fig)
+
+
 def web_data(b, era, nta, city, rings, st, title, share):
     x0, y0, x1, y1 = city.bounds
     pad = 1200
@@ -362,9 +412,8 @@ def main():
     b, st, res = neighborhood_stats(b, nta)
 
     top, low = st.pre1940.idxmax(), st.pre1940.idxmin()
-    assert top == OLDEST and low == NEWEST, f"extremes changed: {top}, {low}; update the headline"
-    title = (f"In {SHORT[OLDEST]}, {st.pre1940[OLDEST]:.0f}% of buildings predate 1940. "
-             f"In {SHORT[NEWEST]}, {st.pre1940[NEWEST]:.1f}%.")
+    assert top == OLDEST and low == NEWEST, f"extremes changed: {top}, {low}; update the callouts"
+    title = "How old is your neighborhood?"
     era = np.digitize(b.construction_year.values, ERA_EDGES).astype(int)
     share = np.bincount(era, minlength=len(ERAS)) / len(era) * 100
     print(title)
@@ -375,9 +424,13 @@ def main():
     city = shapely.make_valid(shapely.union_all(nta.geometry.values))
     rings = water_rings(city)
 
+    if "--linkedin-only" in sys.argv:
+        draw_linkedin(b, era, nta, city, rings, st, title, share)
+        return
     if "--web-only" not in sys.argv:
         make_png(b, era, nta, city, rings, st, title, share)
-        print("wrote png")
+        draw_linkedin(b, era, nta, city, rings, st, title, share)
+        print("wrote pngs")
     data, chunks = web_data(b, era, nta, city, rings, st, title, share)
     push = lambda c: "(window.__chunks=window.__chunks||[]).push(" + json.dumps(c, separators=(",", ":")) + ");"
     (HERE / "web" / "data.js").write_text("window.DATA = " + json.dumps(data, separators=(",", ":")) + ";\n" + "\n".join(push(c) for c in chunks))
