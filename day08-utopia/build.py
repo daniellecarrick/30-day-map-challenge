@@ -4,6 +4,7 @@ Religious utopias typically lasted half a century; secular ones a few years.
 Writes:
   - out/utopias.png    (static, for posting)
   - out/utopias.html   (interactive, self-contained: map + timeline)
+  - out/utopias_linkedin.png (1080x1350 portrait for the LinkedIn feed; --linkedin-only skips the rest)
 
 Data: Wikipedia lists of American utopian, Owenite, Fourierist and Shaker communities
       (fetch.py -> parse.py -> clean.py -> data/communities.csv); state outlines: US Census
@@ -176,11 +177,76 @@ def page(g, states, st, title):
     return S.build_page(HERE / "web" / "index.html", data, OUT / "utopias.html")
 
 
+def linkedin(g, states, st, title):
+    """4:5 portrait (1080x1350), the largest shape the LinkedIn feed shows, with type sized for a phone.
+    The two medians up top, then the map, with the longest-lived of each kind called out."""
+    S.apply()
+    fig = plt.figure(figsize=(5.4, 6.75))
+    fig.text(0.5, 0.975, title.replace(" typically lasted ", " typically lasted\n", 1),
+             ha="center", va="top", fontsize=14, linespacing=1.25,
+             fontweight="bold", color=S.INK, fontfamily=S.HEAD_FONT)
+
+    # ---- the two medians ----
+    for cx, basis in ((0.29, "religious"), (0.71, "secular")):
+        fig.text(cx, 0.83, f"{st[f'med_{basis}']:g} years", ha="center", fontsize=20, fontweight="bold",
+                 fontfamily=S.HEAD_FONT, color=COLORS[basis])
+        fig.text(cx, 0.82, f"median lifespan of {st[basis]}\n{basis} communities", ha="center", va="top",
+                 fontsize=8.5, color=S.MUTED, linespacing=1.3)
+
+    # ---- map: crop to the lower 48, drawn as wide as the image ----
+    ax = fig.add_axes([0.0, 0.2, 1.0, 0.54])
+    states.plot(ax=ax, facecolor="#f0efec", edgecolor="white", linewidth=0.4, zorder=1)
+    states.dissolve().boundary.plot(ax=ax, color=S.INK, linewidth=0.3, zorder=2)
+
+    def size(y):   # points^2; area ∝ years
+        return (1.1 + 7.4 * np.sqrt(np.clip(y, 0, None) / MAX_YEARS)) ** 2
+
+    known = g[g.years.notna()].sort_values("years", ascending=False)
+    unknown = g[g.years.isna()]
+    ax.scatter(unknown.x, unknown.y, s=size(0), color=S.CLOSED, edgecolor="white", linewidth=0.25, zorder=3)
+    ax.scatter(known.x, known.y, s=size(known.years), color=known.basis.map(COLORS), alpha=0.85,
+               edgecolor="white", linewidth=0.3, zorder=4)
+    ax.set_axis_off()
+    ax.set_aspect("equal", adjustable="datalim")
+    x0, y0, x1, y1 = states.total_bounds
+    ax.set_xlim(x0 - 30e3, x1 + 30e3)
+
+    sab = g[g.name == "Sabbathday Lake Shaker Village"].iloc[0]
+    fair = g[g.name.str.startswith("Fairhope")].iloc[0]
+    for r in (sab, fair):
+        ax.scatter([r.x], [r.y], s=size(r.years) * 1.3, facecolor="none", edgecolor=S.INK, lw=0.8, zorder=5)
+    S.callout(ax, (sab.x, sab.y), (0.98, 0.98), "Sabbathday Lake, Maine",
+              "Shaker village since 1794,\nstill running: 232 years", ha="right", halo=True)
+    S.callout(ax, (fair.x, fair.y), (0.45, 0.05), "Fairhope, Alabama",
+              "Longest-lived secular one,\na single-tax colony since 1894", halo=True)
+
+    # ---- legend: color, then dot size ----
+    handles = [Line2D([], [], marker="o", ls="", ms=6, mfc=COLORS["religious"], mec="none", label="Religious"),
+               Line2D([], [], marker="o", ls="", ms=6, mfc=COLORS["secular"], mec="none", label="Secular"),
+               Line2D([], [], marker="o", ls="", ms=3.5, mfc=S.CLOSED, mec="none", label="Dates unknown")]
+    fig.legend(handles=handles, loc="lower center", bbox_to_anchor=(0.5, 0.135), ncol=3, frameon=False, fontsize=9,
+               handletextpad=0.3, columnspacing=1.4)
+    sh = [Line2D([], [], ls="", marker="o", ms=np.sqrt(size(y)), mfc="none", mec=S.MUTED, label=f"{y}")
+          for y in SIZE_KEYS]
+    leg = fig.legend(handles=sh, loc="lower center", bbox_to_anchor=(0.5, 0.075), ncol=4, frameon=False,
+                     fontsize=9, title="Dot size: years it lasted", title_fontsize=9, handletextpad=0.4,
+                     columnspacing=1.2)
+    leg.get_title().set_color(S.MUTED)
+    S.credit(fig, "Lifespan: founding year to the end of communal living; ones still running counted to 2026.\n"
+                  f"Data: Wikipedia lists of American utopian communities  ·  #30DayMapChallenge {DAY}\n"
+                  "daniellecarrick.github.io/30-day-map-challenge/day08", y=0.014)
+    fig.savefig(OUT / "utopias_linkedin.png", dpi=200)
+    plt.close(fig)
+
+
 def main():
     g, states = load()
     st = stats(g)
     title = headline(st)
     print(json.dumps(st))
+    linkedin(g, states, st, title)
+    if "--linkedin-only" in sys.argv:
+        return
     png(g, states, st, title)
     size = page(g, states, st, title)
     print("wrote out/utopias.png and out/utopias.html", f"({size / 1e6:.2f} MB)")
