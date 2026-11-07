@@ -30,11 +30,14 @@ NYCROADS = "http://www.nycroads.com/roads/"
 EVERGREENS = (-73.9010, 40.6840)
 # Section 8 of the 1966 plan "must cross over Belt Parkway, over 84th Street": the Belt Parkway in Howard Beach
 BELT_84TH = (-73.8585, 40.6650)
+MID_SOUTH = 24   # m
+AVE_BLOCK = 240  # m, roughly one avenue block on 30th St
 ROUTES = [
     {
         "name": "Lower Manhattan Expressway", "short": "LOMEX", "route": "I-78 / I-478", "borough": "Manhattan",
         "years": "1941–1971", "fate": "Demapped 1969, killed 1971",
-        "plan": "1955 Joint Study elevated route",
+        "plan": "1955 Joint Study route (elevated west of Centre St, open cut east)",
+        "width_m": 100, "width_note": "250–350 ft right-of-way in the 1955 Joint Study",
         "source": NYCROADS + "lower-manhattan/",
         "trace": "West St along Canal St two blocks, over the Holland Tunnel plaza, along Watts St and Broome St, "
                  "meeting Delancey St at Suffolk St to the Williamsburg Bridge; spur down the Bowery to the Manhattan Bridge.",
@@ -52,20 +55,27 @@ ROUTES = [
     {
         "name": "Mid-Manhattan Expressway", "short": "Mid-Manhattan", "route": "I-495", "borough": "Manhattan",
         "years": "1929–1971", "fate": "Killed 1971",
-        "plan": "1955 Joint Study elevated route",
+        "plan": "1955 Joint Study route (depressed west of 10th Ave, elevated from 8th Ave)",
+        "width_m": 30, "width_note": "100 ft right-of-way just south of 30th St in the 1955 Joint Study",
         "source": NYCROADS + "mid-manhattan/",
         "trace": "Along 30th St from the West Side Highway (12th Ave) to the FDR Drive, with ramps to the Lincoln "
-                 "and Queens-Midtown tunnels. Drawn on the 30th St centerline; the plan used a strip just south of it.",
+                 "and Queens-Midtown tunnels. Between 7th Ave and about 2nd Ave it runs on a 100 ft strip just south of 30th St.",
         "legs": [
-            [("along", "West 30th Street", ("x", "West 30th Street", "12th Avenue"), ("x", "West 30th Street", "5th Avenue")),
-             ("along", "East 30th Street", ("x", "East 30th Street", "5th Avenue"), ("x", "East 30th Street", "1st Avenue")),
+            [("along", "West 30th Street", ("x", "West 30th Street", "12th Avenue"), ("x", "West 30th Street", "7th Avenue")),
+             # the 100 ft strip south of 30th St: its centerline is ~24 m south of the street's (half the 60 ft street + 50 ft)
+             ("offset", -MID_SOUTH, ("along", "West 30th Street", ("x", "West 30th Street", "7th Avenue"), ("x", "West 30th Street", "5th Avenue"))),
+             ("offset", -MID_SOUTH, ("along", "East 30th Street", ("x", "East 30th Street", "5th Avenue"), ("x", "East 30th Street", "1st Avenue")),
+              AVE_BLOCK),  # stops one block short of 1st Ave: "after 2nd Ave" it swings back onto 30th St
+             ("along", "East 30th Street", ("near", "East 30th Street", ("x", "East 30th Street", "1st Avenue"), AVE_BLOCK),
+              ("x", "East 30th Street", "1st Avenue")),
              ("line", ("x", "East 30th Street", "1st Avenue"), ("near", "FDR Drive", ("x", "East 30th Street", "1st Avenue")))],
         ],
     },
     {
         "name": "Bushwick Expressway", "short": "Bushwick", "route": "I-78", "borough": "Brooklyn / Queens",
         "years": "1955–1971", "fate": "Removed from city map 1969, killed 1971",
-        "plan": "1963 recommended (middle) route",
+        "plan": "Middle route recommended in TBTA's 1963 Future Arterial Program",
+        "width_m": 37, "width_note": "not documented; assumed the same as the Cross-Brooklyn (121 ft)",
         "source": NYCROADS + "bushwick/",
         "trace": "From the Williamsburg Bridge along Broadway to Flushing Ave, east on Flushing Ave to Wyckoff Ave, "
                  "southeast through the Cemetery of the Evergreens and Highland Park, down Force Tube Ave and the "
@@ -87,19 +97,22 @@ ROUTES = [
         ],
     },
     {
-        "name": "Cross-Brooklyn Expressway", "short": "Cross-Brooklyn", "route": "I-78 / I-878", "borough": "Brooklyn",
-        "years": "1941–1971", "fate": "Withdrawn 1969, demapped 1971",
-        "plan": "1966 TBTA–Blauvelt plan, Brooklyn section",
+        "name": "Cross-Brooklyn Expressway", "short": "Cross-Brooklyn", "route": "I-78 / I-878", "borough": "Brooklyn / Queens",
+        "years": "1941–1971", "fate": "Championed by Mayor Lindsay from 1966, withdrawn 1969, demapped 1971",
+        "plan": "1966 TBTA–Blauvelt route study, sections 1–8 (to Cross Bay Blvd)",
+        "width_m": 37, "width_note": "121 ft (expressway plus railroad) at Flatbush Ave in the 1966 study",
         "source": NYCROADS + "cross-brooklyn/",
         "trace": "From the Gowanus Expressway at 65th St along the LIRR Bay Ridge Branch to East New York, then "
-                 "along Flatlands Ave (Schenck to Fountain Ave), then across the Spring Creek marshes to the Belt Parkway at 84th St.",
+                 "along Flatlands Ave (Schenck to Fountain Ave), then across the Spring Creek marshes, over the Belt Parkway at 84th St, on viaduct to Cross Bay Blvd. "
+                 "The full plan ran on 17.2 mi to the Nassau County line.",
         "legs": [
             [("line", ("x", "7th Avenue", "65th Street"), ("near", "RAIL", ("x", "7th Avenue", "65th Street"))),
              ("along", "RAIL", ("near", "RAIL", ("x", "7th Avenue", "65th Street")),
               ("near", "RAIL", ("x", "Van Sinderen Avenue", "Linden Boulevard"))),
              ("line", ("near", "RAIL", ("x", "Van Sinderen Avenue", "Linden Boulevard")), ("x", "Flatlands Avenue", "Schenck Avenue")),
              ("along", "Flatlands Avenue", ("x", "Flatlands Avenue", "Schenck Avenue"), ("x", "Flatlands Avenue", "Fountain Avenue")),
-             ("line", ("x", "Flatlands Avenue", "Fountain Avenue"), ("near", "Belt Parkway", BELT_84TH))],
+             ("line", ("x", "Flatlands Avenue", "Fountain Avenue"), ("near", "Belt Parkway", BELT_84TH)),
+             ("along", "Belt Parkway", ("near", "Belt Parkway", BELT_84TH), ("x", "Belt Parkway", "Cross Bay Boulevard"))],
         ],
     },
 ]
@@ -149,7 +162,14 @@ class Guides:
             target = self.point(spec[2])
             lines = MultiLineString(self.by_name[spec[1]])
             from shapely.ops import nearest_points
-            return nearest_points(lines, target)[0]
+            p = nearest_points(lines, target)[0]
+            if len(spec) > 3:  # then step this far along the street, away from the target's end (west here)
+                merged = linemerge(MultiLineString(self.by_name[spec[1]]))
+                line = min(getattr(merged, "geoms", [merged]), key=lambda l: l.distance(p))
+                d = line.project(p)
+                a, b = line.interpolate(d - spec[3]), line.interpolate(d + spec[3])
+                p = min((a, b), key=lambda q: q.x)
+            return p
         if kind == "centroid":
             from shapely.geometry import Polygon
             rings = [Polygon(r.coords) for r in self.polys[spec[1]] if r.is_ring]
@@ -190,6 +210,13 @@ class Guides:
             return self.along(spec[1], self.point(spec[2]), self.point(spec[3]))
         if kind == "mid":
             return self.mid(*spec[1:])
+        if kind == "offset":  # ("offset", metres, leg[, trim_end]): + = left of travel, - = right
+            line = self.leg(spec[2])
+            if line.coords[0][0] > line.coords[-1][0]:
+                line = LineString(line.coords[::-1])  # travel west to east, so right = south
+            if len(spec) > 3:
+                line = substring(line, 0, line.length - spec[3])
+            return line.offset_curve(spec[1])
         return LineString([self.point(spec[1]), self.point(spec[2])])
 
 

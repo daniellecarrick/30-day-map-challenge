@@ -7,8 +7,9 @@ their path. Pipeline (each step writes into data/):
   analyze.py  buildings / people / homes in a 100 m corridor       -> path_stats.json, path_buildings.geojson
   build.py    this file: out/moses.png and out/moses.html
 
-Data: route histories from nycroads.com (Steve Anderson), after the 1955 Joint Study of Arterial Facilities
-and 1963 Future Arterial Program; NYC Building Footprints; 2020 Census blocks; OpenStreetMap.
+Data: route histories from nycroads.com (Steve Anderson), after the 1955 Joint Study of Arterial Facilities,
+TBTA's 1963 Future Arterial Program and the 1966 TBTA-Blauvelt Cross Brooklyn study (full citations in
+SOURCES.md); NYC Building Footprints; 2020 Census blocks; OpenStreetMap.
 Run:  ../.venv/bin/python build.py
 """
 import json
@@ -37,19 +38,19 @@ TOTAL = STATS["total"]
 TITLE = META["title"]
 BUILT_C, UNBUILT_C = S.CATEGORICAL[0], S.CATEGORICAL[1]   # categorical order: built, unbuilt
 METHOD = ("Unbuilt routes are approximate: traced from published plan descriptions onto today's streets. "
-          f"Path = a {2 * TOTAL['half_width_m']} m wide corridor. Buildings = footprints overlapping it; "
+          "Path = a corridor as wide as each plan's right-of-way (30–100 m). Buildings = footprints overlapping it; "
           "people = 2020 census blocks, weighted by the share of each block inside it.")
 
 # Moses-era expressways, with opening dates from each route's nycroads.com history.
 # (Staten Island Expressway, 1964, falls outside the frame and is left out.)
 BUILT = {
     "Cross Bronx Expressway": "1955–1963 (construction began 1948)",
-    "Brooklyn-Queens Expressway": "1939–1960",
+    "Brooklyn-Queens Expressway": "1939–1964",
     "Gowanus Expressway": "1941 as a parkway, widened 1964",
     "Prospect Expressway": "Mostly complete by 1960",
     "Major Deegan Expressway": "1939–1956",
     "Bruckner Expressway": "1961–1972",
-    "Van Wyck Expressway": "From 1950",
+    "Van Wyck Expressway": "1950–1963",
     "Long Island Expressway": "From 1940",
     "Clearview Expressway": "1960–1963",
 }
@@ -77,7 +78,7 @@ def load():
     for k in ("buildings", "buildings_pre1971", "people", "homes"):
         unbuilt[k] = unbuilt.name.map(lambda n: st[n][k])
     corridor = unbuilt.copy()
-    corridor["geometry"] = unbuilt.buffer(TOTAL["half_width_m"])
+    corridor["geometry"] = unbuilt.buffer(unbuilt.width_m / 2)
     bldgs = gpd.read_file(DATA / "path_buildings.geojson").to_crs(CRS_M)
     context = gpd.read_file(DATA / "context_lomex.geojson").to_crs(CRS_M)
     return boros, built, unbuilt, corridor, bldgs, context
@@ -134,7 +135,7 @@ def make_png(boros, built, unbuilt, corridor, bldgs, context):
                     "Unbuilt routes as proposed, drawn through today's city")
     ax.legend(handles=[
         Line2D([], [], color=BUILT_C, lw=1.8, label="Built"),
-        Line2D([], [], color=UNBUILT_C, lw=1.4, ls=(0, (3, 2)), label=f"Unbuilt, with its {2 * TOTAL['half_width_m']} m wide path"),
+        Line2D([], [], color=UNBUILT_C, lw=1.4, ls=(0, (3, 2)), label="Unbuilt, with its right-of-way"),
         Rectangle((0, 0), 1, 1, color=UNBUILT_C, lw=0, label="Building standing in the path"),
     ], loc="lower right", bbox_to_anchor=(1.0, 0.0), fontsize=S.SIZE["legend"], handlelength=2.2)
 
@@ -161,7 +162,8 @@ def make_png(boros, built, unbuilt, corridor, bldgs, context):
              fontsize=S.SIZE["subtitle"], color=S.MUTED, va="top")
 
     S.title(fig, TITLE)
-    S.credit(fig, f"{METHOD}\nRoutes: nycroads.com, after Moses's 1955 Joint Study and 1963 arterial plan · "
+    S.credit(fig, f"{METHOD}\nRoutes: nycroads.com, after the 1955 Joint Study of Arterial Facilities (LOMEX, Mid-Manhattan), "
+                  "TBTA's 1963 Future Arterial Program (Bushwick) and 1966 TBTA–Blauvelt study (Cross-Brooklyn)\n"
                   f"NYC Building Footprints · 2020 Census · OpenStreetMap  ·  #30DayMapChallenge {DAY}")
     fig.savefig(OUT / "moses.png", dpi=S.MAP["png_dpi"])
     plt.close(fig)
@@ -172,7 +174,7 @@ def page_data(boros, built, unbuilt, corridor, bldgs):
     b["geometry"] = b.geometry.simplify(25)
     bu = built[["name", "opened", "length_mi", "geometry"]].copy()
     bu["geometry"] = bu.geometry.simplify(15)
-    keep = ["name", "short", "route", "borough", "years", "fate", "plan", "source", "length_mi",
+    keep = ["name", "short", "route", "borough", "years", "fate", "plan", "source", "length_mi", "width_m", "width_note",
             "buildings", "buildings_pre1971", "people", "homes"]
     un = unbuilt[keep + ["geometry"]].copy()
     un["geometry"] = un.geometry.simplify(3)

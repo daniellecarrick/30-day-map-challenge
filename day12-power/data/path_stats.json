@@ -7,41 +7,44 @@
       "buildings_post1971": 48,
       "people": 7848,
       "homes": 3943,
-      "length_mi": 1.8
+      "length_mi": 1.8,
+      "width_m": 100
     },
     {
       "name": "Mid-Manhattan Expressway",
-      "buildings": 458,
-      "buildings_pre1971": 395,
-      "buildings_post1971": 56,
-      "people": 8505,
-      "homes": 5203,
-      "length_mi": 2.0
+      "buildings": 190,
+      "buildings_pre1971": 162,
+      "buildings_post1971": 26,
+      "people": 2614,
+      "homes": 1661,
+      "length_mi": 2.0,
+      "width_m": 30
     },
     {
       "name": "Bushwick Expressway",
-      "buildings": 1494,
-      "buildings_pre1971": 1292,
-      "buildings_post1971": 178,
-      "people": 17239,
-      "homes": 6052,
-      "length_mi": 7.9
+      "buildings": 736,
+      "buildings_pre1971": 644,
+      "buildings_post1971": 81,
+      "people": 5834,
+      "homes": 2045,
+      "length_mi": 7.9,
+      "width_m": 37
     },
     {
       "name": "Cross-Brooklyn Expressway",
-      "buildings": 1181,
-      "buildings_pre1971": 887,
-      "buildings_post1971": 266,
-      "people": 13551,
-      "homes": 5002,
-      "length_mi": 9.6
+      "buildings": 277,
+      "buildings_pre1971": 185,
+      "buildings_post1971": 82,
+      "people": 4908,
+      "homes": 1845,
+      "length_mi": 10.4,
+      "width_m": 37
     }
   ],
   "total": {
-    "buildings": 3588,
-    "buildings_pre1971": 2975,
-    "people": 47144,
-    "homes": 20201,
-    "half_width_m": 50
+    "buildings": 1658,
+    "buildings_pre1971": 1392,
+    "people": 21204,
+    "homes": 9494
   }
 }

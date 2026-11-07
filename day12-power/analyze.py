@@ -1,8 +1,8 @@
 """Count what stands today in the path of each unbuilt Moses expressway.
 
-Path = a 100 m wide corridor (50 m each side) around each traced route in data/unbuilt_routes.geojson.
-The 1955 LOMEX plan called for a 250-350 ft (76-107 m) right-of-way, so 100 m is a fair stand-in for
-the land a ten-lane expressway and its ramps would have taken. One width is used for every route.
+Path = a corridor around each traced route in data/unbuilt_routes.geojson, as wide as that plan's
+documented right-of-way (width_m in routes.py): LOMEX 100 m (250-350 ft), Mid-Manhattan 30 m (100 ft),
+Cross-Brooklyn 37 m (121 ft). The Bushwick's width is not documented; it uses the Cross-Brooklyn's.
 
   buildings  NYC building footprints (feature_code 2100 = building) that overlap the corridor by > 5 m²
   people     2020 Census block population, area-weighted by the share of each block inside the corridor
@@ -20,7 +20,6 @@ import geopandas as gpd
 HERE = Path(__file__).parent
 DATA = HERE / "data"
 CRS_M = "EPSG:32618"
-HALF_WIDTH = 50  # m each side
 MIN_OVERLAP = 5  # m²; ignores footprints that only graze the corridor edge
 PLAN_DEAD = 1971  # all four were killed by 1971
 
@@ -28,7 +27,7 @@ PLAN_DEAD = 1971  # all four were killed by 1971
 def main():
     routes = gpd.read_file(DATA / "unbuilt_routes.geojson").to_crs(CRS_M)
     corr = routes.copy()
-    corr["geometry"] = routes.buffer(HALF_WIDTH)
+    corr["geometry"] = routes.buffer(routes.width_m / 2)
 
     fp = gpd.read_file(DATA / "raw" / "footprints.geojson").to_crs(CRS_M)
     fp = fp[fp.feature_code.astype(str) == "2100"].copy()
@@ -56,6 +55,7 @@ def main():
             "people": int(round((blk.POP20 * w).sum())),
             "homes": int(round((blk.HOUSING20 * w).sum())),
             "length_mi": r["length_mi"],
+            "width_m": int(r["width_m"]),
         })
     allb = gpd.pd.concat(hits)
     # a building near where two routes meet counts once in the total
@@ -68,7 +68,6 @@ def main():
         "buildings_pre1971": int((uniq.construction_year < PLAN_DEAD).sum()),
         "people": int(round((blk.POP20 * w).sum())),
         "homes": int(round((blk.HOUSING20 * w).sum())),
-        "half_width_m": HALF_WIDTH,
     }
     (DATA / "path_stats.json").write_text(json.dumps({"routes": stats, "total": total}, indent=2))
     out = allb[["bin", "route", "construction_year", "height_roof", "geometry"]].copy()

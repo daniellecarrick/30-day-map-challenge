@@ -1,8 +1,8 @@
 {
   "day": 12,
   "theme": "Power",
-  "title": "Robert Moses's unbuilt highways would have cut through about 3,600 buildings that stand today",
-  "description": "Whose utopia? Robert Moses drew one man's perfect city of expressways through other people's neighborhoods. Many were built, like the Cross Bronx and the BQE. Four he lost: the Lower Manhattan, Mid-Manhattan, Bushwick and Cross-Brooklyn expressways. This map traces those unbuilt routes through today's city and counts the buildings and people now standing in their path.",
+  "title": "About 1,700 buildings stand today in the path of Robert Moses's unbuilt expressways",
+  "description": "Whose utopia? Robert Moses drew one man's perfect city of expressways through other people's neighborhoods. Many were built, like the Cross Bronx and the BQE. Four never were: the Lower Manhattan, Mid-Manhattan, Bushwick and Cross-Brooklyn expressways. This map traces those routes through today's city, as wide as each plan's right-of-way, and counts the buildings and people now standing in their path.",
   "html": "out/moses.html",
   "png": "out/moses.png",
   "published": "2026-11-12"
