@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moses's Unbuilt Highways</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/moses.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .boundary { fill: none; vector-effect: non-scaling-stroke; }
+  .built { fill: none; stroke: var(--cat-1); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+           vector-effect: non-scaling-stroke; }
+  .unbuilt { fill: none; stroke: var(--cat-2); stroke-width: 2; stroke-dasharray: 5 3; stroke-linejoin: round;
+             vector-effect: non-scaling-stroke; }
+  .casing { fill: none; stroke: var(--bg); stroke-width: 4; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .unbuilt { pointer-events: none; }
+  .corridor { fill: var(--cat-2); fill-opacity: .16; stroke: none; }
+  .bldg { fill: var(--cat-2); }
+  .bldg:hover, .bldg.on { fill: var(--ink); }
+  .hit { fill: none; stroke: transparent; stroke-width: 16; vector-effect: non-scaling-stroke; cursor: default; }
+  .built.on { stroke-width: 4; }
+  .unbuilt.on { stroke-width: 3.5; stroke: var(--ink); }
+  .layer { transition: opacity .25s; }
+  .layer.off { opacity: 0; pointer-events: none; }
+  .zoom-hint { position: absolute; right: 6px; bottom: 4px; color: var(--muted); pointer-events: none; }
+  .zoomed .legend { background: var(--bg); padding: 4px 8px 6px; border-radius: 6px; }
+  .zoom-reset { position: absolute; right: 6px; top: 4px; z-index: 2; display: none; }
+  @media (max-width: 640px) { .zoom-hint { display: none; } }
+  .tip .k { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">Whose utopia? Robert Moses drew one man's perfect city of expressways through other people's neighborhoods.
+      Many were built. Four he lost are traced here through today's city, with every building now standing in their path.</p>
+    <div class="controls">
+      <div id="view" aria-label="Which expressways to show"></div>
+      <span class="stat" id="stat"></span>
+    </div>
+  </header>
+  <div class="map-wrap" id="map">
+    <span class="zoom-hint" id="zoom-hint"></span>
+    <div class="seg zoom-reset" id="zoom-reset"><button type="button">Reset zoom</button></div>
+  </div>
+  <footer><span id="method"></span>
+    Routes: <a href="http://www.nycroads.com/roads/lower-manhattan/">nycroads.com</a> histories, after Moses's 1955 Joint Study and 1963 arterial plan;
+    <a href="https://data.cityofnewyork.us/d/5zhs-2jue">NYC Building Footprints</a>;
+    <a href="https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.2020.html">2020 Census blocks</a>;
+    built routes from <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const W = 640, H = 640;
+const fmt = d3.format(",");
+const frame = { type: "GeometryCollection",
+  geometries: D.boroughs.features.filter(f => f.properties.boroname !== "Staten Island").map(f => f.geometry) };
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[12, 12], [W - 12, H - 12]], frame);
+const path = d3.geoPath(proj);
+const tip = MapKit.tooltip();
+
+d3.select("#title").text(D.title);
+d3.select("#day").text(D.day);
+d3.select("#method").text(D.method + " ");
+
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
+svg.append("defs").append("clipPath").attr("id", "clip").append("rect").attr("width", W).attr("height", H);
+const gZoom = svg.append("g").attr("clip-path", "url(#clip)").append("g");
+
+gZoom.append("g").selectAll("path").data(D.boroughs.features).join("path").attr("class", "boundary").attr("d", path);
+
+const gUn = gZoom.append("g").attr("class", "layer");
+const gBuilt = gZoom.append("g").attr("class", "layer");
+gUn.append("g").selectAll("path").data(D.corridor.features).join("path").attr("class", "corridor").attr("d", path);
+const builtLines = gBuilt.append("g").selectAll("path").data(D.built.features).join("path")
+  .attr("class", "built").attr("d", path);
+const gUnHits = gUn.append("g"), gBldg = gUn.append("g");
+// the dashed route sits above its buildings, on a paper-colored casing so it reads over them when zoomed in
+gUn.append("g").selectAll("path").data(D.unbuilt.features).join("path").attr("class", "casing").attr("d", path);
+const unLines = gUn.append("g").selectAll("path").data(D.unbuilt.features).join("path")
+  .attr("class", "unbuilt").attr("d", path);
+
+// generous invisible hit lines, so a 2px route is easy to hover
+function routeTip(d) {
+  const p = d.properties;
+  if (p.buildings === undefined)
+    return `<b>${p.name}</b><span class="m">Built · opened ${p.opened}</span>`;
+  return `<b>${p.name}</b><span class="m">Unbuilt · ${p.route} · ${p.borough}</span><br>`
+    + `Proposed ${p.years} · ${p.fate}<br>`
+    + `${p.length_mi} mi as traced (${p.plan})<br>`
+    + `<span class="k">In its path today:</span> ${fmt(p.buildings)} buildings, ${fmt(p.homes)} homes, ${fmt(p.people)} people`;
+}
+function hits(g, features, lines) {
+  g.append("g").selectAll("path").data(features).join("path").attr("class", "hit").attr("d", path)
+    .on("pointermove", (ev, d) => { lines.classed("on", l => l === d); tip.show(ev, routeTip(d)); })
+    .on("pointerleave", () => { lines.classed("on", false); tip.hide(); });
+}
+hits(gBuilt, D.built.features, builtLines);
+hits(gUnHits, D.unbuilt.features, unLines);
+
+// buildings sit above the route hit lines, so they can be hovered once zoomed in
+const routeOf = name => D.unbuilt.features.find(f => f.properties.name === name).properties;
+gBldg.selectAll("path").data(D.buildings.features).join("path").attr("class", "bldg").attr("d", path)
+  .on("pointermove", (ev, d) => {
+    const p = d.properties, r = routeOf(p.route);
+    tip.show(ev, `<b>Building in the path of the ${r.name}</b>`
+      + (p.yr ? `<span class="m">Built ${p.yr}${p.yr < 1971 ? ", already standing when the plan died in 1971" : ""}</span>` : `<span class="m">Year built unknown</span>`));
+  })
+  .on("pointerleave", tip.hide);
+
+// legend in the empty space left of the city (the Hudson / New Jersey side)
+const [[mapLeft]] = path.bounds(frame);
+MapKit.legend(svg, {
+  x: mapLeft, y: 40, align: "right", dx: 8, width: 230,
+  keys: [
+    { draw: g => g.append("line").attr("class", "built").attr("x1", -8).attr("x2", 8), label: "Built Moses expressway" },
+    { draw: g => g.append("line").attr("class", "unbuilt").attr("x1", -8).attr("x2", 8), label: `Unbuilt, with its ${2 * D.total.half_width_m} m path` },
+    { draw: g => g.append("rect").attr("class", "bldg").attr("x", -5).attr("y", -5).attr("width", 10).attr("height", 10), label: "Building standing in the path" },
+  ],
+});
+
+function render(view) {
+  gUn.classed("off", view === "built");
+  gBuilt.classed("off", view === "unbuilt");
+  const t = D.total;
+  d3.select("#stat").text(view === "built"
+    ? `${D.built.features.length} expressways, about ${fmt(D.built_mi)} miles in the city`
+    : `In the path today: ${fmt(t.buildings)} buildings · ${fmt(t.homes)} homes · ${fmt(t.people)} people`);
+}
+MapKit.segmented("#view", [{ value: "both", label: "Both" }, { value: "unbuilt", label: "Unbuilt" }, { value: "built", label: "Built" }],
+  render, "both");
+
+// ---- zoom ----
+// Inside an embed, a plain scroll wheel must keep scrolling the host page; a trackpad pinch arrives as ctrl+wheel.
+const embedded = window.self !== window.top;
+let zt = d3.zoomIdentity;
+d3.select("#zoom-hint").text(embedded ? "Pinch to zoom" : "Scroll or pinch to zoom");
+const zoom = d3.zoom().scaleExtent([1, 24]).translateExtent([[0, 0], [W, H]])
+  .filter(ev => {
+    if (ev.type === "wheel") return !embedded || ev.ctrlKey;
+    if (ev.type.startsWith("touch")) return ev.touches.length > 1 || zt.k > 1;  // one finger scrolls the page until zoomed in
+    return !ev.ctrlKey && !ev.button;
+  })
+  .on("zoom", ev => {
+    zt = ev.transform;
+    gZoom.attr("transform", zt);
+    tip.hide();
+    svg.style("touch-action", zt.k > 1 ? "none" : "pan-y");
+    d3.select("#zoom-reset").style("display", zt.k > 1 ? "inline-flex" : "none");
+    d3.select("#map").classed("zoomed", zt.k > 1);
+  });
+svg.call(zoom).style("touch-action", "pan-y");
+d3.select("#zoom-reset button").on("click", () => svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity));
+</script>
+</body>
+</html>

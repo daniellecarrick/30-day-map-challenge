@@ -1,0 +1,47 @@
+{
+  "routes": [
+    {
+      "name": "Lower Manhattan Expressway",
+      "buildings": 455,
+      "buildings_pre1971": 401,
+      "buildings_post1971": 48,
+      "people": 7848,
+      "homes": 3943,
+      "length_mi": 1.8
+    },
+    {
+      "name": "Mid-Manhattan Expressway",
+      "buildings": 458,
+      "buildings_pre1971": 395,
+      "buildings_post1971": 56,
+      "people": 8505,
+      "homes": 5203,
+      "length_mi": 2.0
+    },
+    {
+      "name": "Bushwick Expressway",
+      "buildings": 1494,
+      "buildings_pre1971": 1292,
+      "buildings_post1971": 178,
+      "people": 17239,
+      "homes": 6052,
+      "length_mi": 7.9
+    },
+    {
+      "name": "Cross-Brooklyn Expressway",
+      "buildings": 1181,
+      "buildings_pre1971": 887,
+      "buildings_post1971": 266,
+      "people": 13551,
+      "homes": 5002,
+      "length_mi": 9.6
+    }
+  ],
+  "total": {
+    "buildings": 3588,
+    "buildings_pre1971": 2975,
+    "people": 47144,
+    "homes": 20201,
+    "half_width_m": 50
+  }
+}
