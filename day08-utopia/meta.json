@@ -1,0 +1,9 @@
+{
+  "day": 8,
+  "theme": "Utopia",
+  "title": "America's religious utopias typically lasted over 50 years. Secular ones lasted 3.",
+  "description": "132 American utopian communities, from Shaker villages and the Harmony Society to Fourierist phalanxes and 1970s communes, sized by how long each one lasted. Half the religious ones lasted 53.5 years or more; half the secular ones lasted 3 years or fewer. Switch to the timeline to see each community from founding to end, and hover over any dot or line for its story. Dates come from Wikipedia's lists, and a few religious or secular calls are judgment calls that don't change the result.",
+  "html": "out/utopias.html",
+  "png": "out/utopias.png",
+  "published": "2026-11-08"
+}

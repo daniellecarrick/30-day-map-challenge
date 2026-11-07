@@ -8,7 +8,8 @@
       show(ev, html) {
         el.html(html).style("opacity", 1);
         const h = el.node().offsetHeight, below = ev.clientY + 14 + h <= innerHeight;  // flip above the pointer near the bottom
-        el.style("left", Math.min(ev.clientX + 14, innerWidth - 270) + "px")
+        const w = el.node().offsetWidth;   // keep the whole tip on screen, however wide a page lets it get
+        el.style("left", Math.max(4, Math.min(ev.clientX + 14, innerWidth - w - 8)) + "px")
           .style("top", (below ? ev.clientY + 14 : Math.max(4, ev.clientY - 14 - h)) + "px");
       },
       hide() { el.style("opacity", 0); },
