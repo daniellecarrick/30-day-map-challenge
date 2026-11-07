@@ -5,7 +5,8 @@ extended to the latest month. As in the original, color = which method had more 
 size = the gap in entries between them. Size uses one scale across
 both periods, so dots can be compared when you switch years.
 
-Writes out/omny_vs_metrocard.png and out/omny_vs_metrocard.html
+Writes out/omny_vs_metrocard.png, out/omny_vs_metrocard.html and
+out/omny_vs_metrocard_linkedin.png (1080x1350 portrait for the LinkedIn feed; bigger type)
 Data: MTA Subway Hourly Ridership (data.ny.gov), downloaded by fetch.py
 Run:  ../.venv/bin/python fetch.py   (once)
       ../.venv/bin/python build.py
@@ -57,15 +58,24 @@ def tally(df):
     return [{"boro": b, "omny": int(t.omny[b]), "stations": int(t.stations[b])} for b in BORO_ORDER]
 
 
+def frame(boroughs, years):
+    """The four main boroughs plus Staten Island's two fare-collecting stations; the rest of Staten Island is cropped."""
+    x0, y0, x1, y1 = boroughs[boroughs.boroname != "Staten Island"].total_bounds
+    si = years[2026][years[2026].borough == "Staten Island"]
+    si = gpd.GeoSeries(gpd.points_from_xy(si.longitude, si.latitude), crs=4326).to_crs(CRS_M)
+    return min(x0, si.x.min()), min(y0, si.y.min()), max(x1, si.x.max()), max(y1, si.y.max())
+
+
+def projected(d):
+    pts = gpd.GeoSeries(gpd.points_from_xy(d.longitude, d.latitude), crs=4326).to_crs(CRS_M)
+    return d.assign(x=pts.x.values, y=pts.y.values)
+
+
 def make_png(boroughs, years, title):
     S.apply()
     gap_max = max(d.gap.max() for d in years.values())
     fig, axes = plt.subplots(1, 2, figsize=S.MAP["png_size_in"])
-    # Frame the four main boroughs plus Staten Island's two stations; the rest of Staten Island is cropped.
-    x0, y0, x1, y1 = boroughs[boroughs.boroname != "Staten Island"].total_bounds
-    si = years[2026][years[2026].borough == "Staten Island"]
-    si = gpd.GeoSeries(gpd.points_from_xy(si.longitude, si.latitude), crs=4326).to_crs(CRS_M)
-    x0, y0, x1, y1 = min(x0, si.x.min()), min(y0, si.y.min()), max(x1, si.x.max()), max(y1, si.y.max())
+    x0, y0, x1, y1 = frame(boroughs, years)
     pad = 0.02 * (y1 - y0)
     for ax, y in zip(axes, YEARS):
         d = years[y].sort_values("gap", ascending=False)
@@ -108,6 +118,51 @@ def make_png(boroughs, years, title):
     fig.savefig(OUT / "omny_vs_metrocard.png", dpi=S.MAP["png_dpi"])
 
 
+def draw_linkedin(boroughs, years, title):
+    """4:5 portrait, the largest shape the LinkedIn feed shows, with type sized to read on a phone.
+    The two periods sit side by side, as on the page, on one dot scale."""
+    S.apply()
+    fig = plt.figure(figsize=(5.4, 6.75))
+    gap_max = max(d.gap.max() for d in years.values())
+    x0, y0, x1, y1 = frame(boroughs, years)
+    pad = 0.015 * (y1 - y0)
+    for k, y in enumerate(YEARS):
+        ax = fig.add_axes([0.01 + k * 0.495, 0.24, 0.485, 0.525])
+        d = projected(years[y]).sort_values("gap", ascending=False)
+        boroughs.boundary.plot(ax=ax, color=S.INK, linewidth=0.3, zorder=1)
+        ax.scatter(d.x, d.y, s=np.maximum(d.gap.values / gap_max * 120, 2.2), c=d.winner.map(COLOR),
+                   alpha=0.85, edgecolors=S.EDGE, linewidths=0.2, zorder=3)
+        ax.set_axis_off()
+        ax.set_xlim(x0 - pad, x1 + pad); ax.set_ylim(y0 - pad, y1 + pad)
+        ax.set_aspect("equal", adjustable="box", anchor="N")  # map hangs just below its stats
+        share = d.omny.sum() / d.total.sum() * 100
+        cx = 0.01 + k * 0.495 + 0.2425
+        fig.text(cx, 0.862, PERIOD[y], ha="center", fontsize=11, fontweight="semibold", fontfamily=S.HEAD_FONT, color=S.INK)
+        fig.text(cx, 0.822, f"{share:.1f}%", ha="center", fontsize=20, fontweight="bold", fontfamily=S.HEAD_FONT, color=S.INK)
+        fig.text(cx, 0.815, f"of entries were OMNY\nmajority at {(d.winner == 'OMNY').sum()} of {len(d)} stations",
+                 ha="center", va="top", fontsize=8.5, color=S.MUTED, linespacing=1.3)
+        if y == 2024:
+            mc = d[d.winner == "MetroCard"].iloc[0]
+            S.callout(ax, (mc.x, mc.y), (0.80, 0.70), mc.station_complex.split("-")[0],
+                      f"Widest MetroCard\nmargin: {mc.gap:,}", halo=True)
+        else:
+            low = d.sort_values("pct").iloc[0]
+            S.callout(ax, (low.x, low.y), (0.06, -0.045), low.station_complex.split(" (")[0].replace("-", "–"),
+                      f"Lowest OMNY share: {low.pct:.1f}%", halo=True)
+
+    fig.text(0.5, 0.975, title.replace(". ", ".\n", 1), ha="center", va="top", fontsize=15, linespacing=1.25,
+             fontweight="bold", color=S.INK, fontfamily=S.HEAD_FONT)
+    handles = [Line2D([], [], marker="o", ls="", ms=7, mfc=COLOR["OMNY"], mec="none", label="More OMNY entries"),
+               Line2D([], [], marker="o", ls="", ms=7, mfc=COLOR["MetroCard"], mec="none", label="More MetroCard entries")]
+    fig.legend(handles=handles, loc="lower center", bbox_to_anchor=(0.5, 0.085), ncol=2, frameon=False, fontsize=9,
+               title="Each dot is a station. Bigger dot = wider gap.", title_fontsize=9, handletextpad=0.3, columnspacing=1.2)
+    S.credit(fig, "MetroCard sales ended Dec 31, 2025. Staten Island Railway collects fares at only 2 of its 21 stations.\n"
+                  f"Data: MTA Subway Hourly Ridership  ·  #30DayMapChallenge {DAY}\n"
+                  "daniellecarrick.github.io/30-day-map-challenge/day07", y=0.014)
+    fig.savefig(OUT / "omny_vs_metrocard_linkedin.png", dpi=200)
+    plt.close(fig)
+
+
 def main():
     years = {y: load_year(y) for y in YEARS}
     tallies = {y: tally(years[y]) for y in YEARS}
@@ -118,6 +173,9 @@ def main():
     meta = json.loads((HERE / "meta.json").read_text())
     boroughs = gpd.read_file(DATA / "boroughs.geojson").to_crs(CRS_M)
     make_png(boroughs, years, meta["title"])
+    draw_linkedin(boroughs, years, meta["title"])
+    if "--linkedin-only" in sys.argv:
+        return
 
     ids = sorted(set(years[2024].index) | set(years[2026].index))
     stations = []
