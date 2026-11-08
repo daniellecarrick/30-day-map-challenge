@@ -1,0 +1,9 @@
+{
+  "day": 9,
+  "theme": "Urban-rural",
+  "title": "In New York City, 55% of households have no car. In the rest of the state, just 9% do.",
+  "description": "What makes a place urban or rural beyond how many people live there? Each of New York's 62 counties is a flower: urban traits (no car, hour-plus commutes, non-Christian faith, born abroad) point up in blue, rural traits (owning your home, veterans, manufacturing jobs) point down in amber, a green petal shows $200k+ household incomes (about the same everywhere: 17% in NYC, 16% elsewhere), and the center dot shows the 2024 presidential margin. The five boroughs are blue fans; upstate counties hang like bells. Hover a petal on the big New York City or Other counties flower to compare that trait across the state.",
+  "html": "out/urban-rural.html",
+  "png": "out/urban-rural.png",
+  "published": "2026-11-09"
+}
