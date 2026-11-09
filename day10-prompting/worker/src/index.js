@@ -15,7 +15,7 @@ const UA = "30DayMapChallenge-day10 (https://daniellecarrick.github.io/30-day-ma
 const CONF_LABELS = ["very low", "low", "medium", "high"];
 
 const SYSTEM = `You are being tested on geographic memory. You will get a place name and a country. \
-Reply with ONLY a JSON object, no other text, with these keys:
+Answer by calling the report_guess tool with these fields:
   "lat": number, decimal degrees (south negative)
   "lon": number, decimal degrees (west negative)
   "confidence": one of "very low", "low", "medium", "high" (how sure you are of the spot)
@@ -126,35 +126,71 @@ async function guess(req, env) {
   return { id, place, country, guess: g, candidates };
 }
 
-async function askClaude(env, place, country) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+const GUESS_TOOL = {
+  name: "report_guess",
+  description: "Report your memory-only guess for where the place is.",
+  input_schema: {
+    type: "object",
+    properties: {
+      // Order matters: the model fills these in sequence, so it explains where the place is (hemisphere, region) before it writes numbers.
+      reasoning: { type: "string", description: "one or two sentences, first person, on how you got there. Say which hemisphere the place is in (north or south latitude, east or west longitude)." },
+      lat: { type: "number", description: "decimal degrees, south negative. Must agree with the hemisphere in your reasoning." },
+      lon: { type: "number", description: "decimal degrees, west negative. Must agree with the hemisphere in your reasoning." },
+      confidence: { type: "string", enum: CONF_LABELS },
+      chance_within_25km_pct: { type: "integer", description: "0-100, honest chance the guess is within 25 km" },
+    },
+    required: ["reasoning", "lat", "lon", "confidence", "chance_within_25km_pct"],
+  },
+};
+
+async function callClaude(env, place, country) {
+  return fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model: env.MODEL || "claude-haiku-5-5",
-      max_tokens: 400,
+      max_tokens: 1000,
       system: SYSTEM,
+      // Forcing the tool means the answer always arrives as structured fields, never as prose or cut-off JSON.
+      tools: [GUESS_TOOL],
+      tool_choice: { type: "tool", name: "report_guess" },
       messages: [{ role: "user", content: JSON.stringify({ place, country }) }],
     }),
   });
-  if (!res.ok) {
-    const raw = await res.text();
-    console.error("anthropic", res.status, raw);   // the real reason, visible with `wrangler tail`
-    let msg = "";
-    try { msg = JSON.parse(raw).error?.message || ""; } catch {}
-    if (res.status === 400 && /credit balance|usage limit|spend limit/i.test(msg))
-      throw new HttpError(503, "This project's budget for Claude guesses has run out, so new guesses are paused. The map and earlier guesses still work.", { code: "credits" });
-    if (res.status === 401 || res.status === 403)
-      throw new HttpError(503, "Guessing is paused while this project's API key is renewed. The map and earlier guesses still work.", { code: "key" });
-    if (res.status === 429 || res.status === 529)
-      throw new HttpError(503, "Claude is busy right now. Try again in a minute.", { code: "busy", retryAfter: 60 });
-    throw new HttpError(502, "Claude couldn't be reached. Try again in a moment.", { code: "upstream" });
-  }
-  const data = await res.json();
-  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+}
+
+function parseGuess(data) {
+  const blocks = data.content || [];
+  const tool = blocks.find(b => b.type === "tool_use" && b.input);
+  if (tool) return tool.input;
+  // Fallback: JSON in plain text.
+  const text = blocks.filter(b => b.type === "text").map(b => b.text).join("");
   const m = text.match(/\{[\s\S]*\}/);
-  let o;
-  try { o = JSON.parse(m ? m[0] : ""); } catch { throw new HttpError(502, "Claude's answer wasn't in the expected format. Try again."); }
+  try { return JSON.parse(m ? m[0] : ""); } catch { return null; }
+}
+
+async function askClaude(env, place, country) {
+  let o = null;
+  for (let attempt = 0; attempt < 2 && !o; attempt++) {   // one retry if the answer is unusable
+    const res = await callClaude(env, place, country);
+    if (!res.ok) {
+      const raw = await res.text();
+      console.error("anthropic", res.status, raw);   // the real reason, visible with `wrangler tail`
+      let msg = "";
+      try { msg = JSON.parse(raw).error?.message || ""; } catch {}
+      if (res.status === 400 && /credit balance|usage limit|spend limit/i.test(msg))
+        throw new HttpError(503, "This project's budget for Claude guesses has run out, so new guesses are paused. The map and earlier guesses still work.", { code: "credits" });
+      if (res.status === 401 || res.status === 403)
+        throw new HttpError(503, "Guessing is paused while this project's API key is renewed. The map and earlier guesses still work.", { code: "key" });
+      if (res.status === 429 || res.status === 529)
+        throw new HttpError(503, "Claude is busy right now. Try again in a minute.", { code: "busy", retryAfter: 60 });
+      throw new HttpError(502, "Claude couldn't be reached. Try again in a moment.", { code: "upstream" });
+    }
+    const data = await res.json();
+    o = parseGuess(data);
+    if (!o) console.error("unusable answer", place, country, data.stop_reason, JSON.stringify(data.content));
+  }
+  if (!o) throw new HttpError(502, "Claude's answer wasn't in the expected format. Try again.");
   const lat = Number(o.lat), lon = Number(o.lon);
   if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) throw new HttpError(502, "Claude gave coordinates that don't exist. Try again.");
   return {
@@ -169,6 +205,7 @@ async function lookup(place, country) {
   const u = new URL(NOMINATIM);
   u.search = new URLSearchParams({ q: `${place}, ${country}`, format: "jsonv2", limit: "8", addressdetails: "0" });
   const res = await fetch(u, { headers: { "User-Agent": UA, "Accept-Language": "en" } });
+  if (!res.ok) console.error("nominatim", res.status, (await res.text()).slice(0, 300));
   if (!res.ok) throw new HttpError(502, "The place lookup is unavailable right now. Try again in a moment.");
   const rows = await res.json();   // already ranked by OpenStreetMap's importance, best first
   // Keep the best match, and drop anything within 30 km of a better one (London the city, the borough and

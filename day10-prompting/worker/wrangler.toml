@@ -13,3 +13,6 @@ DAILY_LIMIT = "300"    # guesses for everyone per day (a hard ceiling on cost)
 binding = "DB"
 database_name = "day10-guesses"
 database_id = "6d2707ca-1f17-4700-992f-125fe0cd32b8"
+
+[observability]
+enabled = true

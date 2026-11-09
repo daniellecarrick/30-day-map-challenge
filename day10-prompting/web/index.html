@@ -196,8 +196,11 @@ function draw() {
   d3.select("#visitors").text(v ? `${v} of the ${P.length} places ${v === 1 ? "was" : "were"} added by visitors.` : "");
 }
 
-const zoom = d3.zoom().scaleExtent([1, 60]).filter(ev => ev.type === "mousedown" || ev.type === "touchstart")
-  .on("zoom", ev => { k = ev.transform.k; root.attr("transform", ev.transform); sizes(); placeLabels(); });
+const zoom = d3.zoom().scaleExtent([1, 60]).filter(ev => ev.type === "wheel" || ev.type.startsWith("touch") || (ev.type === "mousedown" && !ev.button) || ev.type === "dblclick")   // drag, pinch, trackpad pinch/scroll, double-click
+  .on("zoom", ev => {
+    k = ev.transform.k; root.attr("transform", ev.transform); sizes(); placeLabels();
+    d3.select("#reset").classed("on", k > 1.01);   // reset button whenever the map is zoomed, by any gesture
+  });
 svg.call(zoom);
 new ResizeObserver(placeLabels).observe(svg.node());
 
