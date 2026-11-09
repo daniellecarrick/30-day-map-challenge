@@ -37,7 +37,10 @@ export default {
         return json(await dataset(env), 200, { ...cors, "Cache-Control": "public, max-age=60" });
       return json({ error: "Not found" }, 404, cors);
     } catch (e) {
-      if (e instanceof HttpError) return json({ error: e.message }, e.status, cors);
+      if (e instanceof HttpError) {
+        const h = e.retryAfter ? { ...cors, "Retry-After": String(e.retryAfter) } : cors;
+        return json({ error: e.message, code: e.code, retry_after: e.retryAfter }, e.status, h);
+      }
       console.error(e);
       return json({ error: "Something went wrong on the server." }, 500, cors);
     }
@@ -45,7 +48,10 @@ export default {
 };
 
 class HttpError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  // code lets the page pick a heading and a tone; retryAfter (seconds) tells a visitor when to come back
+  constructor(status, message, { code = "error", retryAfter } = {}) {
+    super(message); this.status = status; this.code = code; this.retryAfter = retryAfter;
+  }
 }
 
 function corsHeaders(req, env) {
@@ -92,11 +98,22 @@ async function guess(req, env) {
   const now = Math.floor(Date.now() / 1000);
 
   const hourly = Number(env.HOURLY_LIMIT || 8), daily = Number(env.DAILY_LIMIT || 300);
-  const { h, d } = await env.DB.prepare(
-    "SELECT SUM(ip_hash = ?1 AND created_at > ?2) AS h, COUNT(*) AS d FROM guesses WHERE created_at > ?3"
+  // A visitor's allowance is a rolling hour ("a session"): each guess frees up an hour after it was made,
+  // so the quota resets on its own and nothing needs clearing.
+  const { h, oldest, d } = await env.DB.prepare(
+    `SELECT SUM(ip_hash = ?1 AND created_at > ?2) AS h,
+            MIN(CASE WHEN ip_hash = ?1 AND created_at > ?2 THEN created_at END) AS oldest,
+            COUNT(*) AS d
+     FROM guesses WHERE created_at > ?3`
   ).bind(hash, now - 3600, now - 86400).first();
-  if ((h || 0) >= hourly) throw new HttpError(429, `That's ${hourly} guesses this hour. Try again later.`);
-  if ((d || 0) >= daily) throw new HttpError(429, "Claude has answered its daily quota of guesses. Come back tomorrow.");
+  if ((h || 0) >= hourly) {
+    const wait = Math.max(60, (oldest || now) + 3600 - now), mins = Math.ceil(wait / 60);
+    throw new HttpError(429,
+      `To prevent abuse, each user is limited to ${hourly} guesses a session. You can guess again in ${mins} minute${mins === 1 ? "" : "s"}.`,
+      { code: "rate_limit", retryAfter: wait });
+  }
+  if ((d || 0) >= daily)
+    throw new HttpError(429, "Claude has reached today's limit of guesses for everyone. Come back tomorrow.", { code: "daily_limit" });
 
   const [g, candidates] = await Promise.all([askClaude(env, place, country), lookup(place, country)]);
   const id = crypto.randomUUID();
@@ -121,8 +138,17 @@ async function askClaude(env, place, country) {
     }),
   });
   if (!res.ok) {
-    console.error("anthropic", res.status, await res.text());
-    throw new HttpError(502, "Claude couldn't be reached. Try again in a moment.");
+    const raw = await res.text();
+    console.error("anthropic", res.status, raw);   // the real reason, visible with `wrangler tail`
+    let msg = "";
+    try { msg = JSON.parse(raw).error?.message || ""; } catch {}
+    if (res.status === 400 && /credit balance|usage limit|spend limit/i.test(msg))
+      throw new HttpError(503, "This project's budget for Claude guesses has run out, so new guesses are paused. The map and earlier guesses still work.", { code: "credits" });
+    if (res.status === 401 || res.status === 403)
+      throw new HttpError(503, "Guessing is paused while this project's API key is renewed. The map and earlier guesses still work.", { code: "key" });
+    if (res.status === 429 || res.status === 529)
+      throw new HttpError(503, "Claude is busy right now. Try again in a minute.", { code: "busy", retryAfter: 60 });
+    throw new HttpError(502, "Claude couldn't be reached. Try again in a moment.", { code: "upstream" });
   }
   const data = await res.json();
   const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");

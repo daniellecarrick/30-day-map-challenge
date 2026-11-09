@@ -145,6 +145,7 @@ body { margin: 0; background: var(--bg); color: var(--ink);
 .tip .m { color: var(--muted); }
 </style>
 <style>
+  .lede { max-width: none; }   /* day 10 only: let the intro run the full width (shared theme caps it at 640px) */
   .land { fill: color-mix(in srgb, var(--ink) 9%, var(--bg)); stroke: var(--bg); stroke-width: .6; vector-effect: non-scaling-stroke; }
   .link { stroke: var(--ink); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
   .guess { fill: var(--cat-1); fill-opacity: .55; stroke: var(--ink); stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -532,11 +533,17 @@ idle();
 
 // ---------- live guessing (needs the Cloudflare Worker in worker/) ----------
 async function api(p, body) {
-  const r = await fetch(WORKER + p, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  let r;
+  try { r = await fetch(WORKER + p, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}); }
+  catch { throw Object.assign(new Error("Check your connection and try again."), { code: "network" }); }
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || "Request failed.");
+  if (!r.ok) throw Object.assign(new Error(j.error || "Request failed."), { code: j.code || "error" });
   return j;
 }
+const ERR_HEAD = { rate_limit: "You've used your guesses", daily_limit: "Claude needs a rest", credits: "Guessing is paused",
+  key: "Guessing is paused", busy: "Claude is busy", network: "Can't reach the guessing service" };
+const showError = e => panel(`<h2>${esc(ERR_HEAD[e.code] || "Something went wrong")}</h2><p>${esc(e.message)}</p>`);
+
 // Score a guess against candidate `index` (-1 = remove it). Replaces any earlier scoring of the same guess.
 async function finish(g, index) {
   const c = await api("/confirm", { id: g.id, index });
@@ -547,7 +554,7 @@ async function finish(g, index) {
 }
 async function rescore(d, index) {
   try { await finish({ id: d.gid, candidates: d.cands }, index); }
-  catch (e) { panel(`<p>${esc(e.message)}</p>`); }
+  catch (e) { showError(e); }
 }
 if (WORKER) {
   d3.select("#try").attr("hidden", null);
@@ -568,7 +575,7 @@ if (WORKER) {
           <p>Claude guessed ${ll(g.guess.lat, g.guess.lon)}, but I couldn't find that place on OpenStreetMap, so there's nothing to score it against. Try a different spelling.</p>
           <div class="row"><span class="k">Why Claude guessed there</span>${esc(g.guess.reasoning)}</div>`);
       }
-    } catch (e) { panel(`<h2>Something went wrong</h2><p>${esc(e.message)}</p>`); }
+    } catch (e) { showError(e); }
     btn.disabled = false;
   });
 }
