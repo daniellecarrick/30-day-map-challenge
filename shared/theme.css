@@ -12,6 +12,9 @@
   --sub-G: #6cbe45; --sub-JZ: #996633; --sub-L: #a7a9ac; --sub-NQRW: #fccc0a; --sub-S: #808183; --sub-SIR: #1d5da8;
   --font-head: "Bitter", Georgia, "Times New Roman", serif;
   /* categorical (tokens.json scales.categorical_light / _dark): assign in this order, never cycle */
+  /* confidence badge (tokens.json scales.confidence): very low -> high; same in light and dark */
+  --conf-1: #cde2fb; --conf-2: #9ec5f4; --conf-3: #256abf; --conf-4: #0d366b;
+  --conf-fg-1: #2b2b28; --conf-fg-2: #2b2b28; --conf-fg-3: #ffffff; --conf-fg-4: #ffffff;
   --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100; --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #6250d6; --cat-8: #e34948;
 }
 @media (prefers-color-scheme: dark) {
