@@ -1,0 +1,9 @@
+{
+  "day": 11,
+  "theme": "Senses: Sound",
+  "title": "Loud music tops noise complaints in 55 of 59 NYC districts. What else they hear sets them apart",
+  "description": "Every 2025 noise complaint to 311, grouped into eight sounds and replayed as one day you can listen to. Each community district is colored by its signature sound, the one it complains about most compared with the city: helicopters on the Upper West Side (15x the city share), dogs on Staten Island, construction in Manhattan, an ice cream truck jingle in Morris Park. Hover a neighborhood to hear only its mix, weighted by that index and by the hour: jackhammers at 9am, helicopters at 4pm, bass and banging at 11pm. Each address counts once per day per sound, so one Bronx building's 115,000 complaints don't drown out everyone else.",
+  "html": "out/sound.html",
+  "png": "out/sound.png",
+  "published": "2026-11-11"
+}
