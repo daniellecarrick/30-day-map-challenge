@@ -2,14 +2,14 @@
 
 The unbuilt routes are drawn as ghost lines through today's city, with every building that now stands in
 their path. Pipeline (each step writes into data/):
-  fetch.py    OSM built expressways + guide streets, 2020 census blocks, building footprints near the routes
+  fetch.py    OSM built expressways + guide streets, 2020 census blocks, building footprints and MapPLUTO homes near the routes
   routes.py   traces the four unbuilt routes onto today's streets  -> unbuilt_routes.geojson
   analyze.py  buildings and people in each plan's right-of-way -> path_stats.json, path_buildings.geojson
   build.py    this file: out/moses.png and out/moses.html
 
 Data: route histories from nycroads.com (Steve Anderson), after the 1955 Joint Study of Arterial Facilities,
 TBTA's 1963 Future Arterial Program and the 1966 TBTA-Blauvelt Cross Brooklyn study (full citations in
-SOURCES.md); NYC Building Footprints; 2020 Census blocks; OpenStreetMap.
+SOURCES.md); NYC Building Footprints; MapPLUTO; 2020 Census blocks; OpenStreetMap.
 Also writes out/moses_linkedin.png (1080x1350 for the LinkedIn feed; --linkedin-only skips the rest).
 Run:  ../.venv/bin/python build.py
 """
@@ -40,7 +40,7 @@ TITLE = META["title"]
 BUILT_C, UNBUILT_C = S.CATEGORICAL[0], S.CATEGORICAL[1]   # categorical order: built, unbuilt
 METHOD = ("Unbuilt routes are approximate: traced from published plan descriptions onto today's streets. "
           "Path = a corridor as wide as each plan's right-of-way (30–100 m). Buildings = footprints overlapping it; "
-          "people = 2020 census blocks, weighted by the share of each block inside it.")
+          "people = residents of those buildings (homes per MapPLUTO x 2020 Census people per home in the tract).")
 
 # Moses-era expressways, with opening dates from each route's nycroads.com history.
 # (Staten Island Expressway, 1964, falls outside the frame and is left out.)
@@ -165,7 +165,7 @@ def make_png(boros, built, unbuilt, corridor, bldgs, context):
     S.title(fig, TITLE)
     S.credit(fig, f"{METHOD}\nRoutes: nycroads.com, after the 1955 Joint Study of Arterial Facilities (LOMEX, Mid-Manhattan), "
                   "TBTA's 1963 Future Arterial Program (Bushwick) and 1966 TBTA–Blauvelt study (Cross-Brooklyn)\n"
-                  f"NYC Building Footprints · 2020 Census · OpenStreetMap  ·  #30DayMapChallenge {DAY}")
+                  f"NYC Building Footprints · MapPLUTO · 2020 Census · OpenStreetMap  ·  #30DayMapChallenge {DAY}")
     fig.savefig(OUT / "moses.png", dpi=S.MAP["png_dpi"])
     plt.close(fig)
 
@@ -210,8 +210,8 @@ def linkedin(boros, built, unbuilt, corridor, bldgs):
     ], loc="lower center", bbox_to_anchor=(0.5, 0.085), ncol=3, frameon=False, fontsize=9,
         handlelength=1.8, handletextpad=0.4, columnspacing=1.2)
     S.credit(fig, "Routes traced from the published plans; path as wide as each plan's right-of-way.\n"
-                  "nycroads.com · NYC Building Footprints · 2020 Census  ·  "
-                  f"#30DayMapChallenge {DAY}\ndaniellecarrick.github.io/30-day-map-challenge/day12", y=0.014)
+                  "nycroads.com · NYC Building Footprints · MapPLUTO · 2020 Census\n"
+                  f"#30DayMapChallenge {DAY}  ·  daniellecarrick.github.io/30-day-map-challenge/day12", y=0.014)
     fig.savefig(OUT / "moses_linkedin.png", dpi=200)
     plt.close(fig)
 

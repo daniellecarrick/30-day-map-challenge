@@ -35,6 +35,14 @@ The routes were checked against these sources by a second reviewer (an independe
 **Built expressways (opening years)**
 - nycroads.com histories (all opened): http://www.nycroads.com/roads/ + cross-bronx/, brooklyn-queens/, gowanus/, prospect/, major-deegan/, bruckner/, van-wyck/, long-island/, clearview/.
 
+## People in the path
+People = residents of the buildings in each path. Each building's homes are its tax lot's residential units in
+MapPLUTO (NYC Department of City Planning, via NYC Open Data, https://data.cityofnewyork.us/d/64uk-42ks), split
+among the lot's buildings by floor volume. Homes are multiplied by people per home in the building's 2020 census
+tract (POP20 / HOUSING20 from the TIGER/Line 2020 block file). An earlier version weighted census blocks by
+their area inside the path; that counted streets, medians and rail lines as if people lived there, and only part
+of each building the path cut through.
+
 ## Caveats the review raised
 - The Cross-Brooklyn was in Moses's 1955 plan and his TBTA's 1966 study, but Mayor Lindsay championed it from 1966 as a substitute for the Bushwick, then withdrew it himself in 1969. The page says "four that never were", not "four he lost".
 - The Bushwick's 1955 Joint Study version was a different "south route" (Broadway, Bushwick Ave, Atlantic Ave). The 1963 middle route is drawn. Its Newtown Creek spur to the Queens-Midtown Tunnel is not drawn. Wikipedia says this route used the old LIRR Evergreen Branch; the trace uses a straight line through the cemetery instead.

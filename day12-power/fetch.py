@@ -12,6 +12,7 @@ Run:  ../.venv/bin/python fetch.py
 from __future__ import annotations
 
 import json
+import sys
 import subprocess
 import time
 import urllib.parse
@@ -115,5 +116,27 @@ def fetch_footprints(routes: Path) -> None:
     print("footprints:", len(uniq))
 
 
+def fetch_pluto() -> None:
+    """Residential units per tax lot (MapPLUTO, NYC Open Data 64uk-42ks) for every lot with a building
+    within 60 m of an unbuilt route -> data/pluto_units.json {bbl: units}. Used to place people in buildings.
+    Run after routes.py and fetch_footprints():  ../.venv/bin/python fetch.py pluto"""
+    import geopandas as gpd
+    routes = gpd.read_file(DATA / "unbuilt_routes.geojson").to_crs("EPSG:32618")
+    fp = gpd.read_file(DATA / "raw" / "footprints.geojson").to_crs("EPSG:32618")
+    near = fp[fp.intersects(routes.buffer(60).union_all())]
+    bbls = sorted({str(int(float(b))) for b in near.mappluto_bbl.dropna()})
+    units = {}
+    for i in range(0, len(bbls), 200):
+        chunk = ",".join(bbls[i:i + 200])
+        q = urllib.parse.urlencode({"$select": "bbl,unitsres", "$where": f"bbl in({chunk})", "$limit": 1000})
+        for row in curl_json(f"https://data.cityofnewyork.us/resource/64uk-42ks.json?{q}"):
+            units[str(int(float(row["bbl"])))] = int(float(row.get("unitsres") or 0))
+    (DATA / "pluto_units.json").write_text(json.dumps(units))
+    print(f"PLUTO: {len(units)} of {len(bbls)} lots, {sum(units.values()):,} residential units")
+
+
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["pluto"]:
+        fetch_pluto()
+    else:
+        main()
