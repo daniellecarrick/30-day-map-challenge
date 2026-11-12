@@ -23,8 +23,6 @@
   .hit { fill: none; stroke: transparent; stroke-width: 16; vector-effect: non-scaling-stroke; cursor: default; }
   .built.on { stroke-width: 4; }
   .unbuilt.on { stroke-width: 3.5; stroke: var(--ink); }
-  .layer { transition: opacity .25s; }
-  .layer.off { opacity: 0; pointer-events: none; }
   .zoom-hint { position: absolute; right: 6px; bottom: 4px; color: var(--muted); pointer-events: none; }
   .zoomed .legend { background: var(--bg); padding: 4px 8px 6px; border-radius: 6px; }
   .zoom-reset { position: absolute; right: 6px; top: 4px; z-index: 2; display: none; }
@@ -39,7 +37,6 @@
     <p class="lede">Whose utopia? Robert Moses drew one man's perfect city of expressways through other people's neighborhoods.
       Many were built. Four that never were are traced here through today's city, with every building now standing in their path.</p>
     <div class="controls">
-      <div id="view" aria-label="Which expressways to show"></div>
       <span class="stat" id="stat"></span>
     </div>
   </header>
@@ -132,16 +129,8 @@ MapKit.legend(svg, {
   ],
 });
 
-function render(view) {
-  gUn.classed("off", view === "built");
-  gBuilt.classed("off", view === "unbuilt");
-  const t = D.total;
-  d3.select("#stat").text(view === "built"
-    ? `${D.built.features.length} expressways, about ${fmt(D.built_mi)} miles in the city`
-    : `In the path today: ${fmt(t.buildings)} buildings · ${fmt(t.homes)} homes · ${fmt(t.people)} people`);
-}
-MapKit.segmented("#view", [{ value: "both", label: "Both" }, { value: "unbuilt", label: "Unbuilt" }, { value: "built", label: "Built" }],
-  render, "both");
+const t = D.total;
+d3.select("#stat").text(`In the path of the unbuilt four today: ${fmt(t.buildings)} buildings · ${fmt(t.homes)} homes · ${fmt(t.people)} people`);
 
 // ---- zoom ----
 // Inside an embed, a plain scroll wheel must keep scrolling the host page; a trackpad pinch arrives as ctrl+wheel.
