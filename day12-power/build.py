@@ -10,6 +10,7 @@ their path. Pipeline (each step writes into data/):
 Data: route histories from nycroads.com (Steve Anderson), after the 1955 Joint Study of Arterial Facilities,
 TBTA's 1963 Future Arterial Program and the 1966 TBTA-Blauvelt Cross Brooklyn study (full citations in
 SOURCES.md); NYC Building Footprints; 2020 Census blocks; OpenStreetMap.
+Also writes out/moses_linkedin.png (1080x1350 for the LinkedIn feed; --linkedin-only skips the rest).
 Run:  ../.venv/bin/python build.py
 """
 import json
@@ -169,6 +170,53 @@ def make_png(boros, built, unbuilt, corridor, bldgs, context):
     plt.close(fig)
 
 
+def linkedin(boros, built, unbuilt, corridor, bldgs):
+    """4:5 portrait (1080x1350) for the LinkedIn feed, type sized for a phone: the headline, the totals,
+    then Manhattan and Brooklyn cropped to the four unbuilt routes, each labeled with its count."""
+    S.apply()
+    fig = plt.figure(figsize=(5.4, 6.75))
+    fig.text(0.5, 0.975, TITLE.replace(" in the path of ", "\nin the path of ", 1),
+             ha="center", va="top", fontsize=14, linespacing=1.25,
+             fontweight="bold", color=S.INK, fontfamily=S.HEAD_FONT)
+    for cx, n, what in ((0.2, TOTAL["buildings"], "buildings"), (0.5, TOTAL["homes"], "homes"),
+                        (0.8, TOTAL["people"], "people")):
+        fig.text(cx, 0.865, fmt(n), ha="center", fontsize=18, fontweight="bold", fontfamily=S.HEAD_FONT, color=UNBUILT_C)
+        fig.text(cx, 0.855, what, ha="center", va="top", fontsize=9, color=S.MUTED)
+    fig.text(0.5, 0.815, "standing today in the path of four expressways that were never built",
+             ha="center", va="top", fontsize=9, color=S.MUTED)
+
+    ax = fig.add_axes([0.0, 0.13, 1.0, 0.65])
+    draw_routes(ax, boros, built, unbuilt, corridor, bldgs, lw=1.2)
+    x0, y0, x1, y1 = unbuilt.total_bounds
+    ax.set_xlim(x0 - 8500, x1 + 500); ax.set_ylim(y0 - 2000, y1 + 2500)
+    ax.set_axis_off(); ax.set_aspect("equal", adjustable="datalim")
+    PLAN_YEAR = {"Mid-Manhattan Expressway": 1955, "Lower Manhattan Expressway": 1955,
+                 "Bushwick Expressway": 1963, "Cross-Brooklyn Expressway": 1966}
+    places = {  # label (axes fraction), point along the route (fraction of its length), ha
+        "Mid-Manhattan Expressway": ((0.02, 0.86), 0.05, "left"),
+        "Lower Manhattan Expressway": ((0.02, 0.64), 0.05, "left"),
+        "Bushwick Expressway": ((0.98, 0.58), 0.6, "right"),
+        "Cross-Brooklyn Expressway": ((0.30, 0.07), 0.3, "left"),
+    }
+    for _, r in unbuilt.iterrows():
+        xy, t, ha = places[r["name"]]
+        g = r.geometry if r.geometry.geom_type == "LineString" else max(r.geometry.geoms, key=lambda l: l.length)
+        p = g.interpolate(t, normalized=True)
+        S.callout(ax, (p.x, p.y), xy, f"{r['name']}",
+                  f"{fmt(r.buildings)} buildings · {PLAN_YEAR[r['name']]} plan", ha=ha, halo=True)
+    fig.legend(handles=[
+        Line2D([], [], color=BUILT_C, lw=1.8, label="Built Moses expressway"),
+        Line2D([], [], color=UNBUILT_C, lw=1.4, ls=(0, (3, 2)), label="Unbuilt"),
+        Rectangle((0, 0), 1, 1, color=UNBUILT_C, lw=0, label="Building in its path"),
+    ], loc="lower center", bbox_to_anchor=(0.5, 0.085), ncol=3, frameon=False, fontsize=9,
+        handlelength=1.8, handletextpad=0.4, columnspacing=1.2)
+    S.credit(fig, "Routes traced from the published plans; path as wide as each plan's right-of-way.\n"
+                  "nycroads.com · NYC Building Footprints · 2020 Census  ·  "
+                  f"#30DayMapChallenge {DAY}\ndaniellecarrick.github.io/30-day-map-challenge/day12", y=0.014)
+    fig.savefig(OUT / "moses_linkedin.png", dpi=200)
+    plt.close(fig)
+
+
 def page_data(boros, built, unbuilt, corridor, bldgs):
     b = boros.copy()
     b["geometry"] = b.geometry.simplify(25)
@@ -197,6 +245,9 @@ def page_data(boros, built, unbuilt, corridor, bldgs):
 
 def main():
     boros, built, unbuilt, corridor, bldgs, context = load()
+    linkedin(boros, built, unbuilt, corridor, bldgs)
+    if "--linkedin-only" in sys.argv:
+        return
     make_png(boros, built, unbuilt, corridor, bldgs, context)
     size = S.build_page(HERE / "web" / "index.html", page_data(boros, built, unbuilt, corridor, bldgs), OUT / "moses.html")
     # dev copy so web/index.html works when opened from disk
