@@ -4,7 +4,7 @@ The unbuilt routes are drawn as ghost lines through today's city, with every bui
 their path. Pipeline (each step writes into data/):
   fetch.py    OSM built expressways + guide streets, 2020 census blocks, building footprints near the routes
   routes.py   traces the four unbuilt routes onto today's streets  -> unbuilt_routes.geojson
-  analyze.py  buildings / people / homes in a 100 m corridor       -> path_stats.json, path_buildings.geojson
+  analyze.py  buildings and people in each plan's right-of-way -> path_stats.json, path_buildings.geojson
   build.py    this file: out/moses.png and out/moses.html
 
 Data: route histories from nycroads.com (Steve Anderson), after the 1955 Joint Study of Arterial Facilities,
@@ -76,7 +76,7 @@ def load():
     built["opened"] = built.name.map(BUILT)
     unbuilt = gpd.read_file(DATA / "unbuilt_routes.geojson").to_crs(CRS_M)
     st = {s["name"]: s for s in STATS["routes"]}
-    for k in ("buildings", "buildings_pre1971", "people", "homes"):
+    for k in ("buildings", "buildings_pre1971", "people"):
         unbuilt[k] = unbuilt.name.map(lambda n: st[n][k])
     corridor = unbuilt.copy()
     corridor["geometry"] = unbuilt.buffer(unbuilt.width_m / 2)
@@ -155,7 +155,7 @@ def make_png(boros, built, unbuilt, corridor, bldgs, context):
     zx.set_axis_off(); zx.set_aspect("equal")
     per_mi = r.buildings / r.length_mi
     S.panel_heading(zx, f"{name}, Broome Street",
-                    f"{fmt(r.buildings)} buildings, {fmt(r.homes)} homes and {fmt(r.people)} people in its path, "
+                    f"{fmt(r.buildings)} buildings and {fmt(r.people)} people in its path, "
                     f"about {per_mi:,.0f} buildings a mile")
     ax.add_patch(Rectangle((cx - half_w, ylo), 2 * half_w, 2 * half_h, fill=False, ec=S.MUTED, lw=0.6, zorder=6))
     fig.text(0.61, 0.20, f"{fmt(TOTAL['buildings_pre1971'])} of the {fmt(TOTAL['buildings'])} buildings in the four paths "
@@ -178,8 +178,7 @@ def linkedin(boros, built, unbuilt, corridor, bldgs):
     fig.text(0.5, 0.975, TITLE.replace(" in the path of ", "\nin the path of ", 1),
              ha="center", va="top", fontsize=14, linespacing=1.25,
              fontweight="bold", color=S.INK, fontfamily=S.HEAD_FONT)
-    for cx, n, what in ((0.2, TOTAL["buildings"], "buildings"), (0.5, TOTAL["homes"], "homes"),
-                        (0.8, TOTAL["people"], "people")):
+    for cx, n, what in ((0.32, TOTAL["buildings"], "buildings"), (0.68, TOTAL["people"], "people")):
         fig.text(cx, 0.865, fmt(n), ha="center", fontsize=18, fontweight="bold", fontfamily=S.HEAD_FONT, color=UNBUILT_C)
         fig.text(cx, 0.855, what, ha="center", va="top", fontsize=9, color=S.MUTED)
     fig.text(0.5, 0.815, "standing today in the path of four expressways that were never built",
@@ -223,7 +222,7 @@ def page_data(boros, built, unbuilt, corridor, bldgs):
     bu = built[["name", "opened", "length_mi", "geometry"]].copy()
     bu["geometry"] = bu.geometry.simplify(15)
     keep = ["name", "short", "route", "borough", "years", "fate", "plan", "source", "length_mi", "width_m", "width_note",
-            "buildings", "buildings_pre1971", "people", "homes"]
+            "buildings", "buildings_pre1971", "people"]
     un = unbuilt[keep + ["geometry"]].copy()
     un["geometry"] = un.geometry.simplify(3)
     co = corridor[["name", "geometry"]].copy()
@@ -238,7 +237,7 @@ def page_data(boros, built, unbuilt, corridor, bldgs):
         "unbuilt": json.loads(un.to_json(drop_id=True)),
         "corridor": json.loads(co.to_json(drop_id=True)),
         "buildings": json.loads(bl.to_json(drop_id=True)),
-        "total": TOTAL, "title": TITLE, "day": DAY, "method": METHOD,
+        "total": {k: v for k, v in TOTAL.items() if k != "homes"}, "title": TITLE, "day": DAY, "method": METHOD,
         "built_mi": round(float(built.length_mi.sum()), 0),
     }
 

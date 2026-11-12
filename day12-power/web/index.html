@@ -98,7 +98,7 @@ function routeTip(d) {
     + `Proposed ${p.years} · ${p.fate}<br>`
     + `${p.plan}<br>`
     + `${p.length_mi} mi as traced · path ${p.width_m} m wide (${p.width_note})<br>`
-    + `<span class="k">In its path today:</span> ${fmt(p.buildings)} buildings, ${fmt(p.homes)} homes, ${fmt(p.people)} people`;
+    + `<span class="k">In its path today:</span> ${fmt(p.buildings)} buildings, ${fmt(p.people)} people`;
 }
 function hits(g, features, lines) {
   g.append("g").selectAll("path").data(features).join("path").attr("class", "hit").attr("d", path)
@@ -130,7 +130,7 @@ MapKit.legend(svg, {
 });
 
 const t = D.total;
-d3.select("#stat").text(`In the path of the unbuilt four today: ${fmt(t.buildings)} buildings · ${fmt(t.homes)} homes · ${fmt(t.people)} people`);
+d3.select("#stat").text(`In the path of the unbuilt four today: ${fmt(t.buildings)} buildings · ${fmt(t.people)} people`);
 
 // ---- zoom ----
 // Inside an embed, a plain scroll wheel must keep scrolling the host page; a trackpad pinch arrives as ctrl+wheel.
