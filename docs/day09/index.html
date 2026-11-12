@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two New Yorks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/urban-rural.html is a single file -->
+<style>
+/* Shared web theme for the #30DayMapChallenge series.
+   Values mirror shared/tokens.json; change both together.
+   Minimum text size on every page is 14px (legends, tooltips, controls); the footer credit line is 11px.
+   Pages load Bitter (headlines) + Raleway (body) from Google Fonts (tokens.json font.web_css). */
+
+:root {
+  --bg: #ffffff; --ink: #2b2b28; --muted: #6b6b66; --edge: #ffffff; --closed: #8a8a86;
+  --ctl: #f0efec; --ctl-on: #ffffff; --accent: #3987e5;
+  --font: "Raleway", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  /* NYC subway trunk colors (tokens.json scales.subway) */
+  --sub-123: #ee352e; --sub-456: #00933c; --sub-7: #b933ad; --sub-ACE: #0039a6; --sub-BDFM: #ff6319;
+  --sub-G: #6cbe45; --sub-JZ: #996633; --sub-L: #a7a9ac; --sub-NQRW: #fccc0a; --sub-S: #808183; --sub-SIR: #1d5da8;
+  --font-head: "Bitter", Georgia, "Times New Roman", serif;
+  /* categorical (tokens.json scales.categorical_light / _dark): assign in this order, never cycle */
+  --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100; --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #6250d6; --cat-8: #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
+    --ctl: #2c2c29; --ctl-on: #45453f;
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
+  --ctl: #2c2c29; --ctl-on: #45453f;
+  --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+}
+
+/* Aged-paper palette (tokens.json vintage). Use with <html data-palette="vintage" data-theme="light">. */
+:root[data-palette="vintage"] {
+  --bg: #f4ecd9; --ink: #3a2c1e; --muted: #6b5a45; --edge: #f4ecd9; --closed: #8f8674;
+  --ctl: #e8dcc2; --ctl-on: #fbf6ea; --accent: #1c5a94; --land: #faf5e8; --water: #7f9aa3;
+  --era-1: #8c2f22; --era-2: #d9695c; --era-3: #dfb02f; --era-4: #6f9a5e; --era-5: #74b4d4; --era-6: #1c5a94;
+}
+
+/* Aged-paper palette (tokens.json vintage). Use with <html data-palette="vintage" data-theme="light">. */
+:root[data-palette="vintage"] {
+  --bg: #f4ecd9; --ink: #3a2c1e; --muted: #6b5a45; --edge: #f4ecd9; --closed: #8f8674;
+  --ctl: #e8dcc2; --ctl-on: #fbf6ea; --accent: #1c5a94; --land: #faf5e8; --water: #7f9aa3;
+  --era-1: #8c2f22; --era-2: #d9695c; --era-3: #dfb02f; --era-4: #6f9a5e; --era-5: #74b4d4; --era-6: #1c5a94;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 14px/1.45 var(--font); -webkit-font-smoothing: antialiased;
+       font-variant-numeric: lining-nums; }
+
+/* ---- page layout: header / map that fills the rest of the viewport / footer ---- */
+.page { height: 100dvh; display: flex; flex-direction: column;
+        max-width: 1100px; margin: 0 auto; padding: 16px 16px 10px; }
+.page > header { flex: none; text-align: center; }
+.page h1 { font-size: clamp(22px, 2.8vw, 28px); line-height: 1.2; margin: 0 0 6px; font-weight: 700;
+            font-family: var(--font-head); text-wrap: balance; }
+.lede { color: var(--muted); margin: 0 auto 10px; max-width: 640px; text-wrap: balance; }
+.map-wrap { flex: 1 1 auto; min-height: 0; position: relative; }
+.map-wrap > svg { width: 100%; height: 100%; display: block; }
+.page > footer { flex: none; text-align: center; color: var(--muted); font-size: 11px;
+                 margin-top: 6px; text-wrap: balance; }
+.page > footer a { color: inherit; }
+/* "← All maps" link added by publish.py: pinned top-left on wide screens, above the title on phones */
+.home-link { position: fixed; top: 10px; left: 12px; z-index: 20; font: 600 14px/1 var(--font);
+             color: var(--muted); text-decoration: none; padding: 6px 8px; border-radius: 6px; background: var(--bg); }
+.home-link:hover { color: var(--ink); }
+@media (max-width: 900px) {
+  .home-link { position: static; display: inline-block; margin: 8px 0 0 8px; }
+}
+/* phones: let the page scroll and the map take its natural height */
+@media (max-width: 640px), (max-height: 520px) {
+  .page { height: auto; }
+  .map-wrap > svg { height: auto; }
+}
+
+/* ---- controls ---- */
+.controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 8px 14px; margin-bottom: 4px; }
+.seg { display: inline-flex; background: var(--ctl); border-radius: 8px; padding: 3px; }
+.seg button { font: inherit; font-size: 14px; color: var(--muted); background: none; border: 0;
+              padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ctl-on); color: var(--ink); font-weight: 600;
+                                   box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.stat { color: var(--muted); font-size: 14px; }
+/* dropdown (MapKit.dropdown): same surface as the segmented toggle, chevron drawn in CSS */
+.dd { position: relative; display: inline-block; }
+.dd select { font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: var(--ctl);
+             border: 0; border-radius: 8px; padding: 8px 34px 8px 12px; cursor: pointer;
+             appearance: none; -webkit-appearance: none; max-width: 100%; }
+.dd select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dd::after { content: ""; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px; margin-top: -6px;
+             border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; }
+/* play / pause button for animated maps: same surface as the toggle; put an icon <svg> before the label */
+.play { font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: var(--ctl);
+        border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer; display: inline-flex; gap: 8px;
+        align-items: center; }
+.play:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.play svg { fill: currentColor; }
+/* the current value of an animated control (a clock, a date), in the headline face */
+.readout { font: 700 20px/1 var(--font-head); }
+
+/* ---- map marks ---- */
+.cell { stroke: var(--edge); stroke-width: 0.5; }
+.cell:hover { stroke: var(--ink); stroke-width: 1.5; }
+.boundary { fill: none; stroke: var(--ink); stroke-width: 0.5; pointer-events: none; }
+.pt { fill: var(--ink); pointer-events: none; }
+.closed { fill: var(--closed); stroke: var(--bg); stroke-width: 1; }
+
+/* ---- in-map legend (HTML overlay placed over the map by MapKit.legend, so text stays 14px) ---- */
+.legend { position: absolute; z-index: 2; font-size: 14px; line-height: 1.3; color: var(--ink); pointer-events: none; }
+.legend .lg-title { font-weight: 600; }
+.legend .lg-bar { height: 12px; border-radius: 2px; margin-top: 6px; }
+.legend .lg-ticks { position: relative; height: 22px; }
+.legend .lg-ticks span { position: absolute; top: 0; padding-top: 5px; white-space: nowrap; }
+.legend .lg-ticks span::before { content: ""; position: absolute; top: 0; left: 0; width: 1px; height: 4px; background: var(--muted); }
+.legend .lg-ticks span.mid { transform: translateX(-50%); }
+.legend .lg-ticks span.mid::before { left: 50%; }
+.legend .lg-ticks span.end { transform: translateX(-100%); }
+.legend .lg-ticks span.end::before { left: auto; right: 0; }
+.legend .lg-key { display: flex; align-items: center; gap: 7px; margin-top: 4px; }
+.legend .lg-key svg { flex: none; overflow: visible; }
+.legend .lg-muted { color: var(--muted); }
+/* phones: the legend sits under the map instead of on it */
+@media (max-width: 640px) { .legend { position: static; margin-top: 8px; } }
+
+/* ---- tooltip ---- */
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--bg); color: var(--ink);
+       border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent); border-radius: 6px;
+       padding: 8px 10px; font-size: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.12);
+       max-width: 260px; opacity: 0; transition: opacity .1s; }
+.tip b { display: block; margin-bottom: 2px; }
+.tip .m { color: var(--muted); }
+</style>
+<style>
+  .page { max-width: 1240px; }
+  .map-wrap { display: flex; gap: 12px; }
+  #heroes { flex: none; width: 460px; display: flex; flex-direction: column; justify-content: center; }
+  #heroes svg { display: block; overflow: visible; }
+  #grid { flex: 1 1 auto; min-width: 0; position: relative; }
+  #grid > svg { width: 100%; height: 100%; display: block; }
+  .ghost { fill: var(--ctl); }
+  .petal { stroke: var(--bg); stroke-width: 1; transition: opacity .15s; }
+  .petal.urban { fill: var(--cat-1); }
+  .petal.rural { fill: var(--cat-4); }
+  .petal.even { fill: var(--cat-3); }
+  .hub { stroke: var(--ink); stroke-width: 1; }
+  .focus .petal:not(.on) { opacity: .12; }
+  .tile { fill: transparent; stroke: none; rx: 6; }
+  .tile.nyc { stroke: var(--ink); stroke-width: 1.2; }
+  .tile.hover { stroke: var(--ink); stroke-width: 2.2; }
+  .county { outline: none; }
+  .county:focus-visible .tile { stroke: var(--ink); stroke-width: 3; }
+  .h-head { font: 600 18px var(--font-head); fill: var(--ink); }
+  .h-val { font: 700 16px var(--font); fill: var(--ink); }
+  .h-name { font: 14px var(--font); fill: var(--muted); }
+  .h-key { cursor: pointer; }
+  .h-key:focus { outline: none; }
+  .h-key:focus-visible .h-val { text-decoration: underline; }
+  .h-hit { fill: transparent; }
+  .tip .tr { display: flex; align-items: center; gap: 7px; }
+  .tip .tr i { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+  .tip .tr span { margin-left: auto; padding-left: 12px; font-weight: 600; }
+  .tip .vote { margin-top: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); }
+  @media (max-width: 900px), (max-height: 520px) {
+    .map-wrap { flex-direction: column; }
+    #heroes { width: 100%; }
+    #grid > svg { height: auto; }
+  }
+</style>
+<meta name="description" content="What makes a place urban or rural beyond how many people live there? Each of New York&#x27;s 62 counties is a flower: urban traits (no car, hour-plus commutes, non-Christian faith, born abroad) point up in blue, rural traits (owning your home, veterans, manufacturing jobs) point down in amber, a green petal shows $200k+ household incomes (about the same everywhere: 17% in NYC, 16% elsewhere), and the center dot shows the 2024 presidential margin. The five boroughs are blue fans; upstate counties hang like bells. Hover a petal on the big New York City or Other counties flower to compare that trait across the state.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="In New York City, 55% of households have no car. In the rest of the state, just 9% do.">
+<meta property="og:description" content="What makes a place urban or rural beyond how many people live there? Each of New York&#x27;s 62 counties is a flower: urban traits (no car, hour-plus commutes, non-Christian faith, born abroad) point up in blue, rural traits (owning your home, veterans, manufacturing jobs) point down in amber, a green petal shows $200k+ household incomes (about the same everywhere: 17% in NYC, 16% elsewhere), and the center dot shows the 2024 presidential margin. The five boroughs are blue fans; upstate counties hang like bells. Hover a petal on the big New York City or Other counties flower to compare that trait across the state.">
+<meta property="og:url" content="https://daniellecarrick.github.io/30-day-map-challenge/day09/">
+<meta property="og:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day09/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="In New York City, 55% of households have no car. In the rest of the state, just 9% do.">
+<meta name="twitter:description" content="What makes a place urban or rural beyond how many people live there? Each of New York&#x27;s 62 counties is a flower: urban traits (no car, hour-plus commutes, non-Christian faith, born abroad) point up in blue, rural traits (owning your home, veterans, manufacturing jobs) point down in amber, a green petal shows $200k+ household incomes (about the same everywhere: 17% in NYC, 16% elsewhere), and the center dot shows the 2024 presidential margin. The five boroughs are blue fans; upstate counties hang like bells. Hover a petal on the big New York City or Other counties flower to compare that trait across the state.">
+<meta name="twitter:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day09/preview.png">
+</head>
+<body>
+<a class="home-link" href="../">&larr; All maps</a>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls"><span class="stat">Hover or tap a petal on a big flower to compare that trait across counties.</span></div>
+  </header>
+  <div class="map-wrap" id="wrap">
+    <div id="heroes" aria-label="Key: New York City and the other counties"></div>
+    <div id="grid"></div>
+  </div>
+  <footer><span id="method"></span>. <span id="faith"></span>.
+    Data: <a id="l-acs">US Census ACS 2019–2023</a>; <a id="l-usrc">2020 US Religion Census</a>; <a id="l-votes">2024 results: NYS Board of Elections</a>
+    · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script>window.DATA = {"title":"In New York City, 55% of households have no car. In the rest of the state, just 9% do.","lede":"Each flower is a county. Urban traits point up in blue, rural traits down in amber, and one that barely differs, households earning $200k or more, in green.","method":"Petal area = share \u00f7 highest county's share. NYC = the 5 boroughs combined","faith_note":"*Adherents of Jewish, Muslim, Hindu, Buddhist, Sikh and other non-Christian congregations, counted where the congregation meets","day":"Day 9: Urban-rural","links":{"acs":"https://www.census.gov/programs-surveys/acs/data/summary-file.html","usrc":"https://www.usreligioncensus.org/node/1637","votes":"https://results.elections.ny.gov/contest/5591"},"petals":[{"key":"nocar","label":"have no car","angle":150,"side":"urban"},{"key":"commute","label":"commute 1 hr or more","angle":110,"side":"urban"},{"key":"faith","label":"non-Christian faith*","angle":70,"side":"urban"},{"key":"foreign","label":"born abroad","angle":30,"side":"urban"},{"key":"rich","label":"earn $200k or more","angle":210,"side":"even"},{"key":"own","label":"own their home","angle":250,"side":"rural"},{"key":"veteran","label":"are veterans","angle":290,"side":"rural"},{"key":"mfg","label":"manufacturing jobs","angle":330,"side":"rural"}],"max":{"nocar":0.7774,"commute":0.3299,"faith":0.2192,"foreign":0.4757,"rich":0.3342,"own":0.8303,"veteran":0.1229,"mfg":0.1828},"nyc":{"nocar":0.549,"commute":0.258,"faith":0.1334,"foreign":0.365,"rich":0.1678,"own":0.3279,"veteran":0.0191,"mfg":0.0294,"margin":-0.3833},"other":{"nocar":0.0935,"commute":0.1095,"faith":0.0471,"foreign":0.1225,"rich":0.1614,"own":0.7068,"veteran":0.0534,"mfg":0.0791,"margin":0.0045},"counties":[{"fips":"36001","name":"Albany","nyc":false,"gx":9,"gy":4,"pop":315374,"nocar":0.1238,"commute":0.0368,"faith":0.0484,"foreign":0.1134,"rich":0.1214,"own":0.5672,"veteran":0.0499,"mfg":0.0611,"margin":-0.256},{"fips":"36003","name":"Allegany","nyc":false,"gx":2,"gy":3,"pop":47027,"nocar":0.082,"commute":0.0669,"faith":0.0002,"foreign":0.0182,"rich":0.0412,"own":0.8031,"veteran":0.0833,"mfg":0.1095,"margin":0.4247},{"fips":"36005","name":"Bronx","nyc":true,"gx":9,"gy":1,"pop":1419250,"nocar":0.6058,"commute":0.3298,"faith":0.087,"foreign":0.3421,"rich":0.0522,"own":0.2027,"veteran":0.0213,"mfg":0.0304,"margin":-0.4505},{"fips":"36007","name":"Broome","nyc":false,"gx":6,"gy":2,"pop":197738,"nocar":0.1291,"commute":0.0444,"faith":0.0144,"foreign":0.069,"rich":0.0658,"own":0.6457,"veteran":0.0628,"mfg":0.0973,"margin":-0.0042},{"fips":"36009","name":"Cattaraugus","nyc":false,"gx":1,"gy":3,"pop":76479,"nocar":0.1049,"commute":0.0808,"faith":0.0046,"foreign":0.0177,"rich":0.0364,"own":0.7458,"veteran":0.085,"mfg":0.132,"margin":0.3273},{"fips":"36011","name":"Cayuga","nyc":false,"gx":5,"gy":4,"pop":75464,"nocar":0.0929,"commute":0.0471,"faith":0.0001,"foreign":0.0218,"rich":0.0605,"own":0.7191,"veteran":0.0722,"mfg":0.1315,"margin":0.1296},{"fips":"36013","name":"Chautauqua","nyc":false,"gx":0,"gy":3,"pop":126329,"nocar":0.109,"commute":0.0485,"faith":0.0058,"foreign":0.0238,"rich":0.0444,"own":0.6906,"veteran":0.0758,"mfg":0.1555,"margin":0.2193},{"fips":"36015","name":"Chemung","nyc":false,"gx":4,"gy":2,"pop":82805,"nocar":0.0957,"commute":0.0503,"faith":0.0046,"foreign":0.0356,"rich":0.0529,"own":0.6984,"veteran":0.0899,"mfg":0.1378,"margin":0.1674},{"fips":"36017","name":"Chenango","nyc":false,"gx":6,"gy":3,"pop":46685,"nocar":0.078,"commute":0.0604,"faith":0.0244,"foreign":0.0215,"rich":0.0381,"own":0.7632,"veteran":0.0771,"mfg":0.1828,"margin":0.2714},{"fips":"36019","name":"Clinton","nyc":false,"gx":9,"gy":8,"pop":78961,"nocar":0.1022,"commute":0.0558,"faith":0.0068,"foreign":0.0466,"rich":0.0696,"own":0.6885,"veteran":0.0761,"mfg":0.118,"margin":0.0215},{"fips":"36021","name":"Columbia","nyc":false,"gx":10,"gy":3,"pop":61245,"nocar":0.0604,"commute":0.0834,"faith":0.0106,"foreign":0.0678,"rich":0.1485,"own":0.7536,"veteran":0.0656,"mfg":0.0645,"margin":-0.1456},{"fips":"36023","name":"Cortland","nyc":false,"gx":6,"gy":4,"pop":46401,"nocar":0.1004,"commute":0.0444,"faith":0.0001,"foreign":0.0266,"rich":0.0599,"own":0.6639,"veteran":0.0657,"mfg":0.0984,"margin":0.0642},{"fips":"36025","name":"Delaware","nyc":false,"gx":7,"gy":3,"pop":44551,"nocar":0.0907,"commute":0.0774,"faith":0.0237,"foreign":0.0433,"rich":0.0629,"own":0.7669,"veteran":0.0642,"mfg":0.0956,"margin":0.1966},{"fips":"36027","name":"Dutchess","nyc":false,"gx":10,"gy":2,"pop":297144,"nocar":0.07,"commute":0.1525,"faith":0.0213,"foreign":0.1186,"rich":0.1741,"own":0.6883,"veteran":0.0484,"mfg":0.0676,"margin":-0.0538},{"fips":"36029","name":"Erie","nyc":false,"gx":1,"gy":4,"pop":950044,"nocar":0.1189,"commute":0.0339,"faith":0.0414,"foreign":0.0722,"rich":0.0901,"own":0.6545,"veteran":0.0605,"mfg":0.1019,"margin":-0.0961},{"fips":"36031","name":"Essex","nyc":false,"gx":9,"gy":7,"pop":37077,"nocar":0.0844,"commute":0.0795,"faith":0.0005,"foreign":0.0408,"rich":0.0698,"own":0.7806,"veteran":0.0828,"mfg":0.0893,"margin":-0.005},{"fips":"36033","name":"Franklin","nyc":false,"gx":8,"gy":8,"pop":47066,"nocar":0.1125,"commute":0.055,"faith":0.0005,"foreign":0.032,"rich":0.0459,"own":0.7119,"veteran":0.0732,"mfg":0.0388,"margin":0.0898},{"fips":"36035","name":"Fulton","nyc":false,"gx":7,"gy":5,"pop":52787,"nocar":0.097,"commute":0.0941,"faith":0.0046,"foreign":0.0219,"rich":0.0443,"own":0.692,"veteran":0.0831,"mfg":0.1066,"margin":0.3578},{"fips":"36037","name":"Genesee","nyc":false,"gx":2,"gy":5,"pop":57943,"nocar":0.084,"commute":0.0471,"faith":0.0001,"foreign":0.0297,"rich":0.0543,"own":0.7421,"veteran":0.0757,"mfg":0.1554,"margin":0.3386},{"fips":"36039","name":"Greene","nyc":false,"gx":9,"gy":3,"pop":47554,"nocar":0.0731,"commute":0.0973,"faith":0.0138,"foreign":0.0486,"rich":0.0941,"own":0.7756,"veteran":0.0716,"mfg":0.0749,"margin":0.1685},{"fips":"36041","name":"Hamilton","nyc":false,"gx":8,"gy":6,"pop":5102,"nocar":0.0327,"commute":0.0819,"faith":0.0065,"foreign":0.0123,"rich":0.0654,"own":0.8247,"veteran":0.0927,"mfg":0.0256,"margin":0.2943},{"fips":"36043","name":"Herkimer","nyc":false,"gx":7,"gy":6,"pop":59932,"nocar":0.0912,"commute":0.0726,"faith":0.0019,"foreign":0.0281,"rich":0.0496,"own":0.7589,"veteran":0.0764,"mfg":0.1009,"margin":0.3637},{"fips":"36045","name":"Jefferson","nyc":false,"gx":6,"gy":7,"pop":116130,"nocar":0.098,"commute":0.0375,"faith":0.0063,"foreign":0.0467,"rich":0.05,"own":0.5413,"veteran":0.1229,"mfg":0.0747,"margin":0.2355},{"fips":"36047","name":"Kings","nyc":true,"gx":9,"gy":0,"pop":2646306,"nocar":0.5573,"commute":0.2683,"faith":0.1648,"foreign":0.3524,"rich":0.1601,"own":0.2972,"veteran":0.0158,"mfg":0.0291,"margin":-0.4332},{"fips":"36049","name":"Lewis","nyc":false,"gx":7,"gy":7,"pop":26618,"nocar":0.0535,"commute":0.0846,"faith":0.0,"foreign":0.0121,"rich":0.0379,"own":0.8042,"veteran":0.0851,"mfg":0.1073,"margin":0.4437},{"fips":"36051","name":"Livingston","nyc":false,"gx":3,"gy":4,"pop":61588,"nocar":0.0589,"commute":0.0681,"faith":0.0006,"foreign":0.035,"rich":0.0696,"own":0.7711,"veteran":0.069,"mfg":0.1145,"margin":0.2137},{"fips":"36053","name":"Madison","nyc":false,"gx":6,"gy":5,"pop":67572,"nocar":0.0585,"commute":0.0477,"faith":0.0009,"foreign":0.0272,"rich":0.0849,"own":0.7842,"veteran":0.0726,"mfg":0.1018,"margin":0.13},{"fips":"36055","name":"Monroe","nyc":false,"gx":3,"gy":6,"pop":754068,"nocar":0.1085,"commute":0.0264,"faith":0.0542,"foreign":0.0792,"rich":0.0995,"own":0.6352,"veteran":0.0505,"mfg":0.1067,"margin":-0.1897},{"fips":"36057","name":"Montgomery","nyc":false,"gx":8,"gy":5,"pop":49461,"nocar":0.1252,"commute":0.0589,"faith":0.0026,"foreign":0.0315,"rich":0.0565,"own":0.6934,"veteran":0.0698,"mfg":0.1224,"margin":0.2863},{"fips":"36059","name":"Nassau","nyc":false,"gx":11,"gy":0,"pop":1388138,"nocar":0.0668,"commute":0.2242,"faith":0.0918,"foreign":0.2288,"rich":0.3342,"own":0.8193,"veteran":0.0308,"mfg":0.0416,"margin":0.0417},{"fips":"36061","name":"New York","nyc":true,"gx":8,"gy":0,"pop":1627788,"nocar":0.7774,"commute":0.1031,"faith":0.1455,"foreign":0.2811,"rich":0.2873,"own":0.2472,"veteran":0.0186,"mfg":0.0273,"margin":-0.6416},{"fips":"36063","name":"Niagara","nyc":false,"gx":1,"gy":5,"pop":211341,"nocar":0.1063,"commute":0.0292,"faith":0.0213,"foreign":0.0392,"rich":0.0741,"own":0.709,"veteran":0.0774,"mfg":0.1389,"margin":0.1488},{"fips":"36065","name":"Oneida","nyc":false,"gx":6,"gy":6,"pop":229645,"nocar":0.1102,"commute":0.0472,"faith":0.0298,"foreign":0.0854,"rich":0.0692,"own":0.6779,"veteran":0.073,"mfg":0.0939,"margin":0.2122},{"fips":"36067","name":"Onondaga","nyc":false,"gx":5,"gy":5,"pop":471611,"nocar":0.1171,"commute":0.0376,"faith":0.0353,"foreign":0.0764,"rich":0.0989,"own":0.6566,"veteran":0.06,"mfg":0.081,"margin":-0.1718},{"fips":"36069","name":"Ontario","nyc":false,"gx":3,"gy":5,"pop":112405,"nocar":0.0638,"commute":0.0406,"faith":0.0019,"foreign":0.04,"rich":0.1008,"own":0.7281,"veteran":0.0708,"mfg":0.111,"margin":0.0117},{"fips":"36071","name":"Orange","nyc":false,"gx":8,"gy":2,"pop":403840,"nocar":0.0861,"commute":0.1986,"faith":0.0906,"foreign":0.1299,"rich":0.1556,"own":0.6843,"veteran":0.0563,"mfg":0.0638,"margin":0.0836},{"fips":"36073","name":"Orleans","nyc":false,"gx":2,"gy":6,"pop":39686,"nocar":0.0676,"commute":0.086,"faith":0.103,"foreign":0.0302,"rich":0.0393,"own":0.7736,"veteran":0.0814,"mfg":0.1547,"margin":0.4036},{"fips":"36075","name":"Oswego","nyc":false,"gx":5,"gy":6,"pop":117945,"nocar":0.0844,"commute":0.0646,"faith":0.0001,"foreign":0.0201,"rich":0.0608,"own":0.7391,"veteran":0.083,"mfg":0.1096,"margin":0.2412},{"fips":"36077","name":"Otsego","nyc":false,"gx":7,"gy":4,"pop":59738,"nocar":0.0712,"commute":0.0691,"faith":0.0032,"foreign":0.0422,"rich":0.0604,"own":0.7434,"veteran":0.0661,"mfg":0.0729,"margin":0.0782},{"fips":"36079","name":"Putnam","nyc":false,"gx":9,"gy":2,"pop":97988,"nocar":0.0416,"commute":0.2221,"faith":0.0101,"foreign":0.138,"rich":0.2439,"own":0.8303,"veteran":0.0422,"mfg":0.0433,"margin":0.1362},{"fips":"36081","name":"Queens","nyc":true,"gx":10,"gy":0,"pop":2330124,"nocar":0.3694,"commute":0.301,"faith":0.1333,"foreign":0.4757,"rich":0.1365,"own":0.4489,"veteran":0.0198,"mfg":0.032,"margin":-0.2424},{"fips":"36083","name":"Rensselaer","nyc":false,"gx":10,"gy":4,"pop":160341,"nocar":0.1004,"commute":0.0429,"faith":0.0039,"foreign":0.0604,"rich":0.1083,"own":0.6409,"veteran":0.0636,"mfg":0.0982,"margin":-0.0136},{"fips":"36085","name":"Richmond","nyc":true,"gx":7,"gy":0,"pop":492734,"nocar":0.1554,"commute":0.3299,"faith":0.0569,"foreign":0.2515,"rich":0.1817,"own":0.6794,"veteran":0.029,"mfg":0.0246,"margin":0.2946},{"fips":"36087","name":"Rockland","nyc":false,"gx":8,"gy":1,"pop":338936,"nocar":0.0971,"commute":0.1489,"faith":0.2192,"foreign":0.2179,"rich":0.246,"own":0.6825,"veteran":0.0298,"mfg":0.0588,"margin":0.1177},{"fips":"36089","name":"St. Lawrence","nyc":false,"gx":7,"gy":8,"pop":107796,"nocar":0.1062,"commute":0.0497,"faith":0.0111,"foreign":0.0351,"rich":0.0512,"own":0.715,"veteran":0.0708,"mfg":0.0819,"margin":0.1796},{"fips":"36091","name":"Saratoga","nyc":false,"gx":10,"gy":5,"pop":237075,"nocar":0.0483,"commute":0.0522,"faith":0.0298,"foreign":0.0572,"rich":0.165,"own":0.7217,"veteran":0.0728,"mfg":0.1066,"margin":-0.0182},{"fips":"36093","name":"Schenectady","nyc":false,"gx":9,"gy":5,"pop":159603,"nocar":0.1221,"commute":0.0333,"faith":0.0348,"foreign":0.1025,"rich":0.0963,"own":0.6382,"veteran":0.0562,"mfg":0.0713,"margin":-0.1075},{"fips":"36095","name":"Schoharie","nyc":false,"gx":8,"gy":4,"pop":29979,"nocar":0.066,"commute":0.1416,"faith":0.0001,"foreign":0.0302,"rich":0.0758,"own":0.7768,"veteran":0.0788,"mfg":0.08,"margin":0.304},{"fips":"36097","name":"Schuyler","nyc":false,"gx":4,"gy":3,"pop":17749,"nocar":0.0628,"commute":0.0621,"faith":0.0002,"foreign":0.0192,"rich":0.0563,"own":0.7806,"veteran":0.0885,"mfg":0.1197,"margin":0.2088},{"fips":"36099","name":"Seneca","nyc":false,"gx":4,"gy":5,"pop":33125,"nocar":0.0876,"commute":0.0522,"faith":0.0004,"foreign":0.0285,"rich":0.0622,"own":0.7199,"veteran":0.0869,"mfg":0.1245,"margin":0.1177},{"fips":"36101","name":"Steuben","nyc":false,"gx":3,"gy":3,"pop":93034,"nocar":0.0989,"commute":0.0661,"faith":0.0003,"foreign":0.0301,"rich":0.0635,"own":0.7353,"veteran":0.0884,"mfg":0.1792,"margin":0.3168},{"fips":"36103","name":"Suffolk","nyc":false,"gx":11,"gy":1,"pop":1525680,"nocar":0.0518,"commute":0.1479,"faith":0.032,"foreign":0.1658,"rich":0.2649,"own":0.8191,"veteran":0.043,"mfg":0.0635,"margin":0.0993},{"fips":"36105","name":"Sullivan","nyc":false,"gx":7,"gy":2,"pop":79147,"nocar":0.0876,"commute":0.1055,"faith":0.0935,"foreign":0.1123,"rich":0.1093,"own":0.6928,"veteran":0.0597,"mfg":0.059,"margin":0.1665},{"fips":"36107","name":"Tioga","nyc":false,"gx":5,"gy":2,"pop":48106,"nocar":0.066,"commute":0.0431,"faith":0.0007,"foreign":0.0226,"rich":0.0777,"own":0.7822,"veteran":0.081,"mfg":0.1314,"margin":0.2281},{"fips":"36109","name":"Tompkins","nyc":false,"gx":5,"gy":3,"pop":102879,"nocar":0.1314,"commute":0.043,"faith":0.0568,"foreign":0.1314,"rich":0.1195,"own":0.5383,"veteran":0.0377,"mfg":0.0587,"margin":-0.5002},{"fips":"36111","name":"Ulster","nyc":false,"gx":8,"gy":3,"pop":182109,"nocar":0.0755,"commute":0.0991,"faith":0.0224,"foreign":0.0828,"rich":0.1355,"own":0.6999,"veteran":0.0446,"mfg":0.0586,"margin":-0.185},{"fips":"36113","name":"Warren","nyc":false,"gx":9,"gy":6,"pop":65560,"nocar":0.0802,"commute":0.0629,"faith":0.0058,"foreign":0.0326,"rich":0.1,"own":0.7147,"veteran":0.0739,"mfg":0.0865,"margin":0.0421},{"fips":"36115","name":"Washington","nyc":false,"gx":10,"gy":6,"pop":60883,"nocar":0.084,"commute":0.072,"faith":0.0002,"foreign":0.0321,"rich":0.0524,"own":0.7656,"veteran":0.0762,"mfg":0.1309,"margin":0.2114},{"fips":"36117","name":"Wayne","nyc":false,"gx":4,"gy":6,"pop":91128,"nocar":0.0697,"commute":0.047,"faith":0.003,"foreign":0.027,"rich":0.0569,"own":0.7988,"veteran":0.0688,"mfg":0.1616,"margin":0.2302},{"fips":"36119","name":"Westchester","nyc":false,"gx":10,"gy":1,"pop":996888,"nocar":0.1416,"commute":0.2053,"faith":0.0706,"foreign":0.2561,"rich":0.2978,"own":0.622,"veteran":0.0304,"mfg":0.0417,"margin":-0.2613},{"fips":"36121","name":"Wyoming","nyc":false,"gx":2,"gy":4,"pop":39980,"nocar":0.0759,"commute":0.0863,"faith":0.0001,"foreign":0.0249,"rich":0.0492,"own":0.7697,"veteran":0.0725,"mfg":0.1289,"margin":0.4823},{"fips":"36123","name":"Yates","nyc":false,"gx":4,"gy":4,"pop":24637,"nocar":0.1296,"commute":0.071,"faith":0.0002,"foreign":0.0163,"rich":0.0704,"own":0.7723,"veteran":0.0736,"mfg":0.1447,"margin":0.161}],"cols":12,"rows":9,"vote_stops":[[-0.5,"#104281"],[-0.25,"#6da7ec"],[0.0,"#f0efec"],[0.25,"#d98a00"],[0.5,"#5a3300"]]};</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+/* Shared web components for the #30DayMapChallenge series. Needs d3 v7 loaded first.
+   window.MapKit = { tooltip, segmented, dropdown, legend, nearestHover } */
+(function () {
+  /** Tooltip: const tip = MapKit.tooltip(); tip.show(event, html); tip.hide(); */
+  function tooltip() {
+    const el = d3.select("body").append("div").attr("class", "tip");
+    return {
+      show(ev, html) {
+        el.html(html).style("opacity", 1);
+        const h = el.node().offsetHeight, below = ev.clientY + 14 + h <= innerHeight;  // flip above the pointer near the bottom
+        const w = el.node().offsetWidth;   // keep the whole tip on screen, however wide a page lets it get
+        el.style("left", Math.max(4, Math.min(ev.clientX + 14, innerWidth - w - 8)) + "px")
+          .style("top", (below ? ev.clientY + 14 : Math.max(4, ev.clientY - 14 - h)) + "px");
+      },
+      hide() { el.style("opacity", 0); },
+    };
+  }
+
+  /** Segmented toggle.
+   *  MapKit.segmented("#toggle", [{value: "all", label: "All"}, ...], value => render(value), "all") */
+  function segmented(target, options, onChange, initial) {
+    const root = d3.select(target).attr("class", "seg").attr("role", "group");
+    const btns = root.selectAll("button").data(options).join("button")
+      .attr("type", "button").text(d => d.label)
+      .on("click", (_, d) => select(d.value));
+    function select(v) {
+      btns.attr("aria-pressed", d => d.value === v);
+      onChange(v);
+    }
+    select(initial ?? options[0].value);
+    return { select };
+  }
+
+  /** Dropdown, for when there are too many views for a segmented toggle (more than ~6).
+   *  MapKit.dropdown("#pick", [{value, label, group?}, ...], value => render(value), initial, "Cuisine")
+   *  Options with a `group` are put under <optgroup> headings in first-seen order. Returns { select }. */
+  function dropdown(target, options, onChange, initial, ariaLabel) {
+    const root = d3.select(target).attr("class", "dd");
+    const sel = root.append("select").attr("aria-label", ariaLabel ?? null);
+    const groups = d3.groups(options, d => d.group ?? "");
+    for (const [name, opts] of groups) {
+      const parent = name ? sel.append("optgroup").attr("label", name) : sel;
+      parent.selectAll("option.o").data(opts).join("option").attr("class", "o")
+        .attr("value", d => d.value).text(d => d.label);
+    }
+    sel.on("change", () => onChange(sel.property("value")));
+    function select(v) { sel.property("value", v); onChange(v); }
+    select(initial ?? options[0].value);
+    return { select };
+  }
+
+  /** Legend placed over the map in its emptiest area. It is HTML (not SVG text) so its
+   *  text stays 14px however small the map is drawn; on phones it moves under the map.
+   *  MapKit.legend(svg, {
+   *    x, y,                              // top-left corner, in the map's SVG (viewBox) units
+   *    anchor: "bottom",                  // optional: (x, y) is the bottom-left corner instead
+   *    align: "right", dx: -16,           // optional: (x, y) is the legend's right edge, shifted dx CSS px;
+   *                                       //   e.g. x: 0, dx: -16 puts it in the empty space left of the map
+   *    width,                             // in CSS px (default 200)
+   *    title: "Longest walk ...",          // may contain \n for line breaks
+   *    stops: [[value, color], ...],       // continuous gradient bar
+   *    ticks: [[value, "label"], ...],
+   *    keys:  [{cls, r, label} | {draw: g => ..., label}, ...]  // marks drawn in a 16px SVG around (0,0)
+   *  })  -> returns the legend's d3 selection */
+  function legend(svg, o) {
+    const node = svg.node(), host = node.parentNode;
+    const el = d3.select(host).append("div").attr("class", "legend").style("width", (o.width ?? 200) + "px");
+    if (o.title) el.append("div").attr("class", "lg-title").html(o.title.split("\n").join("<br>"));
+    if (o.stops) {
+      const v0 = o.stops[0][0], v1 = o.stops[o.stops.length - 1][0], pct = v => (100 * (v - v0)) / (v1 - v0);
+      el.append("div").attr("class", "lg-bar")
+        .style("background", `linear-gradient(to right, ${o.stops.map(([v, c]) => `${c} ${pct(v)}%`).join(", ")})`);
+      el.append("div").attr("class", "lg-ticks").selectAll("span").data(o.ticks || []).join("span")
+        .attr("class", (_, i, a) => (i === 0 ? "" : i === a.length - 1 ? "end" : "mid"))
+        .style("left", ([v]) => pct(v) + "%").text(([, label]) => label);
+    }
+    (o.keys || []).forEach(k => {
+      const row = el.append("div").attr("class", "lg-key");
+      const g = row.append("svg").attr("width", 16).attr("height", 16).attr("viewBox", "-8 -8 16 16").append("g");
+      if (k.draw) k.draw(g);
+      else g.append("circle").attr("class", k.cls).attr("r", k.r ?? 3);
+      row.append("span").text(k.label);
+    });
+    // keep it pinned to (x, y) on the map as the SVG letterboxes and resizes
+    function place() {
+      if (getComputedStyle(el.node()).position !== "absolute") return;
+      const vb = node.viewBox.baseVal, r = node.getBoundingClientRect(), h = host.getBoundingClientRect();
+      const s = Math.min(r.width / vb.width, r.height / vb.height);
+      const ox = r.left - h.left + (r.width - vb.width * s) / 2, oy = r.top - h.top + (r.height - vb.height * s) / 2;
+      const top = oy + (o.y - vb.y) * s - (o.anchor === "bottom" ? el.node().offsetHeight : 0);
+      const left = ox + (o.x - vb.x) * s + (o.dx ?? 0) - (o.align === "right" ? el.node().offsetWidth : 0);
+      el.style("left", Math.max(0, left) + "px").style("top", top + "px");
+    }
+    new ResizeObserver(place).observe(node);
+    new ResizeObserver(place).observe(el.node());  // content added after creation changes its height
+    place();
+    return el;
+  }
+
+  /** Easy hover for small point marks: finds the nearest point to the pointer (within `radius`
+   *  screen px) so you don't have to land exactly on a tiny dot.
+   *  MapKit.nearestHover(svg, points, {x: d => .., y: d => .., radius: 16,
+   *                      transform: () => zoomTransform, onEnter(ev, d), onLeave()}) */
+  function nearestHover(svg, points, o) {
+    const node = svg.node(), radius = o.radius ?? 16;
+    const delaunay = d3.Delaunay.from(points, o.x, o.y);
+    let current = null;
+    svg.on("pointermove.nearest", ev => {
+      const t = o.transform ? o.transform() : d3.zoomIdentity;
+      const vb = node.viewBox.baseVal, r = node.getBoundingClientRect();
+      const unitsPerPx = 1 / Math.min(r.width / vb.width, r.height / vb.height);
+      const [mx, my] = t.invert(d3.pointer(ev, node));
+      const i = delaunay.find(mx, my), d = points[i];
+      const dist = Math.hypot(o.x(d) - mx, o.y(d) - my) * t.k / unitsPerPx;  // screen px
+      if (dist <= radius) { current = d; o.onEnter(ev, d); }
+      else if (current) { current = null; o.onLeave(); }
+    }).on("pointerleave.nearest", () => { if (current) { current = null; o.onLeave(); } });
+  }
+
+  window.MapKit = { tooltip, segmented, dropdown, legend, nearestHover };
+})();
+</script>
+<script>
+const D = window.DATA, P = D.petals;
+const tip = MapKit.tooltip();
+const wrap = d3.select("#wrap");
+const vote = d3.scaleLinear().domain(D.vote_stops.map(s => s[0])).range(D.vote_stops.map(s => s[1])).clamp(true);
+const pct = v => `${Math.round(v * 100)}%`;
+const marginText = m => { const v = Math.abs(m) * 100;
+  return (m > 0 ? "Trump +" : "Harris +") + (v < 1 ? v.toFixed(1) : Math.round(v)); };
+const BOROUGH = { "New York": "Manhattan", "Kings": "Brooklyn", "Richmond": "Staten Island", "Bronx": "The Bronx", "Queens": "Queens" };
+const SIDE_COLOR = { urban: "var(--cat-1)", rural: "var(--cat-4)", even: "var(--cat-3)" };
+
+d3.select("#title").html(D.title.replace(" In the rest", "<br>In the rest"));
+d3.select("#lede").text(D.lede);
+d3.select("#method").text(D.method);
+d3.select("#faith").text(D.faith_note);
+d3.select("#day").text(D.day);
+for (const k of ["acs", "usrc", "votes"]) d3.select(`#l-${k}`).attr("href", D.links[k]);
+
+/* Teardrop petal from (cx, cy) outward at `deg` (counter-clockwise from east). Same curve as petal() in build.py. */
+function petalPath(cx, cy, deg, L) {
+  const a = deg * Math.PI / 180, ux = Math.cos(a), uy = -Math.sin(a), nx = -uy, ny = ux, w = 0.275 * L;
+  const p = (s, t) => `${cx + ux * s * L + nx * t},${cy + uy * s * L + ny * t}`;
+  return `M${cx},${cy} C${p(.25, w)} ${p(.85, w)} ${p(1, 0)} C${p(.85, -w)} ${p(.25, -w)} ${cx},${cy}Z`;
+}
+const petalLen = (row, key, R) => R * Math.sqrt(row[key] / D.max[key]);
+
+function flower(g, cx, cy, R, row) {
+  g.selectAll(".ghost").data(P).join("path").attr("class", "ghost").attr("d", p => petalPath(cx, cy, p.angle, R));
+  g.selectAll(".petal").data(P).join("path").attr("class", p => `petal ${p.side} k-${p.key}`)
+    .attr("d", p => petalPath(cx, cy, p.angle, petalLen(row, p.key, R)));
+  g.append("circle").attr("class", "hub").attr("cx", cx).attr("cy", cy).attr("r", Math.max(3, R * 0.13))
+    .attr("fill", vote(row.margin));
+}
+
+/* ---- trait focus: hovering a big-flower petal fades every other trait ---- */
+function focus(key) {
+  wrap.classed("focus", !!key);
+  d3.selectAll(".petal").classed("on", p => p.key === key);
+}
+
+/* ---- the two big flowers: the key ---- */
+const heroes = d3.select("#heroes");
+const HEROES = [["New York City", D.nyc], ["Other counties", D.other]];
+function drawHeroes() {
+  heroes.selectAll("*").remove();
+  const W = heroes.node().clientWidth;
+  const stacked = matchMedia("(max-width: 900px), (max-height: 520px)").matches;
+  const H = stacked ? Infinity : heroes.node().clientHeight;
+  // largest R (≤ 92, and fitting the height) where every label still fits inside the column
+  const ctx = document.createElement("canvas").getContext("2d");
+  ctx.font = `14px ${getComputedStyle(document.body).getPropertyValue("--font")}`;
+  const fits = R => HEROES.every(([, row]) => heroLabels(row, R, 36)
+    .every(o => Math.abs(o.x) + ctx.measureText(o.p.label).width <= W / 2 - 4));
+  let R = Math.max(45, Math.min(92, (H - 208) / 4));
+  while (R > 45 && !fits(R)) R -= 1;
+  const cx = W / 2;
+  for (const [heading, row] of HEROES) {
+    const labels = heroLabels(row, R, 36);
+    const top = Math.max(R, ...labels.map(o => o.y + 20)), bottom = Math.max(R, ...labels.map(o => 20 - o.y));
+    const cy = 34 + top, blockH = cy + bottom + 10;
+    const svg = heroes.append("svg").attr("width", W).attr("height", blockH)
+      .attr("role", "img").attr("aria-label", `${heading}: ` + P.map(p => `${pct(row[p.key])} ${p.label}`).join(", ") +
+        `; 2024 ${marginText(row.margin)}`);
+    svg.append("text").attr("class", "h-head").attr("x", 4).attr("y", 20).text(heading);
+    flower(svg.append("g"), cx, cy, R, row);
+    for (const o of labels) {
+      const p = o.p, x = cx + o.x, y = cy - o.y, anchor = o.right ? "start" : "end";
+      const g = svg.append("g").attr("class", "h-key").attr("tabindex", 0).attr("role", "button")
+        .attr("aria-label", `Highlight ${p.label}`)
+        .attr("aria-pressed", "false")
+        .on("mouseenter focus", () => focus(p.key)).on("mouseleave blur", () => focus(null))
+        .on("keydown", ev => {
+          if (ev.key !== "Enter" && ev.key !== " ") return;
+          ev.preventDefault();
+          focus(wrap.classed("focus") && d3.select(".petal.on").datum()?.key === p.key ? null : p.key);
+        });
+      g.append("path").attr("class", "h-hit").attr("d", petalPath(cx, cy, p.angle, R));
+      g.append("text").attr("class", "h-val").attr("x", x).attr("y", y - 3).attr("text-anchor", anchor).text(pct(row[p.key]));
+      g.append("text").attr("class", "h-name").attr("x", x).attr("y", y + 13).attr("text-anchor", anchor).text(p.label);
+    }
+  }
+}
+
+/* Push label centers apart until neighbors are at least `gap` apart. Same as spread() in build.py. */
+function spread(ys, gap) {
+  ys = ys.slice();
+  const order = ys.map((_, i) => i).sort((a, b) => ys[a] - ys[b]);
+  for (let it = 0; it < 60; it++) {
+    let moved = false;
+    for (let k = 0; k + 1 < order.length; k++) {
+      const a = order[k], b = order[k + 1], d = ys[b] - ys[a];
+      if (d < gap) { ys[a] -= (gap - d) / 2; ys[b] += (gap - d) / 2; moved = true; }
+    }
+    if (!moved) break;
+  }
+  return ys;
+}
+/* Label anchors beside each COLORED petal tip (y up), spread so labels on each side never overlap. */
+function heroLabels(row, R, gap) {
+  const out = P.map(p => {
+    const a = p.angle * Math.PI / 180, L = petalLen(row, p.key, R), r = Math.max(L, 0.3 * R) + 6;
+    const right = Math.cos(a) > 0;
+    return { p, right, x: r * Math.cos(a) + (right ? 1 : -1) * (0.22 * L + 2), y: r * Math.sin(a) };
+  });
+  for (const right of [true, false]) {
+    const grp = out.filter(o => o.right === right);
+    spread(grp.map(o => o.y), gap).forEach((y, i) => { grp[i].y = y; });
+  }
+  return out;
+}
+new ResizeObserver(drawHeroes).observe(document.getElementById("heroes"));
+document.fonts.ready.then(drawHeroes);
+
+/* ---- county tile grid ---- */
+const S = 100, R = 40;
+const x0 = -0.6 * S, x1 = (D.cols - 0.4) * S, y0 = -0.4 * S, y1 = (D.rows - 0.4) * S;
+const svg = d3.select("#grid").append("svg").attr("viewBox", `${x0} ${y0} ${x1 - x0} ${y1 - y0}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img")
+  .attr("aria-label", "One flower per New York county, arranged roughly by location");
+const X = c => c.gx * S, Y = c => (D.rows - 1 - c.gy) * S;
+
+const countyName = c => BOROUGH[c.name] ? `${BOROUGH[c.name]} (${c.name} County, NYC)` : `${c.name} County`;
+const tipHTML = c => `<b>${BOROUGH[c.name] ? `${BOROUGH[c.name]} <span class="m">(${c.name} County, NYC)</span>` : `${c.name} County`}</b>` +
+  P.map(p => `<div class="tr"><i style="background:${SIDE_COLOR[p.side]}"></i>${p.label}<span>${pct(c[p.key])}</span></div>`).join("") +
+  `<div class="vote">2024: <b style="display:inline">${marginText(c.margin)}</b></div>`;
+const tiles = svg.append("g").selectAll("g").data(D.counties).join("g").attr("class", "county")
+  .attr("tabindex", 0).attr("role", "img")
+  .attr("aria-label", c => `${countyName(c)}: ` + P.map(p => `${pct(c[p.key])} ${p.label}`).join(", ") + `; 2024 ${marginText(c.margin)}`);
+tiles.append("rect").attr("class", c => "tile" + (c.nyc ? " nyc" : ""))
+  .attr("x", c => X(c) - 0.47 * S).attr("y", c => Y(c) - 0.47 * S).attr("width", 0.94 * S).attr("height", 0.94 * S);
+tiles.each(function (c) { flower(d3.select(this).append("g"), X(c), Y(c), R, c); });
+const clearHover = () => { tiles.select(".tile").classed("hover", false); tip.hide(); };
+function showTile(el, ev, c) {
+  tiles.select(".tile").classed("hover", false);
+  d3.select(el).select(".tile").classed("hover", true);
+  tip.show(ev, tipHTML(c));
+}
+tiles.on("pointermove pointerdown", function (ev, c) { showTile(this, ev, c); })
+  .on("pointerleave", ev => { if (ev.pointerType !== "touch") clearHover(); })   // touch: keep the tip until a tap elsewhere
+  .on("focus", function (ev, c) {
+    const b = this.getBoundingClientRect();
+    showTile(this, { clientX: b.right - 10, clientY: b.top + b.height / 2 }, c);
+  })
+  .on("blur", clearHover);
+document.addEventListener("pointerdown", ev => { if (!ev.target.closest(".county")) clearHover(); });
+
+// vote key in the grid's empty top-left corner
+MapKit.legend(svg, {
+  x: x0 + 10, y: y0 + 10, width: 240,
+  title: "Center dot: 2024 presidential margin",
+  stops: D.vote_stops.map(([v, c]) => [v, c]),
+  ticks: [[-0.5, "Harris +50"], [0, "Even"], [0.5, "Trump +50"]],
+});
+</script>
+</body>
+</html>

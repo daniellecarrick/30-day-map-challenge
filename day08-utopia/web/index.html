@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>American Utopias</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/utopias.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .land { fill: var(--ctl); stroke: var(--bg); stroke-width: .8; }
+  .dot { fill-opacity: .82; stroke: var(--bg); stroke-width: .7; }
+  .dot.on { stroke: var(--ink); stroke-width: 1.6; fill-opacity: 1; }
+  .dot.religious, .bar.religious { fill: var(--cat-1); stroke-color: var(--cat-1); }
+  .dot.secular, .bar.secular { fill: var(--cat-2); }
+  .dot.unknown { fill: var(--closed); fill-opacity: 1; }
+  .size-ring { fill: none; stroke: var(--muted); }
+  .view { position: absolute; inset: 0; }
+  .view[hidden] { display: none; }
+  #timeline > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .bar { stroke: none; }
+  .bar.religious { fill: var(--cat-1); }
+  .bar.secular { fill: var(--cat-2); }
+  .bar.unknown { fill: var(--closed); }
+  .row.on .bar { fill: var(--ink); }
+  .arrow.religious { fill: var(--cat-1); } .arrow.secular { fill: var(--cat-2); }
+  .row.on .arrow { fill: var(--ink); }
+  .axis text { fill: var(--muted); font: 14px var(--font); }
+  .axis line { stroke: color-mix(in srgb, var(--ink) 12%, transparent); }
+  .axis .now line { stroke: var(--muted); stroke-dasharray: 2 3; }
+  .hit { fill: transparent; }
+  .tip { max-width: 320px; }
+  .tip .note { margin-top: 6px; padding-top: 6px; line-height: 1.35;
+               border-top: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); }
+  .tl-legend { position: absolute; left: 8px; bottom: 34px; pointer-events: none; }
+  /* phones: both views take their natural height and the page scrolls */
+  @media (max-width: 640px), (max-height: 520px) {
+    .map-wrap { min-height: 0; }
+    .view { position: static; }
+    #timeline { height: 900px; position: relative; }
+    .tl-legend { position: static; margin-top: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <div id="view" aria-label="Which view to show"></div>
+      <span class="stat" id="stat"></span>
+    </div>
+  </header>
+  <div class="map-wrap" id="wrap">
+    <div class="view" id="map"></div>
+    <div class="view" id="timeline" hidden></div>
+  </div>
+  <footer><span id="method"></span>. Religious or secular follows each community's founding beliefs; a few close calls don't change the result.
+    Data: Wikipedia lists of American <span id="sources"></span> communities; <a id="census">US Census</a> state outlines · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA, ST = D.stats;
+const tip = MapKit.tooltip();
+const kind = d => (d.years == null ? "unknown" : d.basis);
+const LABEL = { religious: "Religious", secular: "Secular" };
+
+d3.select("#title").html(D.title.replace(". Secular", ".<br>Secular"));
+d3.select("#lede").text(`${ST.n} American utopian communities founded ${ST.first}–${ST.last}, sized by how long each one lasted. ` +
+  `Half the religious ones lasted ${ST.med_religious} years or more; half the secular ones lasted ${ST.med_secular} or fewer.`);
+d3.select("#stat").text(`${ST.religious} religious · ${ST.secular} secular`);
+d3.select("#method").text(D.method);
+d3.select("#day").text(D.day);
+d3.select("#census").attr("href", D.census);
+{
+  const links = D.sources.map(([l, u]) => `<a href="${u}">${l}</a>`);
+  d3.select("#sources").html(`${links.slice(0, -1).join(", ")} and ${links.at(-1)}`);
+}
+
+function span(d) {
+  if (d.start == null) return `Ended ${d.end}; founding year unknown`;
+  if (d.active) return `${d.start}–today · ${d.years} years and counting`;
+  if (d.end == null) return `Founded ${d.start}; end year unknown`;
+  const y = d.years;
+  return `${d.start}–${d.end} · ${y === 0 ? "under a year" : y === 1 ? "1 year" : y + " years"}`;
+}
+const esc = t => t.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+// Wikipedia's note for the community, cut at a sentence end so long ones don't fill the screen
+function blurb(t, max = 260) {
+  if (!t || t.length <= max) return t;
+  const cut = t.slice(0, max + 1);
+  const ends = [...cut.matchAll(/[.!?]["”’)]?(?=\s)/g)].map(m => m.index + m[0].length);  // sentence ends
+  const end = ends.filter(i => i > 40).at(-1);
+  return end ? cut.slice(0, end) : cut.slice(0, cut.lastIndexOf(" ")) + "…";
+}
+const tipHtml = d => `<b>${esc(d.name)}</b>${esc(d.place)}<br><span class="m">${LABEL[d.basis]} · ${esc(d.movement)}</span>` +
+  `<br>${span(d)}${d.notes ? `<div class="note">${esc(blurb(d.notes))}</div>` : ""}`;
+
+// ---------------- map view ----------------
+const W = 960, H = 600;
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[8, 8], [W - 8, H - 8]], D.outline);
+const path = d3.geoPath(proj);
+const radius = y => D.rMin + (D.rMax - D.rMin) * Math.sqrt(Math.max(0, y ?? 0) / D.maxYears);
+const pts = D.communities.map(d => { const [px, py] = proj([d.x, d.y]); return { ...d, px, py }; })
+  .sort((a, b) => (b.years ?? -1) - (a.years ?? -1));   // big dots underneath small ones
+
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
+svg.append("g").selectAll("path").data(D.states.features).join("path").attr("class", "land").attr("d", path);
+svg.append("path").datum(D.outline.features[0]).attr("class", "boundary").attr("d", path);
+const dots = svg.append("g").selectAll("circle").data(pts).join("circle")
+  .attr("class", d => `dot ${kind(d)}`).attr("cx", d => d.px).attr("cy", d => d.py)
+  .attr("r", d => (d.years == null ? D.rMin * 0.8 : radius(d.years)));
+
+MapKit.nearestHover(svg, pts, {
+  x: d => d.px, y: d => d.py, radius: 16,
+  onEnter(ev, d) { dots.classed("on", p => p === d); dots.filter(p => p === d).raise(); tip.show(ev, tipHtml(d)); },
+  onLeave() { dots.classed("on", false); tip.hide(); },
+});
+
+function legendKeys() {
+  return [
+    { draw: g => g.append("circle").attr("class", "dot religious").attr("r", 6), label: "Religious" },
+    { draw: g => g.append("circle").attr("class", "dot secular").attr("r", 6), label: "Secular" },
+    { draw: g => g.append("circle").attr("class", "dot unknown").attr("r", 3), label: "Dates unknown" },
+  ];
+}
+const mapLegend = MapKit.legend(svg, { x: 14, y: H - 10, anchor: "bottom", width: 230,
+  title: "Each dot is one community", keys: legendKeys() });
+// size key: rings on one baseline, drawn at the map's scale
+const sk = mapLegend.append("div").attr("class", "lg-title").style("margin-top", "10px").text("Dot size: how long it lasted");
+const scaleNow = () => { const r = svg.node().getBoundingClientRect(); return Math.min(r.width / W, r.height / H) || 1; };
+const ringSvg = mapLegend.append("svg").attr("class", "size-key").attr("width", 230);
+function drawRings() {
+  // rings share a bottom line and are drawn at the map's current scale, so they match the dots
+  const s = scaleNow(), rMax = radius(D.sizeKeys.at(-1)) * s, base = 2 * rMax + 2;
+  ringSvg.selectAll("*").remove();
+  ringSvg.attr("height", base + 20);
+  let x = 2;
+  D.sizeKeys.forEach((y, i) => {
+    const r = radius(y) * s, slot = Math.max(2 * r, 34), last = i === D.sizeKeys.length - 1;
+    ringSvg.append("circle").attr("class", "size-ring").attr("cx", x + slot / 2).attr("cy", base - r).attr("r", r);
+    ringSvg.append("text").attr("x", last ? x + slot / 2 - 12 : x + slot / 2).attr("y", base + 17)
+      .attr("text-anchor", last ? "start" : "middle")
+      .attr("fill", "var(--muted)").style("font", "14px var(--font)")
+      .text(i === D.sizeKeys.length - 1 ? `${y} years` : y);
+    x += slot + 10;
+  });
+}
+new ResizeObserver(drawRings).observe(svg.node());
+
+// ---------------- timeline view (drawn at pixel size so text stays 14px) ----------------
+const rows = D.communities.filter(d => d.start != null)
+  .sort((a, b) => d3.ascending(a.start, b.start) || d3.ascending(a.name, b.name));
+const tl = d3.select("#timeline");
+const tsvg = tl.append("svg").attr("role", "img").attr("aria-label", "Timeline of each community, founding to end");
+const tlLegend = tl.append("div").attr("class", "legend tl-legend").style("width", "230px");
+tlLegend.append("div").attr("class", "lg-title").text("Each line is one community, founding to end");
+legendKeys().forEach(k => {
+  const row = tlLegend.append("div").attr("class", "lg-key");
+  k.draw(row.append("svg").attr("width", 16).attr("height", 16).attr("viewBox", "-8 -8 16 16").append("g"));
+  row.append("span").text(k.label);
+});
+tlLegend.append("div").attr("class", "lg-key lg-muted").text("▸ still running today");
+
+function drawTimeline() {
+  const node = tl.node(), w = node.clientWidth, h = node.clientHeight;
+  if (!w || !h) return;
+  const m = { t: 6, r: 18, b: 30, l: 8 };
+  const x = d3.scaleLinear().domain([1730, D.now]).range([m.l, w - m.r]);
+  const band = (h - m.t - m.b) / rows.length;
+  const y = i => m.t + i * band;
+  tsvg.selectAll("*").remove();
+  const ax = tsvg.append("g").attr("class", "axis");
+  const ticks = d3.range(1750, D.now, w < 500 ? 100 : 50);
+  ax.selectAll("g.t").data(ticks).join("g").attr("class", "t").call(g => {
+    g.append("line").attr("x1", x).attr("x2", x).attr("y1", m.t).attr("y2", h - m.b);
+    g.append("text").attr("x", x).attr("y", h - m.b + 20).attr("text-anchor", "middle").text(d => d);
+  });
+  ax.append("g").attr("class", "now").call(g => {
+    g.append("line").attr("x1", x(D.now)).attr("x2", x(D.now)).attr("y1", m.t).attr("y2", h - m.b);
+    g.append("text").attr("x", x(D.now)).attr("y", h - m.b + 20).attr("text-anchor", "end").text("today");
+  });
+  const thick = Math.max(1.5, Math.min(6, band * 0.62));
+  const g = tsvg.append("g").selectAll("g").data(rows).join("g").attr("class", "row");
+  g.append("rect").attr("class", d => `bar ${kind(d)}`)
+    .attr("x", d => x(d.start)).attr("y", (d, i) => y(i) + (band - thick) / 2).attr("height", thick)
+    .attr("width", d => Math.max(thick, x(d.active ? D.now : (d.end ?? d.start)) - x(d.start)))
+    .attr("rx", thick / 2);
+  g.filter(d => d.active).append("path").attr("class", d => `arrow ${d.basis}`)
+    .attr("d", (d, i) => { const cy = y(rows.indexOf(d)) + band / 2, a = Math.max(4, thick);
+      return `M${x(D.now)},${cy - a} L${x(D.now) + a * 1.3},${cy} L${x(D.now)},${cy + a} Z`; });
+  // full-width hit rows: hovering anywhere along a row picks that community
+  g.append("rect").attr("class", "hit").attr("x", 0).attr("width", w)
+    .attr("y", (d, i) => y(i)).attr("height", Math.max(band, 1))
+    .on("pointermove", function (ev, d) { g.classed("on", r => r === d); tip.show(ev, tipHtml(d)); })
+    .on("pointerleave", () => { g.classed("on", false); tip.hide(); });
+}
+new ResizeObserver(drawTimeline).observe(tl.node());
+
+MapKit.segmented("#view", [{ value: "map", label: "Map" }, { value: "timeline", label: "Timeline" }], v => {
+  d3.select("#map").attr("hidden", v === "map" ? null : true);
+  d3.select("#timeline").attr("hidden", v === "timeline" ? null : true);
+  tip.hide();
+  if (v === "timeline") drawTimeline();
+}, "map");
+</script>
+</body>
+</html>

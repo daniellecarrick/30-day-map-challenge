@@ -20,3 +20,8 @@ drafts/
 
 # Large raw downloads (e.g. Citi Bike trip CSVs): re-downloadable, too big to commit
 day*/data/raw/
+
+# Cloudflare Worker local state and secrets
+.dev.vars
+.wrangler/
+node_modules/

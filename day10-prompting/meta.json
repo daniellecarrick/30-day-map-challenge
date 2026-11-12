@@ -1,0 +1,9 @@
+{
+  "day": 10,
+  "theme": "Prompting only",
+  "title": "How well does Claude know where places are?",
+  "description": "Ask Claude where any place is, with no web or tools, and see how far its memory lands from the real coordinates. Each circle is Claude's guess, sized by how far off it was, joined by a line to the actual location. Claude put most of the first places within 25 km from memory but missed a Siberian village by 343 km. Guesses come from Claude from memory alone; real locations come from USGS, Wikipedia and OpenStreetMap.",
+  "html": "out/map.html",
+  "png": "out/map.png",
+  "published": "2026-11-08"
+}

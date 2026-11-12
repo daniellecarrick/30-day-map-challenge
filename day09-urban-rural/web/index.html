@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two New Yorks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/urban-rural.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .page { max-width: 1240px; }
+  .map-wrap { display: flex; gap: 12px; }
+  #heroes { flex: none; width: 460px; display: flex; flex-direction: column; justify-content: center; }
+  #heroes svg { display: block; overflow: visible; }
+  #grid { flex: 1 1 auto; min-width: 0; position: relative; }
+  #grid > svg { width: 100%; height: 100%; display: block; }
+  .ghost { fill: var(--ctl); }
+  .petal { stroke: var(--bg); stroke-width: 1; transition: opacity .15s; }
+  .petal.urban { fill: var(--cat-1); }
+  .petal.rural { fill: var(--cat-4); }
+  .petal.even { fill: var(--cat-3); }
+  .hub { stroke: var(--ink); stroke-width: 1; }
+  .focus .petal:not(.on) { opacity: .12; }
+  .tile { fill: transparent; stroke: none; rx: 6; }
+  .tile.nyc { stroke: var(--ink); stroke-width: 1.2; }
+  .tile.hover { stroke: var(--ink); stroke-width: 2.2; }
+  .county { outline: none; }
+  .county:focus-visible .tile { stroke: var(--ink); stroke-width: 3; }
+  .h-head { font: 600 18px var(--font-head); fill: var(--ink); }
+  .h-val { font: 700 16px var(--font); fill: var(--ink); }
+  .h-name { font: 14px var(--font); fill: var(--muted); }
+  .h-key { cursor: pointer; }
+  .h-key:focus { outline: none; }
+  .h-key:focus-visible .h-val { text-decoration: underline; }
+  .h-hit { fill: transparent; }
+  .tip .tr { display: flex; align-items: center; gap: 7px; }
+  .tip .tr i { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+  .tip .tr span { margin-left: auto; padding-left: 12px; font-weight: 600; }
+  .tip .vote { margin-top: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); }
+  @media (max-width: 900px), (max-height: 520px) {
+    .map-wrap { flex-direction: column; }
+    #heroes { width: 100%; }
+    #grid > svg { height: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls"><span class="stat">Hover or tap a petal on a big flower to compare that trait across counties.</span></div>
+  </header>
+  <div class="map-wrap" id="wrap">
+    <div id="heroes" aria-label="Key: New York City and the other counties"></div>
+    <div id="grid"></div>
+  </div>
+  <footer><span id="method"></span>. <span id="faith"></span>.
+    Data: <a id="l-acs">US Census ACS 2019–2023</a>; <a id="l-usrc">2020 US Religion Census</a>; <a id="l-votes">2024 results: NYS Board of Elections</a>
+    · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA, P = D.petals;
+const tip = MapKit.tooltip();
+const wrap = d3.select("#wrap");
+const vote = d3.scaleLinear().domain(D.vote_stops.map(s => s[0])).range(D.vote_stops.map(s => s[1])).clamp(true);
+const pct = v => `${Math.round(v * 100)}%`;
+const marginText = m => { const v = Math.abs(m) * 100;
+  return (m > 0 ? "Trump +" : "Harris +") + (v < 1 ? v.toFixed(1) : Math.round(v)); };
+const BOROUGH = { "New York": "Manhattan", "Kings": "Brooklyn", "Richmond": "Staten Island", "Bronx": "The Bronx", "Queens": "Queens" };
+const SIDE_COLOR = { urban: "var(--cat-1)", rural: "var(--cat-4)", even: "var(--cat-3)" };
+
+d3.select("#title").html(D.title.replace(" In the rest", "<br>In the rest"));
+d3.select("#lede").text(D.lede);
+d3.select("#method").text(D.method);
+d3.select("#faith").text(D.faith_note);
+d3.select("#day").text(D.day);
+for (const k of ["acs", "usrc", "votes"]) d3.select(`#l-${k}`).attr("href", D.links[k]);
+
+/* Teardrop petal from (cx, cy) outward at `deg` (counter-clockwise from east). Same curve as petal() in build.py. */
+function petalPath(cx, cy, deg, L) {
+  const a = deg * Math.PI / 180, ux = Math.cos(a), uy = -Math.sin(a), nx = -uy, ny = ux, w = 0.275 * L;
+  const p = (s, t) => `${cx + ux * s * L + nx * t},${cy + uy * s * L + ny * t}`;
+  return `M${cx},${cy} C${p(.25, w)} ${p(.85, w)} ${p(1, 0)} C${p(.85, -w)} ${p(.25, -w)} ${cx},${cy}Z`;
+}
+const petalLen = (row, key, R) => R * Math.sqrt(row[key] / D.max[key]);
+
+function flower(g, cx, cy, R, row) {
+  g.selectAll(".ghost").data(P).join("path").attr("class", "ghost").attr("d", p => petalPath(cx, cy, p.angle, R));
+  g.selectAll(".petal").data(P).join("path").attr("class", p => `petal ${p.side} k-${p.key}`)
+    .attr("d", p => petalPath(cx, cy, p.angle, petalLen(row, p.key, R)));
+  g.append("circle").attr("class", "hub").attr("cx", cx).attr("cy", cy).attr("r", Math.max(3, R * 0.13))
+    .attr("fill", vote(row.margin));
+}
+
+/* ---- trait focus: hovering a big-flower petal fades every other trait ---- */
+function focus(key) {
+  wrap.classed("focus", !!key);
+  d3.selectAll(".petal").classed("on", p => p.key === key);
+}
+
+/* ---- the two big flowers: the key ---- */
+const heroes = d3.select("#heroes");
+const HEROES = [["New York City", D.nyc], ["Other counties", D.other]];
+function drawHeroes() {
+  heroes.selectAll("*").remove();
+  const W = heroes.node().clientWidth;
+  const stacked = matchMedia("(max-width: 900px), (max-height: 520px)").matches;
+  const H = stacked ? Infinity : heroes.node().clientHeight;
+  // largest R (≤ 92, and fitting the height) where every label still fits inside the column
+  const ctx = document.createElement("canvas").getContext("2d");
+  ctx.font = `14px ${getComputedStyle(document.body).getPropertyValue("--font")}`;
+  const fits = R => HEROES.every(([, row]) => heroLabels(row, R, 36)
+    .every(o => Math.abs(o.x) + ctx.measureText(o.p.label).width <= W / 2 - 4));
+  let R = Math.max(45, Math.min(92, (H - 208) / 4));
+  while (R > 45 && !fits(R)) R -= 1;
+  const cx = W / 2;
+  for (const [heading, row] of HEROES) {
+    const labels = heroLabels(row, R, 36);
+    const top = Math.max(R, ...labels.map(o => o.y + 20)), bottom = Math.max(R, ...labels.map(o => 20 - o.y));
+    const cy = 34 + top, blockH = cy + bottom + 10;
+    const svg = heroes.append("svg").attr("width", W).attr("height", blockH)
+      .attr("role", "img").attr("aria-label", `${heading}: ` + P.map(p => `${pct(row[p.key])} ${p.label}`).join(", ") +
+        `; 2024 ${marginText(row.margin)}`);
+    svg.append("text").attr("class", "h-head").attr("x", 4).attr("y", 20).text(heading);
+    flower(svg.append("g"), cx, cy, R, row);
+    for (const o of labels) {
+      const p = o.p, x = cx + o.x, y = cy - o.y, anchor = o.right ? "start" : "end";
+      const g = svg.append("g").attr("class", "h-key").attr("tabindex", 0).attr("role", "button")
+        .attr("aria-label", `Highlight ${p.label}`)
+        .attr("aria-pressed", "false")
+        .on("mouseenter focus", () => focus(p.key)).on("mouseleave blur", () => focus(null))
+        .on("keydown", ev => {
+          if (ev.key !== "Enter" && ev.key !== " ") return;
+          ev.preventDefault();
+          focus(wrap.classed("focus") && d3.select(".petal.on").datum()?.key === p.key ? null : p.key);
+        });
+      g.append("path").attr("class", "h-hit").attr("d", petalPath(cx, cy, p.angle, R));
+      g.append("text").attr("class", "h-val").attr("x", x).attr("y", y - 3).attr("text-anchor", anchor).text(pct(row[p.key]));
+      g.append("text").attr("class", "h-name").attr("x", x).attr("y", y + 13).attr("text-anchor", anchor).text(p.label);
+    }
+  }
+}
+
+/* Push label centers apart until neighbors are at least `gap` apart. Same as spread() in build.py. */
+function spread(ys, gap) {
+  ys = ys.slice();
+  const order = ys.map((_, i) => i).sort((a, b) => ys[a] - ys[b]);
+  for (let it = 0; it < 60; it++) {
+    let moved = false;
+    for (let k = 0; k + 1 < order.length; k++) {
+      const a = order[k], b = order[k + 1], d = ys[b] - ys[a];
+      if (d < gap) { ys[a] -= (gap - d) / 2; ys[b] += (gap - d) / 2; moved = true; }
+    }
+    if (!moved) break;
+  }
+  return ys;
+}
+/* Label anchors beside each COLORED petal tip (y up), spread so labels on each side never overlap. */
+function heroLabels(row, R, gap) {
+  const out = P.map(p => {
+    const a = p.angle * Math.PI / 180, L = petalLen(row, p.key, R), r = Math.max(L, 0.3 * R) + 6;
+    const right = Math.cos(a) > 0;
+    return { p, right, x: r * Math.cos(a) + (right ? 1 : -1) * (0.22 * L + 2), y: r * Math.sin(a) };
+  });
+  for (const right of [true, false]) {
+    const grp = out.filter(o => o.right === right);
+    spread(grp.map(o => o.y), gap).forEach((y, i) => { grp[i].y = y; });
+  }
+  return out;
+}
+new ResizeObserver(drawHeroes).observe(document.getElementById("heroes"));
+document.fonts.ready.then(drawHeroes);
+
+/* ---- county tile grid ---- */
+const S = 100, R = 40;
+const x0 = -0.6 * S, x1 = (D.cols - 0.4) * S, y0 = -0.4 * S, y1 = (D.rows - 0.4) * S;
+const svg = d3.select("#grid").append("svg").attr("viewBox", `${x0} ${y0} ${x1 - x0} ${y1 - y0}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img")
+  .attr("aria-label", "One flower per New York county, arranged roughly by location");
+const X = c => c.gx * S, Y = c => (D.rows - 1 - c.gy) * S;
+
+const countyName = c => BOROUGH[c.name] ? `${BOROUGH[c.name]} (${c.name} County, NYC)` : `${c.name} County`;
+const tipHTML = c => `<b>${BOROUGH[c.name] ? `${BOROUGH[c.name]} <span class="m">(${c.name} County, NYC)</span>` : `${c.name} County`}</b>` +
+  P.map(p => `<div class="tr"><i style="background:${SIDE_COLOR[p.side]}"></i>${p.label}<span>${pct(c[p.key])}</span></div>`).join("") +
+  `<div class="vote">2024: <b style="display:inline">${marginText(c.margin)}</b></div>`;
+const tiles = svg.append("g").selectAll("g").data(D.counties).join("g").attr("class", "county")
+  .attr("tabindex", 0).attr("role", "img")
+  .attr("aria-label", c => `${countyName(c)}: ` + P.map(p => `${pct(c[p.key])} ${p.label}`).join(", ") + `; 2024 ${marginText(c.margin)}`);
+tiles.append("rect").attr("class", c => "tile" + (c.nyc ? " nyc" : ""))
+  .attr("x", c => X(c) - 0.47 * S).attr("y", c => Y(c) - 0.47 * S).attr("width", 0.94 * S).attr("height", 0.94 * S);
+tiles.each(function (c) { flower(d3.select(this).append("g"), X(c), Y(c), R, c); });
+const clearHover = () => { tiles.select(".tile").classed("hover", false); tip.hide(); };
+function showTile(el, ev, c) {
+  tiles.select(".tile").classed("hover", false);
+  d3.select(el).select(".tile").classed("hover", true);
+  tip.show(ev, tipHTML(c));
+}
+tiles.on("pointermove pointerdown", function (ev, c) { showTile(this, ev, c); })
+  .on("pointerleave", ev => { if (ev.pointerType !== "touch") clearHover(); })   // touch: keep the tip until a tap elsewhere
+  .on("focus", function (ev, c) {
+    const b = this.getBoundingClientRect();
+    showTile(this, { clientX: b.right - 10, clientY: b.top + b.height / 2 }, c);
+  })
+  .on("blur", clearHover);
+document.addEventListener("pointerdown", ev => { if (!ev.target.closest(".county")) clearHover(); });
+
+// vote key in the grid's empty top-left corner
+MapKit.legend(svg, {
+  x: x0 + 10, y: y0 + 10, width: 240,
+  title: "Center dot: 2024 presidential margin",
+  stops: D.vote_stops.map(([v, c]) => [v, c]),
+  ticks: [[-0.5, "Harris +50"], [0, "Even"], [0.5, "Trump +50"]],
+});
+</script>
+</body>
+</html>

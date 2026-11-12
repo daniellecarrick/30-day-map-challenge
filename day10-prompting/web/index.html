@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompting Only</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .lede { max-width: none; }   /* day 10 only: let the intro run the full width (shared theme caps it at 640px) */
+  .land { fill: color-mix(in srgb, var(--ink) 9%, var(--bg)); stroke: var(--bg); stroke-width: .6; vector-effect: non-scaling-stroke; }
+  .link { stroke: var(--ink); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+  .guess { fill: var(--cat-1); fill-opacity: .55; stroke: var(--ink); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .truth { fill: var(--ink); }
+  .hit { fill: transparent; cursor: pointer; }
+  .pick .guess { fill-opacity: .8; stroke-width: 2; }
+
+  /* distance labels sit on their line (HTML, so they stay 14px at any zoom) */
+  #labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+  .dl { position: absolute; left: 0; top: 0; font-weight: 600; font-size: 14px; line-height: 1; white-space: nowrap;
+        padding: 2px 5px; border-radius: 4px; background: var(--bg); color: var(--ink); transform-origin: 0 0; }
+
+  /* confidence badge: ordinal scale, very low -> high (tokens.json scales.confidence) */
+  .badge { display: inline-block; font-weight: 600; font-size: 14px; line-height: 1; padding: 6px 10px; border-radius: 999px; white-space: nowrap; }
+  .badge[data-c="very low"] { background: var(--conf-1); color: var(--conf-fg-1); }
+  .badge[data-c="low"]      { background: var(--conf-2); color: var(--conf-fg-2); }
+  .badge[data-c="medium"]   { background: var(--conf-3); color: var(--conf-fg-3); }
+  .badge[data-c="high"]     { background: var(--conf-4); color: var(--conf-fg-4); }
+
+  /* map + side panel */
+  .stage { flex: 1 1 auto; min-height: 0; display: flex; gap: 18px; }
+  .stage .map-wrap { flex: 1 1 auto; min-width: 0; }
+  .panel { flex: 0 0 290px; overflow-y: auto; padding: 4px 0 4px 18px; border-left: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); }
+  .panel h2 { font: 700 20px/1.2 var(--font-head); margin: 0; }
+  .panel p { margin: 6px 0 0; }
+  .panel .m, .tip .m { color: var(--muted); }
+  .panel .big { font: 700 30px/1.1 var(--font-head); margin: 12px 0 8px; }
+  .panel .row { margin-top: 12px; }
+  .panel .k { display: block; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+  .panel .keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font: inherit; font-size: 14px; color: var(--ink); background: var(--ctl); border: 0; border-radius: 8px;
+          padding: 6px 10px; margin: 6px 6px 0 0; cursor: pointer; text-align: left; }
+  .chip:hover { background: var(--ctl-on); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  @media (max-width: 640px) {
+    .stage { flex-direction: column; }
+    .panel { flex: none; border-left: 0; padding: 12px 0 0; }
+  }
+
+  #try { display: inline-flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  #try input { font: inherit; font-size: 14px; color: var(--ink); background: var(--ctl); border: 0; border-radius: 8px; padding: 9px 12px; width: 170px; }
+  #try input::placeholder { color: var(--muted); }
+  #try input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .play:disabled { opacity: .6; cursor: default; }
+  .reset { position: absolute; top: 8px; right: 8px; z-index: 3; padding: 8px 12px; box-shadow: 0 1px 3px rgba(0,0,0,.18); visibility: hidden; }
+  .reset.on { visibility: visible; }
+  .info { position: absolute; top: 8px; left: 8px; z-index: 3; width: 38px; height: 38px; padding: 0; display: grid; place-items: center;
+          border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  #notes { position: absolute; top: 54px; left: 8px; z-index: 4; width: min(380px, calc(100% - 16px)); background: var(--bg); color: var(--ink);
+           border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent); border-radius: 8px; padding: 12px 14px 4px;
+           box-shadow: 0 2px 10px rgba(0,0,0,.14); font-size: 14px; }
+  #notes p { margin: 0 0 8px; }
+  #notes p:empty { display: none; }
+  #notes b { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <form id="try" hidden>
+        <input name="place" placeholder="Place, e.g. Kearney" required maxlength="80" autocomplete="off" aria-label="Place name">
+        <input name="country" placeholder="Country" required maxlength="60" autocomplete="off" aria-label="Country">
+        <button class="play" type="submit">Ask Claude</button>
+      </form>
+    </div>
+  </header>
+  <div class="stage">
+    <div class="map-wrap" id="map">
+      <button class="play info" id="info" type="button" aria-label="About this map: method, data and credits" aria-expanded="false" aria-controls="notes">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 8v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="5.3" r="1.1" fill="currentColor"/></svg>
+      </button>
+      <div id="notes" role="note" hidden>
+        <p><b>How it's measured.</b> Distance is the geodesic from Claude's guess to the real location. Lines are drawn straight on the map.</p>
+        <p><b>Data.</b> <span id="source"></span></p>
+        <p id="miss"></p>
+        <p id="visitors"></p>
+        <p>#30DayMapChallenge <span id="day"></span></p>
+      </div>
+      <button class="play reset" id="reset" type="button" aria-label="Show the whole world">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Reset view
+      </button>
+    </div>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const WORKER = (D.worker || "").replace(/\/$/, "");
+const W = 1000, H = 520;
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[6, 6], [W - 6, H - 6]], D.land);
+const path = d3.geoPath(proj);
+const tip = MapKit.tooltip();
+const R = km => 3 + 0.5 * Math.sqrt(km);
+const fmt = km => km < 10 ? km.toFixed(1) : Math.round(km).toLocaleString();
+const ll = (a, b) => `${Math.abs(a).toFixed(2)}° ${a < 0 ? "S" : "N"}, ${Math.abs(b).toFixed(2)}° ${b < 0 ? "W" : "E"}`;
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const badge = d => `<span class="badge" data-c="${esc(d.conf)}">${esc(d.conf)} confidence</span>`;
+const shortName = n => n.split(",").slice(0, 3).join(",");
+
+// Equal Earth, spherical (R = 6378137): the same projection build.py used for the land and the curated points
+function eqearth(lon, lat) {
+  const A1 = 1.340264, A2 = -0.081106, A3 = 0.000893, A4 = 0.003796, M = Math.sqrt(3) / 2, r = Math.PI / 180;
+  const th = Math.asin(M * Math.sin(lat * r)), t2 = th * th, t6 = t2 * t2 * t2;
+  return [6378137 * lon * r * Math.cos(th) / (M * (A1 + 3 * A2 * t2 + t6 * (7 * A3 + 9 * A4 * t2))),
+          6378137 * th * (A1 + A2 * t2 + t6 * (A3 + A4 * t2))];
+}
+const toPlace = (r, visitor) => { const g = eqearth(r.glon, r.glat), t = eqearth(r.tlon, r.tlat);
+  return { ...r, admin: r.admin ?? "", visitor, g, t, gp: proj(g), tp: proj(t) }; };
+
+d3.select("#title").text(D.page_title);
+d3.select("#lede").text(WORKER
+  ? "Type any place and country. Claude guesses its latitude and longitude from memory alone, no web, then we check the guess against the real coordinates. Each circle is a guess; the dot is where the place really is."
+  : "Claude was given only a place name and country, no web, and guessed the latitude and longitude from memory. Each circle is a guess; the dot is where the place really is.");
+d3.select("#source").text(D.source.replace(/^Data: /, ""));
+d3.select("#day").text(D.day);
+if (D.unresolved.length) d3.select("#miss").text(`${D.unresolved.join(", ")} could not be found in any gazetteer, so it is left off the map.`);
+
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
+const root = svg.append("g");
+root.append("g").selectAll("path").data(D.land.features).join("path").attr("class", "land").attr("d", path);
+const layer = root.append("g");
+const labelLayer = d3.select("#map").append("div").attr("id", "labels");
+
+let P = D.places.map(d => ({ ...d, visitor: false, gp: proj(d.g), tp: proj(d.t) }));
+let items, k = 1, picked = null, lg;   // lg: the legend, hidden while zoomed in so it never sits on the line
+const key = d => `${d.place}|${d.country}|${d.glat}|${d.tlat}`;
+
+function headline() {
+  const n = P.length, near = P.filter(d => d.km <= D.near).length, w = P.reduce((a, b) => b.km > a.km ? b : a);
+  return `Claude put ${near} of ${n} places within ${D.near} km from memory, but placed ${w.place} ${Math.round(w.km)} km from where it is`;
+}
+function sizes() {
+  items.select(".guess").attr("r", d => R(d.km) / k);
+  items.select(".truth").attr("r", 2.6 / k);
+  items.select(".g-hit").attr("r", d => Math.max(R(d.km), 14) / k);
+  items.select(".t-hit").attr("r", 12 / k);
+}
+
+// Distance label on each line, shown only where the line is long enough on screen to hold it
+function placeLabels() {
+  const host = document.getElementById("map").getBoundingClientRect(), m = root.node().getScreenCTM();
+  if (!m) return;
+  const at = p => { const q = new DOMPoint(p[0], p[1]).matrixTransform(m); return [q.x - host.left, q.y - host.top]; };
+  labelLayer.selectAll("div.dl").each(function (d) {
+    const a = at(d.gp), b = at(d.tp), dx = b[0] - a[0], dy = b[1] - a[1];
+    const text = `${fmt(d.km)} km`, w = text.length * 8.5 + 10;
+    const ok = Math.hypot(dx, dy) >= w + 2 * (R(d.km) + 4);     // fits between the two marks
+    this.style.display = ok ? "" : "none";
+    if (!ok) return;
+    let ang = Math.atan2(dy, dx) * 180 / Math.PI; if (ang > 90) ang -= 180; if (ang < -90) ang += 180;
+    this.textContent = text;
+    this.style.transform = `translate(${(a[0] + b[0]) / 2}px, ${(a[1] + b[1]) / 2}px) rotate(${ang}deg) translate(-50%, -50%)`;
+  });
+}
+function draw() {
+  P.sort((a, b) => b.km - a.km);   // biggest first, so small circles sit on top
+  items = layer.selectAll("g.item").data(P, key).join(enter => {
+    const g = enter.append("g").attr("class", "item");
+    g.append("line").attr("class", "link"); g.append("circle").attr("class", "guess"); g.append("circle").attr("class", "truth");
+    g.append("circle").attr("class", "hit g-hit"); g.append("circle").attr("class", "hit t-hit");
+    return g;
+  }).order();
+  items.select(".link").attr("x1", d => d.gp[0]).attr("y1", d => d.gp[1]).attr("x2", d => d.tp[0]).attr("y2", d => d.tp[1]);
+  items.selectAll(".guess, .g-hit").attr("cx", d => d.gp[0]).attr("cy", d => d.gp[1]);
+  items.selectAll(".truth, .t-hit").attr("cx", d => d.tp[0]).attr("cy", d => d.tp[1]);
+  items.classed("pick", d => d === picked);
+  sizes();
+  labelLayer.selectAll("div.dl").data(P, key).join("div").attr("class", "dl");
+  placeLabels();
+  items.on("click", (ev, d) => select(d));
+  items.selectAll(".hit").on("mousemove", (ev, d) => tip.show(ev, tipHtml(d))).on("mouseleave", tip.hide);
+  const t = headline();
+  svg.attr("aria-label", t); d3.select("#sofar").text(t);
+  const v = P.filter(d => d.visitor || d.added).length;
+  d3.select("#visitors").text(v ? `${v} of the ${P.length} places ${v === 1 ? "was" : "were"} added by visitors.` : "");
+}
+
+const zoom = d3.zoom().scaleExtent([1, 60]).filter(ev => ev.type === "wheel" || ev.type.startsWith("touch") || (ev.type === "mousedown" && !ev.button) || ev.type === "dblclick")   // drag, pinch, trackpad pinch/scroll, double-click
+  .on("zoom", ev => {
+    k = ev.transform.k; root.attr("transform", ev.transform); sizes(); placeLabels();
+    d3.select("#reset").classed("on", k > 1.01);   // reset button whenever the map is zoomed, by any gesture
+  });
+svg.call(zoom);
+new ResizeObserver(placeLabels).observe(svg.node());
+
+// ---------- side panel ----------
+const panelEl = d3.select("#panel");
+const panel = html => panelEl.html(html);
+function idle() {
+  picked = null; items && items.classed("pick", false);
+  panel(`<h2>Why did Claude guess there?</h2>
+    <p>${WORKER ? "Click a circle to read Claude's reasoning, or type a place above to see where Claude thinks it is." : "Click a circle to read Claude's reasoning."}</p>
+    <div class="row"><span class="k">So far</span><span id="sofar">${esc(headline())}</span></div>
+    <div class="row"><span class="k">Claude's confidence in each guess</span>
+      <div class="keys">${["very low", "low", "medium", "high"].map(c => `<span class="badge" data-c="${c}">${c}</span>`).join("")}</div></div>`);
+}
+function select(d) {
+  picked = d;
+  items.classed("pick", p => p === d);
+  const [x0, y0] = d.gp, [x1, y1] = d.tp;
+  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  const kk = Math.max(5, Math.min(45, 0.35 * Math.min(W / Math.max(dx, 1), H / Math.max(dy, 1))));
+  svg.transition().duration(700).call(zoom.transform,
+    d3.zoomIdentity.translate(W / 2 - kk * (x0 + x1) / 2, H / 2 - kk * (y0 + y1) / 2).scale(kk));
+  const alts = (d.cands || []).map((c, i) => ({ c, i })).filter(a => a.i !== d.ci);
+  panel(`<h2>${esc(d.place)}</h2>
+    <span class="m">${esc([d.admin, d.country].filter(Boolean).join(", "))}</span>
+    <div class="big">${fmt(d.km)} km off</div>
+    ${badge(d)} <span class="m">${d.pct}% sure of within ${D.near} km</span>
+    <div class="row"><span class="k">Why Claude guessed there</span>${esc(d.why)}</div>
+    <div class="row"><span class="k">Claude's guess</span>${ll(d.glat, d.glon)}</div>
+    <div class="row"><span class="k">Actual location</span>${ll(d.tlat, d.tlon)}${d.true_name ? `<br><span class="m">${esc(d.true_name)}</span>` : ""}</div>
+    ${alts.length ? `<div class="row"><span class="k">Not the place you meant?</span><div class="alts"></div></div>` : ""}`);
+  if (alts.length) {
+    const box = panelEl.select(".alts");
+    alts.forEach(a => box.append("button").attr("type", "button").attr("class", "chip").text(shortName(a.c.name)).on("click", () => rescore(d, a.i)));
+    box.append("button").attr("type", "button").attr("class", "chip").text("None of these, remove it").on("click", () => rescore(d, -1));
+  }
+  d3.select("#reset").classed("on", true);
+  lg && lg.style("visibility", "hidden");
+}
+function home() {
+  svg.transition().duration(600).call(zoom.transform, d3.zoomIdentity);
+  idle();
+  d3.select("#reset").classed("on", false);
+  lg && lg.style("visibility", null);
+}
+d3.select("#reset").on("click", home);
+
+// about / credits popover
+const infoBtn = document.getElementById("info"), notes = document.getElementById("notes");
+const toggleNotes = open => { notes.hidden = !open; infoBtn.setAttribute("aria-expanded", open); };
+infoBtn.addEventListener("click", ev => { ev.stopPropagation(); toggleNotes(notes.hidden); });
+document.addEventListener("click", ev => { if (!notes.hidden && !notes.contains(ev.target)) toggleNotes(false); });
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !notes.hidden) { toggleNotes(false); infoBtn.focus(); } });
+
+function tipHtml(d) {
+  return `<b>${esc(d.place)}, ${esc(d.country)}</b>${fmt(d.km)} km off<br>${badge(d)}
+    <span class="m"><br>Guess ${ll(d.glat, d.glon)}<br>Actual ${ll(d.tlat, d.tlon)}${d.visitor ? "<br>Added by a visitor" : ""}</span>`;
+}
+
+draw();
+idle();
+
+// ---------- live guessing (needs the Cloudflare Worker in worker/) ----------
+async function api(p, body) {
+  let r;
+  try { r = await fetch(WORKER + p, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}); }
+  catch { throw Object.assign(new Error("Check your connection and try again."), { code: "network" }); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || "Request failed."), { code: j.code || "error" });
+  return j;
+}
+const ERR_HEAD = { rate_limit: "You've used your guesses", daily_limit: "Claude needs a rest", credits: "Guessing is paused",
+  key: "Guessing is paused", busy: "Claude is busy", network: "Can't reach the guessing service" };
+const showError = e => panel(`<h2>${esc(ERR_HEAD[e.code] || "Something went wrong")}</h2><p>${esc(e.message)}</p>`);
+
+// Score a guess against candidate `index` (-1 = remove it). Replaces any earlier scoring of the same guess.
+async function finish(g, index) {
+  const c = await api("/confirm", { id: g.id, index });
+  P = P.filter(d => d.gid !== g.id);
+  if (!c.saved) { picked = null; draw(); return idle(); }
+  const p = { ...toPlace(c.row, true), added: true, gid: g.id, cands: g.candidates, ci: index };
+  P.push(p); draw(); select(p);
+}
+async function rescore(d, index) {
+  try { await finish({ id: d.gid, candidates: d.cands }, index); }
+  catch (e) { showError(e); }
+}
+if (WORKER) {
+  d3.select("#try").attr("hidden", null);
+  api("/dataset").then(j => { P = P.concat(j.places.map(r => ({ ...toPlace(r, true), added: true }))); draw(); }).catch(() => {});
+
+  const form = document.getElementById("try"), btn = form.querySelector("button");
+  form.addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const place = form.place.value.trim(), country = form.country.value.trim();
+    btn.disabled = true;
+    panel(`<h2>Asking Claude…</h2><p>Where is <b>${esc(place)}, ${esc(country)}</b>?</p>`);
+    try {
+      const g = await api("/guess", { place, country });
+      if (g.candidates.length) {
+        await finish(g, 0);   // best match first; the panel offers the others if it picked the wrong one
+      } else {
+        panel(`<h2>${esc(place)}</h2><span class="m">${esc(country)}</span>
+          <p>Claude guessed ${ll(g.guess.lat, g.guess.lon)}, but I couldn't find that place on OpenStreetMap, so there's nothing to score it against. Try a different spelling.</p>
+          <div class="row"><span class="k">Why Claude guessed there</span>${esc(g.guess.reasoning)}</div>`);
+      }
+    } catch (e) { showError(e); }
+    btn.disabled = false;
+  });
+}
+
+lg = MapKit.legend(svg, {
+  x: 12, y: H - 12, anchor: "bottom", width: 250,
+  keys: [
+    { draw: g => g.append("circle").attr("class", "guess").attr("r", 6), label: "Claude's guess (bigger = farther off)" },
+    { draw: g => g.append("circle").attr("class", "truth").attr("r", 3), label: "Actual location" },
+  ],
+});
+</script>
+</body>
+</html>
