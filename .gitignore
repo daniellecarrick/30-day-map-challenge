@@ -25,3 +25,6 @@ day*/data/raw/
 .dev.vars
 .wrangler/
 node_modules/
+
+# Day 13: drawings fetched from the Worker at build time
+day13-interactions/data/drawings/

@@ -1,0 +1,9 @@
+{
+  "day": 13,
+  "theme": "Interactions",
+  "title": "Can you draw these countries?",
+  "description": "Draw five countries freehand on a blank world map, with coastlines but no borders, and see how your outline compares with the real one: how much it overlaps, how big you drew it, and how far off its center was. After five, see a heat map of everyone's drawings. Areas are compared on an equal-area map. Map data: Natural Earth.",
+  "html": "out/map.html",
+  "png": "out/map.png",
+  "published": "2026-11-13"
+}

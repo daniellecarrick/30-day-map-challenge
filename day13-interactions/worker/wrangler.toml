@@ -1,0 +1,17 @@
+name = "day13-draw-the-countries"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+# Pages allowed to call this API (comma-separated, no trailing slash).
+ALLOWED_ORIGINS = "https://daniellecarrick.github.io,http://localhost:8000,http://127.0.0.1:8000"
+HOURLY_LIMIT = "60"     # drawings per visitor per hour
+DAILY_LIMIT = "20000"   # drawings for everyone per day
+
+[[d1_databases]]
+binding = "DB"
+database_name = "day13-drawings"
+database_id = "1bcef1f0-e354-4970-9d8c-7001d11b1c59"
+
+[observability]
+enabled = true

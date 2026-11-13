@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draw the Countries</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .sphere { fill: color-mix(in srgb, var(--ink) 3%, var(--bg)); stroke: color-mix(in srgb, var(--ink) 25%, transparent); stroke-width: .8; vector-effect: non-scaling-stroke; }
+  .grat { fill: none; stroke: color-mix(in srgb, var(--ink) 9%, transparent); stroke-width: .6; vector-effect: non-scaling-stroke; }
+  .land { fill: color-mix(in srgb, var(--ink) 11%, var(--bg)); stroke: color-mix(in srgb, var(--ink) 40%, transparent); stroke-width: .7; vector-effect: non-scaling-stroke; }
+  .borders path { fill: none; stroke: var(--bg); stroke-width: .8; vector-effect: non-scaling-stroke; }
+  .band { stroke: none; pointer-events: none; }
+  .truth { fill: none; stroke: var(--ink); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .mine { fill: var(--cat-2); fill-opacity: .22; stroke: var(--cat-2); stroke-width: 2.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .results .mine { fill: none; stroke-dasharray: 5 3; }
+  .stroke { fill: none; stroke: var(--cat-2); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+  #map { user-select: none; -webkit-user-select: none; }
+  #map svg.drawing { cursor: crosshair; touch-action: none; }
+  #map svg.moving { cursor: grab; touch-action: none; }
+
+  .stage { flex: 1 1 auto; min-height: 0; display: flex; gap: 18px; }
+  .stage .map-wrap { flex: 1 1 auto; min-width: 0; }
+  .panel { flex: 0 0 290px; overflow-y: auto; padding: 4px 0 4px 18px; border-left: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); }
+  .panel h2 { font: 700 22px/1.2 var(--font-head); margin: 0; }
+  .panel p { margin: 8px 0 0; }
+  .panel .m { color: var(--muted); }
+  .panel .step { color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .panel .row { margin-top: 14px; }
+  .panel .k { display: block; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+  .panel .big { font: 700 28px/1.1 var(--font-head); }
+  .panel .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .panel .note { margin-top: 14px; color: var(--muted); }
+  .panel .err { margin-top: 14px; }
+  .dots { display: flex; gap: 6px; margin: 2px 0 10px; }
+  .dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--ctl); border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent); }
+  .dots span.done { background: var(--ink); border-color: var(--ink); }
+  .dots span.now { background: var(--cat-2); border-color: var(--cat-2); }
+  .play:disabled { opacity: .5; cursor: default; }
+  .play.primary { background: var(--ink); color: var(--bg); }
+  .tip .m { color: var(--muted); }
+  @media (max-width: 640px) {
+    .stage { flex-direction: column; }
+    .panel { flex: none; border-left: 0; padding: 12px 0 0; }
+  }
+  .reset { position: absolute; top: 8px; right: 8px; z-index: 3; padding: 8px 12px; box-shadow: 0 1px 3px rgba(0,0,0,.18); visibility: hidden; }
+  .reset.on { visibility: visible; }
+  .mode { position: absolute; top: 8px; left: 8px; z-index: 3; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  .mode[hidden], #pick[hidden] { display: none; }
+  @media (max-width: 640px) { .mode { position: static; box-shadow: none; margin-bottom: 6px; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede">Outline five countries on a blank world map, with coastlines but no borders. See how close you got, then see how everyone else drew them.</p>
+    <div class="controls" id="pick" hidden><div id="pickDd"></div></div>
+  </header>
+  <div class="stage">
+    <div class="map-wrap" id="map">
+      <div class="mode" id="mode" hidden><div id="modeSeg"></div></div>
+      <button class="play reset" id="reset" type="button" aria-label="Show the whole world">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Whole world
+      </button>
+    </div>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </div>
+  <footer>Overlap = area your drawing shares with the real country ÷ the area of both together, measured on an equal-area map · Data: visitors' drawings · Map: <a href="https://www.naturalearthdata.com/">Natural Earth</a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const WORKER = (D.worker || "").replace(/\/$/, "");
+const W = 1000, H = 520, ROUND = 5;
+const LEVELS = [0.1, 0.25, 0.4, 0.55, 0.7, 0.85];          // share-of-drawings bands
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = v => `${Math.round(v * 100)}%`;
+const times = r => r >= 0.95 && r <= 1.05 ? "about the right size" : r > 1 ? `${r.toFixed(1)}× too big` : `${pct(r)} of its real size`;
+const kmFmt = km => km < 50 ? "under 50 km" : `${Math.round(km / 10) * 10 > 999 ? Math.round(km / 100) * 100 : Math.round(km / 10) * 10} km`.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+const tip = MapKit.tooltip();
+
+// coordinates arrive as integer thousandths of a degree (see build.py)
+const unmilli = c => typeof c[0] === "number" ? [c[0] / 1000, c[1] / 1000] : c.map(unmilli);
+for (const fc of [D.land, D.countries]) for (const f of fc.features) f.geometry.coordinates = unmilli(f.geometry.coordinates);
+const byCode = new Map(D.countries.features.map(f => [f.properties.code, f]));
+const T = new Map(D.targets.map(t => [t.code, t]));
+
+d3.select("#title").text(D.title);
+d3.select("#day").text(D.day);
+
+// ---------- map ----------
+const proj = d3.geoEqualEarth().fitExtent([[6, 6], [W - 6, H - 6]], { type: "Sphere" });
+const path = d3.geoPath(proj);
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", "Blank world map for drawing countries");
+const root = svg.append("g");
+root.append("path").attr("class", "sphere").attr("d", path({ type: "Sphere" }));
+root.append("path").attr("class", "grat").attr("d", path(d3.geoGraticule10()));
+root.append("path").attr("class", "land").attr("d", path(D.land.features[0]));
+svg.append("clipPath").attr("id", "globe").append("path").attr("d", path({ type: "Sphere" }));
+const bandLayer = root.append("g").attr("clip-path", "url(#globe)");   // drawings can run past the edge of the world
+const borders = root.append("g").attr("class", "borders").style("display", "none");
+borders.selectAll("path").data(D.countries.features).join("path").attr("d", path);
+const truthLayer = root.append("g");
+const mineLayer = root.append("g");
+const strokeEl = root.append("path").attr("class", "stroke");
+
+let tf = d3.zoomIdentity, mode = "draw", state = "intro";
+const zoom = d3.zoom().scaleExtent([1, 40]).translateExtent([[0, 0], [W, H]])
+  .filter(ev => {
+    if (ev.type === "wheel") return true;
+    if (ev.type === "dblclick") return false;
+    if (ev.type.startsWith("touch")) return mode === "move" || state !== "draw" || (ev.touches && ev.touches.length > 1);   // pinch always zooms
+    return mode === "move" || state !== "draw" ? !ev.button : false;
+  })
+  .on("zoom", ev => { tf = ev.transform; root.attr("transform", tf); d3.select("#reset").classed("on", tf.k > 1.01); });
+svg.call(zoom).on("dblclick.zoom", null);
+const fitTo = (b, ms = 700, pad = 0.75) => {   // b = [[x0, y0], [x1, y1]] in map units
+  const [[x0, y0], [x1, y1]] = b, k = Math.max(1, Math.min(40, pad * Math.min(W / Math.max(x1 - x0, 1), H / Math.max(y1 - y0, 1))));
+  svg.transition().duration(ms).call(zoom.transform, d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k));
+};
+const world = () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+d3.select("#reset").on("click", world);
+
+const modeCtl = MapKit.segmented("#modeSeg", [{ value: "draw", label: "Draw" }, { value: "move", label: "Move map" }], v => {
+  mode = v; svg.classed("drawing", state === "draw" && v === "draw").classed("moving", state === "draw" && v === "move");
+}, "draw");
+
+// ---------- drawing ----------
+let pts = null, pointers = new Set(), shape = null;       // shape: the finished outline for the current country, map units
+const line = d3.line();
+// Track fingers on the page, so a second one turns a drawing into a pinch. Released anywhere, not just on the map.
+for (const t of ["pointerup", "pointercancel"]) window.addEventListener(t, ev => pointers.delete(ev.pointerId));
+svg.on("pointerdown", ev => {
+  if (ev.pointerType === "mouse") pointers.clear();
+  pointers.add(ev.pointerId);
+  if (state !== "draw" || mode !== "draw" || pointers.size > 1 || ev.button) { pts = null; strokeEl.attr("d", null); return; }
+  ev.preventDefault();
+  try { svg.node().setPointerCapture(ev.pointerId); } catch {}
+  pts = [tf.invert(d3.pointer(ev, svg.node()))];
+  mineLayer.selectAll("*").remove(); shape = null; panelDraw();
+});
+svg.on("pointermove", ev => {
+  if (!pts) return results.hover(ev);
+  if (pointers.size > 1) { pts = null; strokeEl.attr("d", null); return; }   // a second finger: that's a pinch, not a drawing
+  const p = tf.invert(d3.pointer(ev, svg.node())), q = pts[pts.length - 1];
+  if (Math.hypot(p[0] - q[0], p[1] - q[1]) * tf.k * screenScale() > 2) { pts.push(p); strokeEl.attr("d", line(pts)); }
+});
+const endStroke = ev => {
+  pointers.delete(ev.pointerId);
+  if (!pts) return;
+  const p = pts; pts = null; strokeEl.attr("d", null);
+  const tol = 1.2 / (tf.k * screenScale());
+  let s = simplify(p, tol);
+  for (let t = tol * 1.5; s.length > 240; t *= 1.5) s = simplify(p, t);
+  if (s.length < 4 || Math.abs(d3.polygonArea(s)) * (tf.k * screenScale()) ** 2 < 60) return panelDraw("Too small to count. Zoom in, then drag around the whole country.");
+  shape = s;
+  mineLayer.append("path").attr("class", "mine").attr("d", line(s) + "Z");
+  panelDraw();
+};
+svg.on("pointerup", endStroke).on("pointercancel", endStroke).on("pointerleave", ev => { if (!pts) { tip.hide(); } });
+function screenScale() { const r = svg.node().getBoundingClientRect(); return Math.min(r.width / W, r.height / H); }
+
+// Douglas–Peucker on map-unit points
+function simplify(p, tol) {
+  if (p.length < 3) return p.slice();
+  const keep = new Uint8Array(p.length); keep[0] = keep[p.length - 1] = 1;
+  const stack = [[0, p.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop(); let idx = -1, max = tol;
+    const [ax, ay] = p[a], [bx, by] = p[b], dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy);
+    for (let i = a + 1; i < b; i++) {
+      // distance to the segment's line; to the point itself when the stroke ends where it began (a closed loop)
+      const d = L ? Math.abs(dy * p[i][0] - dx * p[i][1] + bx * ay - by * ax) / L : Math.hypot(p[i][0] - ax, p[i][1] - ay);
+      if (d > max) { max = d; idx = i; }
+    }
+    if (idx > 0) { keep[idx] = 1; stack.push([a, idx], [idx, b]); }
+  }
+  return p.filter((_, i) => keep[i]);
+}
+const toRing = s => s.map(p => proj.invert(p)).filter(q => q && isFinite(q[0]) && isFinite(q[1]))
+  .map(([lo, la]) => [Math.round(Math.max(-180, Math.min(180, lo)) * 100) / 100, Math.round(Math.max(-90, Math.min(90, la)) * 100) / 100]);
+const fromRing = r => r.map(q => proj(q));
+
+// ---------- scoring: rasterize on the equal-area map, so pixel counts compare areas fairly ----------
+function rasterBox(b, max = 420) {
+  const [[x0, y0], [x1, y1]] = b, s = max / Math.max(x1 - x0, y1 - y0, 1e-6);
+  return { x0, y0, s, w: Math.max(1, Math.ceil((x1 - x0) * s)), h: Math.max(1, Math.ceil((y1 - y0) * s)) };
+}
+function mask(box, drawFn) {
+  const c = new OffscreenCanvas(box.w, box.h), ctx = c.getContext("2d");
+  ctx.setTransform(box.s, 0, 0, box.s, -box.x0 * box.s, -box.y0 * box.s);
+  ctx.beginPath(); drawFn(ctx); ctx.fill("nonzero");
+  const a = ctx.getImageData(0, 0, box.w, box.h).data, m = new Uint8Array(box.w * box.h);
+  for (let i = 0; i < m.length; i++) m[i] = a[i * 4 + 3] > 127;
+  return m;
+}
+const drawPoly = s => ctx => { s.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); };
+const drawFeature = f => ctx => d3.geoPath(proj, ctx)(f);
+const union = (a, b) => [[Math.min(a[0][0], b[0][0]), Math.min(a[0][1], b[0][1])], [Math.max(a[1][0], b[1][0]), Math.max(a[1][1], b[1][1])]];
+// Bounds of a country's largest landmass: Russia's tip past 180° would otherwise make its box the whole world
+const mainBounds = f => f.geometry.type !== "MultiPolygon" ? path.bounds(f)
+  : path.bounds({ type: "Polygon", coordinates: d3.greatest(f.geometry.coordinates, c => d3.geoArea({ type: "Polygon", coordinates: c })) });
+const polyBounds = s => [[d3.min(s, p => p[0]), d3.min(s, p => p[1])], [d3.max(s, p => p[0]), d3.max(s, p => p[1])]];
+function score(s, code) {
+  const f = byCode.get(code), b = union(polyBounds(s), path.bounds(f)), box = rasterBox(b);
+  const A = mask(box, drawPoly(s)), B = mask(box, drawFeature(f));
+  let both = 0, either = 0, a = 0, t = 0;
+  for (let i = 0; i < A.length; i++) { a += A[i]; t += B[i]; both += A[i] & B[i]; either += A[i] | B[i]; }
+  const c = proj.invert(d3.polygonCentroid(s));
+  return { iou: either ? both / either : 0, size: t ? a / t : 0, km: c ? d3.geoDistance(c, d3.geoCentroid(f)) * 6371 : NaN };
+}
+
+// ---------- the round ----------
+const store = { get() { try { return JSON.parse(localStorage.getItem("day13") || "{}"); } catch { return {}; } },
+                set(v) { try { localStorage.setItem("day13", JSON.stringify(v)); } catch {} } };
+let saved = store.get();                 // {played: bool, mine: {CODE: ring}, seen: [CODE...]}
+saved.mine ||= {}; saved.seen ||= [];
+let round = [], idx = 0, session = "", lastScores = [];
+
+function pickRound() {
+  const fresh = d3.shuffle(D.targets.filter(t => !saved.seen.includes(t.code)).map(t => t.code));
+  const rest = d3.shuffle(D.targets.filter(t => saved.seen.includes(t.code)).map(t => t.code));
+  const out = [];
+  for (const c of [...fresh, ...rest]) {
+    if (out.length === ROUND) break;
+    if ((c === "NER" && out.includes("NGA")) || (c === "NGA" && out.includes("NER"))) continue;   // never both of the confused pair
+    out.push(c);
+  }
+  return out;
+}
+function startRound() {
+  round = pickRound(); idx = 0; lastScores = [];
+  session = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
+  results.leave();
+  nextCountry();
+}
+function nextCountry() {
+  state = "draw"; shape = null;
+  truthLayer.selectAll("*").remove(); mineLayer.selectAll("*").remove();
+  d3.select("#mode").attr("hidden", null); modeCtl.select("draw");
+  world();
+  panelDraw();
+}
+function submit() {
+  const code = round[idx], s = shape, sc = score(s, code), ring = toRing(s);
+  state = "reveal"; modeCtl.select(mode); d3.select("#mode").attr("hidden", true);
+  svg.classed("drawing", false).classed("moving", false);
+  truthLayer.append("path").attr("class", "truth").attr("d", path(byCode.get(code)));
+  fitTo(union(polyBounds(s), mainBounds(byCode.get(code))));
+  lastScores.push({ code, ...sc });
+  saved.mine[code] = ring; if (!saved.seen.includes(code)) saved.seen.push(code);
+  if (idx === ROUND - 1) saved.played = true;
+  store.set(saved);
+  panelReveal(code, sc, null);
+  if (WORKER) api("/drawing", { country: code, ring, seq: idx + 1, session })
+    .then(() => { counts[code] = (counts[code] || 0) + 1; })
+    .catch(e => panelReveal(code, sc, e));
+}
+
+// ---------- side panel ----------
+const panelEl = d3.select("#panel");
+const dots = () => `<div class="dots">${round.map((_, i) => `<span class="${i < idx ? "done" : i === idx ? "now" : ""}"></span>`).join("")}</div>`;
+function panelIntro() {
+  state = "intro";
+  panelEl.html(`<h2>How well do you know the map?</h2>
+    <p>You'll get ${ROUND} countries, one at a time. For each one, drag around where you think it is. Try to match its size and shape, not just its spot.</p>
+    <p class="m">There are no borders on the map, only coastlines. Scroll or pinch to zoom.</p>
+    <div class="acts"><button class="play primary" id="go" type="button">${saved.played ? "Play again" : "Start"}</button>
+    ${saved.played ? `<button class="play" id="see" type="button">See everyone's drawings</button>` : ""}</div>`);
+  panelEl.select("#go").on("click", startRound);
+  panelEl.select("#see").on("click", () => results.enter(Object.keys(saved.mine)[0]));
+}
+function panelDraw(msg) {
+  const t = T.get(round[idx]);
+  panelEl.html(`<div class="step">Country ${idx + 1} of ${ROUND}</div>${dots()}
+    <h2>Draw ${esc(t.name)}</h2>
+    <p>${shape ? "Happy with it? Draw again to replace it." : "Drag around where you think it is, in one stroke. Zoom in for a closer look."}</p>
+    ${msg ? `<p class="err">${esc(msg)}</p>` : ""}
+    <p class="m">On a trackpad or touchscreen, pinch to zoom. To pan, switch to “Move map” at the top left of the map.</p>
+    <div class="acts"><button class="play primary" id="done" type="button" ${shape ? "" : "disabled"}>Check my drawing</button>
+    <button class="play" id="clear" type="button" ${shape ? "" : "disabled"}>Clear</button></div>`);
+  panelEl.select("#done").on("click", () => shape && submit());
+  panelEl.select("#clear").on("click", () => { shape = null; mineLayer.selectAll("*").remove(); panelDraw(); });
+}
+function verdict(sc) {
+  return sc.iou >= 0.6 ? "Very close." : sc.iou >= 0.35 ? "Close." : sc.iou > 0.05 ? "In the neighborhood." : sc.km < 1500 ? "Near, but not overlapping." : "Not quite.";
+}
+function panelReveal(code, sc, err) {
+  const t = T.get(code), last = idx === ROUND - 1;
+  panelEl.html(`<div class="step">Country ${idx + 1} of ${ROUND}</div>${dots()}
+    <h2>${esc(t.name)}</h2><p>${verdict(sc)} The ink line is the real border.</p>
+    <div class="row"><span class="k">Overlap with the real ${esc(t.name)}</span><span class="big">${pct(sc.iou)}</span></div>
+    <div class="row"><span class="k">Size</span>${times(sc.size)}</div>
+    <div class="row"><span class="k">Center of your drawing</span>${isFinite(sc.km) ? `${kmFmt(sc.km)} from the real center` : "–"}</div>
+    ${err ? `<p class="err">Your drawing couldn't be saved for the heat map: ${esc(err.message)}</p>` : ""}
+    <div class="acts"><button class="play primary" id="next" type="button">${last ? "See everyone's drawings" : "Next country"}</button></div>`);
+  panelEl.select("#next").on("click", () => { if (last) results.enter(round[0]); else { idx++; nextCountry(); } });
+}
+
+// ---------- results: everyone's drawings as a heat map ----------
+let counts = {}, countsLoaded = false;
+const cache = new Map();   // code -> rings
+const pick = MapKit.dropdown("#pickDd", D.targets.map(t => ({ value: t.code, label: t.name })), v => state === "results" && results.show(v), D.targets[0].code, "Country");
+const lg = MapKit.legend(svg, {
+  x: 12, y: H - 12, anchor: "bottom", width: 230,
+  title: "Share of people whose drawing\ncovered this spot",
+  stops: [[0.1, css("--seq-1")], [0.4, css("--seq-3")], [0.7, css("--seq-5")], [1, css("--seq-7")]],
+  ticks: [[0.1, "10%"], [0.55, "55%"], [1, "100%"]],
+  keys: [{ draw: g => g.append("path").attr("d", "M-7 0H7").attr("class", "truth").style("vector-effect", "none"), label: "Real border" },
+         { draw: g => g.append("path").attr("d", "M-7 0H7").attr("class", "mine").style("vector-effect", "none").style("fill", "none"), label: "Your drawing" }],
+});
+lg.style("display", "none");
+
+const results = (() => {
+  let grid = null, code = null;
+  async function load(c) {
+    if (cache.has(c)) return cache.get(c);
+    if (!WORKER) return [];
+    const j = await api(`/drawings?country=${c}`);
+    const rings = j.drawings.map(d => d.ring);
+    cache.set(c, rings); counts[c] = rings.length;
+    return rings;
+  }
+  // View box: the real country, padded, but grown to take in where most drawings landed
+  function viewBox(c, polys) {
+    let b = mainBounds(byCode.get(c));
+    const cx = (b[0][0] + b[1][0]) / 2, cy = (b[0][1] + b[1][1]) / 2, m = Math.max(b[1][0] - b[0][0], b[1][1] - b[0][1]) * 0.9;
+    b = [[cx - m, cy - m * 0.6], [cx + m, cy + m * 0.6]];
+    const cs = polys.map(p => d3.polygonCentroid(p)).sort((a, b2) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b2[0] - cx, b2[1] - cy));
+    for (const p of cs.slice(0, Math.ceil(cs.length * 0.9))) b = union(b, [p, p]);
+    return [[Math.max(0, b[0][0]), Math.max(0, b[0][1])], [Math.min(W, b[1][0]), Math.min(H, b[1][1])]];
+  }
+  // Count how many drawings cover each grid cell: additive canvas, 1 unit of red per drawing (255 per batch)
+  function coverage(polys, b) {
+    const box = rasterBox(b, 260), n = box.w * box.h, out = new Float32Array(n);
+    for (let i = 0; i < polys.length; i += 255) {
+      const c = new OffscreenCanvas(box.w, box.h), ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = "rgb(1,0,0)";
+      ctx.setTransform(box.s, 0, 0, box.s, -box.x0 * box.s, -box.y0 * box.s);
+      for (const p of polys.slice(i, i + 255)) { ctx.beginPath(); drawPoly(p)(ctx); ctx.fill(); }
+      const a = ctx.getImageData(0, 0, box.w, box.h).data;
+      for (let j = 0; j < n; j++) out[j] += a[j * 4];
+    }
+    for (let j = 0; j < n; j++) out[j] /= polys.length;
+    return { ...box, v: out };
+  }
+  async function show(c) {
+    code = c; grid = null;
+    bandLayer.selectAll("*").remove(); truthLayer.selectAll("*").remove(); mineLayer.selectAll("*").remove();
+    const t = T.get(c), f = byCode.get(c), mine = saved.mine[c] ? fromRing(saved.mine[c]) : null;
+    truthLayer.append("path").attr("class", "truth").attr("d", path(f));
+    if (mine) mineLayer.append("path").attr("class", "mine").attr("d", line(mine) + "Z");
+    panelEl.html(`<h2>${esc(t.name)}</h2><p class="m">Loading drawings…</p>`);
+    let rings = [];
+    try { rings = await load(c); } catch (e) { panelEl.html(`<h2>${esc(t.name)}</h2><p class="err">Couldn't load the drawings: ${esc(e.message)}</p>`); }
+    if (code !== c) return;   // the visitor picked another country while this one loaded
+    const polys = rings.map(fromRing).filter(p => p.length >= 3);
+    const b = viewBox(c, polys);
+    fitTo(b, 700, 0.7);   // leave room around the edges for the legend
+    const enough = polys.length >= D.min_drawings;
+    let stats = "";
+    if (enough) {
+      grid = coverage(polys, b);
+      const gpath = d3.geoPath(d3.geoTransform({ point(x, y) { this.stream.point(grid.x0 + x / grid.s, grid.y0 + y / grid.s); } }));
+      const cont = d3.contours().size([grid.w, grid.h]).thresholds(LEVELS)(grid.v);
+      bandLayer.selectAll("path").data(cont).join("path").attr("class", "band").attr("d", gpath)
+        .attr("fill", (_, i) => css(`--seq-${i + 1}`)).attr("fill-opacity", 0.9);
+      const sc = polys.map(p => score(p, c)), med = k => d3.median(sc, d => d[k]);
+      const me = mine ? score(mine, c) : null;
+      const beat = me ? sc.filter(d => d.iou < me.iou).length / sc.length : null;
+      stats = `<div class="row"><span class="k">Median overlap</span><span class="big">${pct(med("iou"))}</span></div>
+        <div class="row"><span class="k">Typical size</span>${times(med("size"))}</div>
+        <div class="row"><span class="k">Typical center</span>${kmFmt(med("km"))} from the real center</div>
+        ${me ? `<div class="row"><span class="k">You</span>${pct(me.iou)} overlap, closer than ${pct(beat)} of drawings</div>` : ""}`;
+    }
+    const n = polys.length;
+    panelEl.html(`<h2>${esc(t.name)}</h2>
+      <p class="m">${n.toLocaleString()} drawing${n === 1 ? "" : "s"}${WORKER ? "" : " (this copy isn't connected to the drawings database)"}</p>
+      ${enough ? stats : `<p>Not enough drawings to map yet: it needs ${D.min_drawings}. ${mine ? "Here's yours next to the real border." : ""}</p>`}
+      <p class="note">Pick another country at the top. Hover the map to see how many people included each spot.</p>
+      <div class="acts"><button class="play primary" id="again" type="button">Play again</button></div>`);
+    panelEl.select("#again").on("click", startRound);
+  }
+  function enter(c) {
+    state = "results";
+    d3.select("#map").classed("results", true);
+    d3.select("#mode").attr("hidden", true); svg.classed("drawing", false).classed("moving", false);
+    d3.select("#pick").attr("hidden", null); borders.style("display", null); lg.style("display", null);
+    pick.select(c || D.targets[0].code);
+    if (WORKER && !countsLoaded) api("/counts").then(j => { counts = j.counts; countsLoaded = true; labelCounts(); }).catch(() => {});
+  }
+  function leave() {
+    d3.select("#map").classed("results", false);
+    d3.select("#pick").attr("hidden", true); borders.style("display", "none"); lg.style("display", "none");
+    bandLayer.selectAll("*").remove(); tip.hide();
+  }
+  function labelCounts() {
+    d3.select("#pick").selectAll("option").text(d => counts[d.value] != null ? `${d.label} · ${counts[d.value].toLocaleString()} drawings` : d.label);
+  }
+  function hover(ev) {
+    if (state !== "results") return;
+    const p = tf.invert(d3.pointer(ev, svg.node())), ll = proj.invert(p);
+    const f = ll && D.countries.features.find(f => d3.geoContains(f, ll));
+    let share = null;
+    if (grid) {
+      const gx = Math.floor((p[0] - grid.x0) * grid.s), gy = Math.floor((p[1] - grid.y0) * grid.s);
+      if (gx >= 0 && gy >= 0 && gx < grid.w && gy < grid.h) share = grid.v[gy * grid.w + gx];
+    }
+    if (!f && share == null) return tip.hide();
+    const n = counts[code] ?? (cache.get(code) || []).length;
+    tip.show(ev, `<b>${f ? esc(f.properties.name) : "Ocean"}</b>${share != null
+      ? `${pct(share)} of ${n.toLocaleString()} ${esc(T.get(code).name)} drawings covered this spot`
+      : `<span class="m">Outside the ${esc(T.get(code).name)} drawings</span>`}`);
+  }
+  return { enter, leave, show, hover };
+})();
+
+// ---------- API ----------
+async function api(p, body) {
+  let r;
+  try { r = await fetch(WORKER + p, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}); }
+  catch { throw Object.assign(new Error("check your connection and try again."), { code: "network" }); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || "the request failed."), { code: j.code || "error" });
+  return j;
+}
+
+panelIntro();
+</script>
+</body>
+</html>
