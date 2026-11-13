@@ -225,24 +225,29 @@ const store = { get() { try { return JSON.parse(localStorage.getItem("day13") ||
                 set(v) { try { localStorage.setItem("day13", JSON.stringify(v)); } catch {} } };
 let saved = store.get();                 // {played: bool, mine: {CODE: ring}, seen: [CODE...]}
 saved.mine ||= {}; saved.seen ||= [];
-let round = [], idx = 0, session = "", lastScores = [];
+let round = [], idx = 0, session = "", lastScores = [];   // round: every country this visitor hasn't drawn yet, in play order
+const ALL = D.targets.length;
+const unseen = () => D.targets.map(t => t.code).filter(c => !saved.seen.includes(c));
+const allDone = () => !unseen().length;
 
+// Play order: the visitor's undrawn countries, shuffled. If both Niger and Nigeria are left, the second one goes
+// last, so nobody gets the pair in their first five (seeing one's answer would give the other away).
 function pickRound() {
-  const fresh = d3.shuffle(D.targets.filter(t => !saved.seen.includes(t.code)).map(t => t.code));
-  const rest = d3.shuffle(D.targets.filter(t => saved.seen.includes(t.code)).map(t => t.code));
-  const out = [];
-  for (const c of [...fresh, ...rest]) {
-    if (out.length === ROUND) break;
-    if ((c === "NER" && out.includes("NGA")) || (c === "NGA" && out.includes("NER"))) continue;   // never both of the confused pair
-    out.push(c);
-  }
+  const out = d3.shuffle(unseen()), i = out.indexOf("NER"), j = out.indexOf("NGA");
+  if (i >= 0 && j >= 0) { const k = Math.max(i, j); out.push(out.splice(k, 1)[0]); }
   return out;
 }
 function startRound() {
+  if (allDone()) return panelIntro();
   round = pickRound(); idx = 0; lastScores = [];
   session = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
   results.leave();
   nextCountry();
+}
+// Carry on with the next undrawn country: same round if there is one, otherwise a new one.
+function keepGoing() {
+  if (round.length && idx < round.length - 1) { results.leave(); idx++; nextCountry(); }
+  else startRound();
 }
 function nextCountry() {
   state = "draw"; shape = null;
@@ -259,7 +264,7 @@ function submit() {
   fitTo(union(polyBounds(s), mainBounds(byCode.get(code))));
   lastScores.push({ code, ...sc });
   saved.mine[code] = ring; if (!saved.seen.includes(code)) saved.seen.push(code);
-  if (idx === ROUND - 1) saved.played = true;
+  if (saved.seen.length >= ROUND || idx >= ROUND - 1 || allDone()) saved.played = true;   // results unlock after five
   store.set(saved);
   panelReveal(code, sc, null);
   if (WORKER) api("/drawing", { country: code, ring, seq: idx + 1, session })
@@ -269,20 +274,28 @@ function submit() {
 
 // ---------- side panel ----------
 const panelEl = d3.select("#panel");
-const dots = () => `<div class="dots">${round.map((_, i) => `<span class="${i < idx ? "done" : i === idx ? "now" : ""}"></span>`).join("")}</div>`;
+// Progress: dots for the first five; after that, a count of all the countries
+const firstFive = () => idx < ROUND && round.length > 1;
+const step = () => firstFive()
+  ? `<div class="step">Country ${idx + 1} of ${Math.min(ROUND, round.length)}</div><div class="dots">${round.slice(0, ROUND).map((_, i) => `<span class="${i < idx ? "done" : i === idx ? "now" : ""}"></span>`).join("")}</div>`
+  : `<div class="step">Extra country · ${saved.seen.length + (state === "draw" ? 1 : 0)} of ${ALL} drawn</div>`;
+const SOON = `You've drawn all ${ALL} countries. More countries coming soon.`;
 function panelIntro() {
   state = "intro";
+  const left = unseen().length;
   panelEl.html(`<h2>How well do you know the map?</h2>
-    <p>You'll get ${ROUND} countries, one at a time. For each one, drag around where you think it is. Try to match its size and shape, not just its spot.</p>
+    <p>You'll get ${ROUND} countries, one at a time. For each one, drag around where you think it is. Try to match its size and shape, not just its spot. After five, keep going if you like: there are ${ALL} in all.</p>
     <p class="m">There are no borders on the map, only coastlines. Scroll or pinch to zoom.</p>
-    <div class="acts"><button class="play primary" id="go" type="button">${saved.played ? "Play again" : "Start"}</button>
-    ${saved.played ? `<button class="play" id="see" type="button">See everyone's drawings</button>` : ""}</div>`);
+    ${saved.played && left ? `<p>You've drawn ${saved.seen.length} of ${ALL}. ${left} to go.</p>` : ""}
+    ${!left ? `<p>${SOON}</p>` : ""}
+    <div class="acts">${left ? `<button class="play primary" id="go" type="button">${saved.played ? "Keep drawing" : "Start"}</button>` : ""}
+    ${saved.played ? `<button class="play${left ? "" : " primary"}" id="see" type="button">See everyone's drawings</button>` : ""}</div>`);
   panelEl.select("#go").on("click", startRound);
   panelEl.select("#see").on("click", () => results.enter(Object.keys(saved.mine)[0]));
 }
 function panelDraw(msg) {
   const t = T.get(round[idx]);
-  panelEl.html(`<div class="step">Country ${idx + 1} of ${ROUND}</div>${dots()}
+  panelEl.html(`${step()}
     <h2>Draw ${esc(t.name)}</h2>
     <p>${shape ? "Happy with it? Draw again to replace it." : "Drag around where you think it is, in one stroke. Zoom in for a closer look."}</p>
     ${msg ? `<p class="err">${esc(msg)}</p>` : ""}
@@ -296,15 +309,24 @@ function verdict(sc) {
   return sc.iou >= 0.6 ? "Very close." : sc.iou >= 0.35 ? "Close." : sc.iou > 0.05 ? "In the neighborhood." : sc.km < 1500 ? "Near, but not overlapping." : "Not quite.";
 }
 function panelReveal(code, sc, err) {
-  const t = T.get(code), last = idx === ROUND - 1;
-  panelEl.html(`<div class="step">Country ${idx + 1} of ${ROUND}</div>${dots()}
+  const t = T.get(code), more = idx < round.length - 1, checkpoint = idx === ROUND - 1 || (!more && idx < ROUND);
+  // Before five: Next. At five: see everyone's drawings, or keep going. After five: next, or see everyone's.
+  const acts = !more
+    ? `<p>${allDone() ? SOON : ""}</p><button class="play primary" id="see" type="button">See everyone's drawings</button>`
+    : checkpoint
+      ? `<button class="play primary" id="see" type="button">See everyone's drawings</button><button class="play" id="next" type="button">Keep going</button>`
+      : idx < ROUND - 1
+        ? `<button class="play primary" id="next" type="button">Next country</button>`
+        : `<button class="play primary" id="next" type="button">Next country</button><button class="play" id="see" type="button">See everyone's drawings</button>`;
+  panelEl.html(`${step()}
     <h2>${esc(t.name)}</h2><p>${verdict(sc)} The ink line is the real border.</p>
     <div class="row"><span class="k">Overlap with the real ${esc(t.name)}</span><span class="big">${pct(sc.iou)}</span></div>
     <div class="row"><span class="k">Size</span>${times(sc.size)}</div>
     <div class="row"><span class="k">Center of your drawing</span>${isFinite(sc.km) ? `${kmFmt(sc.km)} from the real center` : "–"}</div>
     ${err ? `<p class="err">Your drawing couldn't be saved for the heat map: ${esc(err.message)}</p>` : ""}
-    <div class="acts"><button class="play primary" id="next" type="button">${last ? "See everyone's drawings" : "Next country"}</button></div>`);
-  panelEl.select("#next").on("click", () => { if (last) results.enter(round[0]); else { idx++; nextCountry(); } });
+    <div class="acts">${acts}</div>`);
+  panelEl.select("#next").on("click", () => { idx++; nextCountry(); });
+  panelEl.select("#see").on("click", () => results.enter(code));
 }
 
 // ---------- results: everyone's drawings as a heat map ----------
@@ -388,8 +410,8 @@ const results = (() => {
       <p class="m">${n.toLocaleString()} drawing${n === 1 ? "" : "s"}${WORKER ? "" : " (this copy isn't connected to the drawings database)"}</p>
       ${enough ? stats : `<p>Not enough drawings to map yet: it needs ${D.min_drawings}. ${mine ? "Here's yours next to the real border." : ""}</p>`}
       <p class="note">Pick another country at the top. Hover the map to see how many people included each spot.</p>
-      <div class="acts"><button class="play primary" id="again" type="button">Play again</button></div>`);
-    panelEl.select("#again").on("click", startRound);
+      ${allDone() ? `<p class="note">${SOON}</p>` : `<div class="acts"><button class="play primary" id="again" type="button">Keep drawing</button></div>`}`);
+    panelEl.select("#again").on("click", keepGoing);
   }
   function enter(c) {
     state = "results";

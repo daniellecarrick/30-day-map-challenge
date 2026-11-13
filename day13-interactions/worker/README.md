@@ -27,7 +27,7 @@ never shown or counted): find its id in `GET /drawings?country=XXX`, then
 ## Make the PNG from the latest drawings
 `cd .. && WORKER_URL=<url> ../.venv/bin/python build.py` fetches every country's drawings into
 `data/drawings/`, prints the stats, writes the headline from them, and redraws `out/map.png`.
-Until a country has 10 drawings its panel says "not enough to map".
+Until a country has 5 drawings its panel says "not enough to map".
 
 ## Local testing
 `npx wrangler d1 execute day13-drawings --local --file=schema.sql`, then `npx wrangler dev --local --port 8787`.

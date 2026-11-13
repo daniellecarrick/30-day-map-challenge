@@ -11,9 +11,10 @@
 
 // The countries a visitor can be asked to draw (Natural Earth ADM0_A3 codes). Keep in step with build.py.
 const COUNTRIES = new Set([
-  "RUS", "CAN", "BRA", "COD", "MEX",   // size test
-  "UKR", "IRN", "VEN", "AFG",          // in US news
-  "NER",                               // often confused with Nigeria
+  "UKR", "IRN", "IRQ", "SYR", "AFG", "VEN", "PRK",   // in US news
+  "RUS", "CAN", "COD", "BRA", "MEX",                 // size test
+  "NER", "NGA",                                      // confused pair
+  "LAO", "PRY", "MNG",                               // harder
 ]);
 const MAX_POINTS = 250;
 const MAX_AREA_KM2 = 100e6;   // Earth's land is ~149M km²; anything this big isn't an attempt at one country

@@ -40,14 +40,16 @@ PAGE_TITLE = "Can you draw these countries?"
 SOURCE = "Data: visitors' drawings · Map: Natural Earth"
 CRS = "+proj=eqearth +lon_0=0 +R=6378137 +units=m"   # equal-area, so drawn vs real area compares fairly
 WORKER_URL = os.environ.get("WORKER_URL", "").rstrip("/")
-MIN_DRAWINGS = 10   # fewer than this and a country's heat map says "not enough drawings yet"
+MIN_DRAWINGS = 5    # fewer than this and a country's heat map says "not enough drawings yet"
 
 # code -> (display name, group). Keep in step with COUNTRIES in worker/src/index.js.
 TARGETS = {
-    "RUS": ("Russia", "size"), "CAN": ("Canada", "size"), "BRA": ("Brazil", "size"),
-    "COD": ("DR Congo", "size"), "MEX": ("Mexico", "size"),
-    "UKR": ("Ukraine", "news"), "IRN": ("Iran", "news"), "VEN": ("Venezuela", "news"), "AFG": ("Afghanistan", "news"),
-    "NER": ("Niger", "confused"),
+    "UKR": ("Ukraine", "news"), "IRN": ("Iran", "news"), "IRQ": ("Iraq", "news"), "SYR": ("Syria", "news"),
+    "AFG": ("Afghanistan", "news"), "VEN": ("Venezuela", "news"), "PRK": ("North Korea", "news"),
+    "RUS": ("Russia", "size"), "CAN": ("Canada", "size"), "COD": ("DR Congo", "size"),
+    "BRA": ("Brazil", "size"), "MEX": ("Mexico", "size"),
+    "NER": ("Niger", "pair"), "NGA": ("Nigeria", "pair"),
+    "LAO": ("Laos", "hard"), "PRY": ("Paraguay", "hard"), "MNG": ("Mongolia", "hard"),
 }
 PNG_PANELS = ["RUS", "CAN", "COD", "BRA", "UKR", "NER"]   # big-north, big-equator, in the news, confused
 
