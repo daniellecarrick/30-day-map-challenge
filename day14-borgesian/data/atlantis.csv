@@ -1,7 +1,7 @@
 name,proposed_by,year,year_precision,lat,lon,note
-Thera (Santorini),"K. T. Frost, later Spyridon Marinatos",1909,circa,36.40,25.43,Minoan eruption as a memory of Atlantis
+Thera (Santorini),"K. T. Frost, later Spyridon Marinatos",1913,exact,36.40,25.43,Minoan eruption as a memory of Atlantis
 Lake Copais,Robert L. Scranton,1949,exact,38.45,23.10,the Copaic drainage complex in Boeotia
-Cyprus Basin,Robert Sarmast,2003,exact,34.90,33.70,seabed east of Cyprus
+Cyprus Basin,Robert Sarmast,2006,earliest cited,34.90,33.70,seabed east of Cyprus
 Helike,Classical scholars,1985,circa,38.22,22.13,Greek city sunk by an earthquake in 373 BC
 Sardinia,Luigi Usai,2021,exact,40.10,9.00,Sardinia and Corsica as one island
 Malta,Giorgio Grognet de Vassé,1854,exact,35.90,14.45,
@@ -11,7 +11,7 @@ Black Sea,Siegfried and Christian Schoppe,2004,exact,43.00,34.00,
 Sea of Azov,Flying Eagle and Whispering Wind,2003,exact,46.10,36.80,
 "Doñana marshes, Andalusia",José Pellicer de Ossau (and many since),1673,exact,36.95,-6.40,lost city of Tartessos
 Spartel Bank,Jacques Collina-Girard,2001,exact,35.92,-5.95,submerged former island in the Strait of Gibraltar
-"Richat Structure, Mauritania",Popular online theory,2016,earliest cited,21.12,-11.40,the 'Eye of the Sahara'
+"Richat Structure, Mauritania",Popular online theory,,,21.12,-11.40,the 'Eye of the Sahara'
 Azores,Ignatius Donnelly,1882,exact,38.50,-28.00,
 Canary Islands,Bory de Saint-Vincent,1803,exact,28.30,-16.00,
 "Le Danois Bank, northern Spain",Jorge María Ribero-Meneses,,,44.00,-5.00,underwater plateau 'El Cachucho'

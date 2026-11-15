@@ -103,28 +103,28 @@ phantom,(unnamed breakers),,1901,exact,,,21.9167,-176.0833,wikipedia,"Reported a
 lost,Atlantis,Atlantis,-360,circa,,,35.5,-12.0,hand-approx: beyond the Pillars of Hercules (Plato),placed in 27 different spots since (see atlantis.csv)
 lost,Mount Penglai,Penglai,-200,century,,,38.0,122.0,hand-approx: Bohai Sea,island of the immortals in Chinese myth
 lost,Garden of Eden,Garden of Eden,-500,century,,,31.0,47.5,hand-approx: southern Mesopotamia (most common claim),
-lost,Camelot,Camelot,1180,circa,,,51.03,-2.62,Cadbury Castle (one of several candidate sites),
+lost,Camelot,Camelot,1175,circa,,,51.03,-2.62,Cadbury Castle (one of several candidate sites),
 lost,Kingdom of Saguenay,Kingdom of Saguenay,1535,exact,1542,Cartier's 'diamonds' turned out to be quartz,48.4,-71.0,hand-approx: inland Quebec,
 lost,Quivira,Quivira,1541,exact,1541,Coronado found grass houses not gold,38.35,-98.2,Lyons Kansas,a city of gold that turned out to be Wichita villages
-lost,El Dorado,El Dorado,1530,circa,,,4.98,-73.78,Lake Guatavita (origin of the legend),the golden city (its lake: Lake Parime)
+lost,El Dorado,El Dorado,1539,exact,,,4.98,-73.78,Lake Guatavita (origin of the legend),the golden city (its lake: Lake Parime)
 lost,Lemuria,Lemuria,1864,exact,,,-10.0,70.0,hand-approx: Indian Ocean,a sunken continent proposed to explain lemur fossils
 lost,Mu,Mu (mythical lost continent),1864,circa,,,0.0,-170.0,hand-approx: central Pacific,a sunken Pacific continent
 lost,Shangri-La,Shangri-La,1933,exact,,,27.83,99.7,Shangri-La City (renamed in 2001),a novel's paradise that China later gave to a real county
 mistake,Mountains of the Moon,Mountains of the Moon (Africa),150,circa,,,0.4,29.9,Rwenzori (the usual identification),Ptolemy's source of the Nile
-mistake,Dragon's Tail,Dragon's Tail (peninsula),1489,circa,,,12.0,106.0,hand-approx: Indochina,a phantom peninsula east of the Malay Peninsula on Renaissance world maps
-mistake,Lake Chimay,Lake Chimay,1550,circa,1790,still in gazetteers into the late 1700s,24.0,96.0,hand-approx: inland Burma,a giant lake said to feed the rivers of Bangladesh Burma and Thailand
-mistake,Strait of Anián,Strait of Anián,1562,exact,1778,Cook found no passage,62.0,-150.0,hand-approx: where 1600s maps drew it,a sea passage across North America
+mistake,Dragon's Tail,Dragon's Tail (peninsula),833,circa,,,12.0,106.0,hand-approx: Indochina,"a phantom peninsula east of the Malay Peninsula, first in al-Khwārizmī's geography and revived on Renaissance world maps"
+mistake,Lake Chimay,Lake Chimay,1554,exact,1751,last new map to show it; reprints ran until at least 1783,24.0,96.0,hand-approx: inland Burma,a giant lake said to feed the rivers of Bangladesh Burma and Thailand
+mistake,Strait of Anián,Strait of Anián,1562,exact,,,62.0,-150.0,hand-approx: where 1600s maps drew it,a sea passage across North America; the real strait (Bering) was found in 1728
 mistake,Lake Parime,Lake Parime,1596,circa,1800,disproved in the early 1800s,2.26,-59.63,Wikipedia,the lake of El Dorado
-mistake,Island of California,Island of California,1622,circa,1747,Spanish royal decree that California is not an island,30.0,-115.0,hand-approx: Baja California,California drawn as an island for more than a century
-mistake,Terra Australis,Terra Australis,1500,century,1775,Cook's second voyage sailed through where it should be,-60.0,0.0,hand-approx: southern ocean,a southern continent to balance the northern ones
-mistake,Sea of the West,Sea of the West,1752,circa,1790,,47.0,-120.0,hand-approx: Pacific Northwest interior,an inland sea on 18th-century French maps
-mistake,Buenaventura River,Buenaventura River (legendary),1776,exact,1844,Frémont showed the Great Basin has no outlet,40.0,-115.0,hand-approx: Great Basin,a river imagined running from the Rockies to the Pacific
+mistake,Island of California,Island of California,1622,exact,1776,Anza's 1774–76 expeditions settled that it is a peninsula,30.0,-115.0,hand-approx: Baja California,California drawn as an island for more than a century
+mistake,Terra Australis,Terra Australis,1500,century,1775,Cook's second voyage (1772–75) sailed through where it should be,-60.0,0.0,hand-approx: southern ocean,a southern continent to balance the northern ones
+mistake,Sea of the West,Sea of the West,1752,exact,1790,last original map to show it (Meares),47.0,-120.0,hand-approx: Pacific Northwest interior,an inland sea on 18th-century French maps
+mistake,Buenaventura River,Buenaventura River (legendary),1776,exact,1844,Frémont's 1843–44 expedition,40.0,-115.0,hand-approx: Great Basin,a river imagined running from the Rockies to the Pacific
 mistake,Mountains of Kong,Mountains of Kong,1798,exact,1889,Louis Gustave Binger's expedition,8.67,-5.0,Wikipedia,a West African mountain range charted for 90 years
 mistake,Lake Uniamési,Lake Uniamési,1855,exact,1858,Burton and Speke reached the real lakes,-6.0,27.0,Wikipedia,one huge lake drawn where several real ones lie
 mistake,Peary Channel,Peary Channel (Greenland),1892,exact,1907,Danmark expedition found Peary Land joined to Greenland,81.5,-35.0,hand-approx: south of Peary Land,a sea channel that cost the Danmark expedition its lead team
 hoax,Poyais,Gregor MacGregor,1822,exact,1837,,15.85,-84.75,hand-approx: Black River on the Mosquito Coast,"a made-up country sold to investors; settlers sailed there, and many died"
 hoax,Agloe,"Agloe, New York",1930,circa,,,42.04,-74.8,hand-approx: Colchester NY,a copyright-trap town that became real when a store took its name
-hoax,Mount Richard,,1971,circa,1973,went unnoticed for two years,40.02,-105.7,hand-approx: Continental Divide in Boulder County,a fake peak a draftsman added to a county map
+hoax,Mount Richard,,1970,circa,,,40.02,-105.7,hand-approx: Continental Divide in Boulder County,a fake peak a draftsman added to a county map
 hoax,Beatosu and Goblu,Beatosu and Goblu,1978,exact,1979,,41.69,-83.9,hand-approx: Fulton and Lucas counties Ohio,fake Ohio towns on Michigan's state map ('Beat OSU' and 'Go Blue')
 hoax,Ripton,Ripton (fictitious town),1985,exact,,,42.45,-72.4,hand-approx: rural western Massachusetts,an invented town that was given state funds
 hoax,Llandegley International Airport,Llandegley International Airport,2002,exact,,,52.24,-3.31,hand-approx: Llandegley Wales,a road sign for an airport that doesn't exist

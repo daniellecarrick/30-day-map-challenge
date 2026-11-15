@@ -62,11 +62,19 @@ data/phantoms_fixes.csv (hand fixes; "-" clears a wrong value). Hand-placed poin
 - `hoaxes.csv` (8): Poyais, Agloe, Mount Richard, Beatosu and Goblu, Ripton, Llandegley airport,
   Argleton, Listenbourg.
 - `atlantis.csv` (27): proposed Atlantis sites with proposer and year (1552–2021), for the callout.
-Dates I filled from general knowledge rather than the article lead (check before posting):
-Island of California 1622/1747, Terra Australis removed 1775, Strait of Anián 1562/1778,
-Sea of the West 1752/1790, Buenaventura 1776/1844, Lake Chimay 1550/1790, Dragon's Tail 1489,
-Camelot 1180, El Dorado 1530, Mu 1864, Thera 1909, Great Britain 1946, North Sea 1953,
-Cyprus 2003, Helike 1985, Richat 2016 (earliest source cited on the page), Mount Richard 1971/1973.
+Dates first filled from memory, then checked against Wikipedia on 2026-11-15:
+- Confirmed: Terra Australis gone 1775 (Cook's 2nd voyage 1772–75), Strait of Anián 1562 (Gastaldi),
+  Sea of the West 1752 (Buache) to 1790 (Meares, last original depiction), Buenaventura 1776
+  (Domínguez–Escalante) to 1844 (Frémont 1843–44), Mu 1864 (Brasseur), Lemuria 1864 (Sclater),
+  Great Britain 1946 (Comyns Beaumont, Riddle of Prehistoric Britain), North Sea 1953 (Spanuth,
+  Das enträtselte Atlantis; de.wikipedia), Helike 1985 (Giovannini).
+- Corrected: Island of California removal 1747 -> 1776 (article: settled by Anza 1774–76; the 1747
+  decree isn't in it); Lake Chimay 1550–1790 -> 1554 (Ramusio map) to 1751 (last new map); Dragon's
+  Tail 1489 -> c. 833 (al-Khwārizmī); Camelot 1180 -> c. 1175 (Chrétien, 1170s); El Dorado 1530 ->
+  1539 (earliest written reference); Thera 1909 -> 1913 (Frost's cited paper); Cyprus 2003 -> 2006
+  (Sarmast's cited book); Mount Richard 1971 -> c. 1970 ("early 1970s").
+- Cleared (no source gives one): Strait of Anián removal year, Mount Richard removal year,
+  Richat Structure year (only undated "fringe claims").
 Most coordinates in these files are hand-approx (see coord_note).
 
 ## Combined (combine_places.py -> data/places.csv)
