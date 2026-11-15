@@ -1,0 +1,27 @@
+name,found_year,found_precision,removed_year,removed_evidence,lat,lon,coord_source
+Antillia,1424,exact,,,31,-40,hand-approx: mid-Atlantic as on the 1424 Pizzigano chart
+Satanazes,,,,,37,-38,hand-approx: north of Antillia on the 1424 Pizzigano chart
+Atlantis,,,,,35.5,-12,hand-approx: just beyond the Pillars of Hercules (Plato); see Atlantis dataset
+Bale of Cotton,,,,,5.37,85.2,from notes: 5°22′N and 100 leagues east of Galle
+Brasil or Hy-Brasil,,,,,51.5,-15,hand-approx: west of Ireland
+Buss Island,,,,,57.5,-28,hand-approx: between Ireland and Greenland
+Island of California,,,,,30,-115,hand-approx: Baja California (real land drawn as an island)
+Cassiterides,,,,,47.35,-2.25,from notes: Brière marshes
+Clark's Reef,,,,,-8.3,-139.8333,from notes: 8°18′S 139°50′W
+Crockerland,,,,,83,-100,hand-approx: northwest of Ellesmere Island
+Davis Land,,,,,-27,-92,hand-approx: west of Copiapó Chile
+Isle of Demons,,,,,51.5,-56,hand-approx: off northern Newfoundland
+Elizabeth Island,,,,,-57,-70,hand-approx: south of Cape Horn
+Estotiland,,,,,56,-60,hand-approx: Labrador coast (Zeno map)
+Frisland,,,,,61,-20,hand-approx: south of Iceland
+Bacalao,,,,,48,-50,hand-approx: off Newfoundland
+Hyperborea,-500,century,,,80,40,hand-approx: far north
+Ilha de Vera Cruz,,,,,-16.4,-39,Porto Seguro Brazil (Brazil mistaken for an island)
+Jave la Grande,,,,,-25,130,hand-approx: Dieppe maps (likely Australia)
+Saint Brendan's Island,,,,,28,-20,hand-approx: west of the Canary Islands
+Royal Company's Islands,,,,,-49.7,143.6,hand-approx: south of Tasmania
+Mount Penglai,,,,,38,122,hand-approx: Bohai Sea
+Keenan Land,,,,,74,-145,hand-approx: Beaufort Sea north of Alaska
+Willoughby's Land,,,,,72,30,hand-approx: Barents Sea
+Thule,,,,,64,-10,hand-approx: six days' sail north of Britain (Pytheas); article coords were the modern Thule
+Reed/Redfield Rocks,,,-,-,,,

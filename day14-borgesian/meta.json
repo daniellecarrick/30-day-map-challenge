@@ -1,0 +1,9 @@
+{
+  "day": 14,
+  "theme": "Borgesian map",
+  "title": "On the map, but not in the world",
+  "description": "Phantom islands, lost lands, mapmaking mistakes and paper towns: 131 places that appeared on maps or in legends but never existed, drawn where the maps put them, with a timeline of when each first appeared and the 27 places people have said Atlantis really was. Many positions are approximate. Data: Wikipedia, Wikidata, Natural Earth.",
+  "html": "out/map.html",
+  "png": "out/map.png",
+  "published": "2026-11-15"
+}

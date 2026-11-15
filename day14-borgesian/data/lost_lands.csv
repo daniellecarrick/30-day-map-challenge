@@ -1,0 +1,11 @@
+name,article,first_year,first_precision,removed_year,removed_note,lat,lon,coord_note,note
+Atlantis,Atlantis,-360,circa,,,35.5,-12,hand-approx: beyond the Pillars of Hercules (Plato),placed in 27 different spots since (see atlantis.csv)
+Mount Penglai,Penglai,-200,century,,,38,122,hand-approx: Bohai Sea,island of the immortals in Chinese myth
+Garden of Eden,Garden of Eden,-500,century,,,31,47.5,hand-approx: southern Mesopotamia (most common claim),
+Camelot,Camelot,1180,circa,,,51.03,-2.62,Cadbury Castle (one of several candidate sites),
+Kingdom of Saguenay,Kingdom of Saguenay,1535,exact,1542,Cartier's 'diamonds' turned out to be quartz,48.4,-71,hand-approx: inland Quebec,
+Quivira,Quivira,1541,exact,1541,Coronado found grass houses not gold,38.35,-98.2,Lyons Kansas,a city of gold that turned out to be Wichita villages
+El Dorado,El Dorado,1530,circa,,,4.98,-73.78,Lake Guatavita (origin of the legend),the golden city (its lake: Lake Parime)
+Lemuria,Lemuria,1864,exact,,,-10,70,hand-approx: Indian Ocean,a sunken continent proposed to explain lemur fossils
+Mu,Mu (mythical lost continent),1864,circa,,,0,-170,hand-approx: central Pacific,a sunken Pacific continent
+Shangri-La,Shangri-La,1933,exact,,,27.83,99.7,Shangri-La City (renamed in 2001),a novel's paradise that China later gave to a real county

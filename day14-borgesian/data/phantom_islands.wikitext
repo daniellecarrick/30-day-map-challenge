@@ -1,0 +1,455 @@
+{{Short description|Island recorded on maps but proven nonexistent}}
+{{For|the King Gizzard and the Lizard Wizard album|Phantom Island (album)}}{{Distinguish|Lost lands|Ghost Island (disambiguation){{!}}Ghost Island|Vanishing island|Fata Morgana (mirage)|Mirage|Null Island}}
+{{Use dmy dates|date=October 2021}}
+
+[[File:Powell-Chart-1822.png|thumb|Fragment of [[George Powell (sealer)|George Powell]]'s 1822 chart of the [[South Shetland Islands]] showing the phantom Middle Island (bottom right) in [[Bransfield Strait]], [[Antarctica]]]]
+[[File:Map by nicolo zeno 1558.jpg|thumb|The [[Zeno map]] of 1558 showing [[Frisland]] – a phantom island in the [[North Atlantic]]]]
+[[File:Kianida Island or Cianeis Insula.png|thumb|The phantom  island of Kianida or Cianeis in the [[Black Sea]] on a fragment of the 1467 [[Nicolaus Germanus]] edition of [[Ptolemy's Geography|Ptolemy's ''Geography'']]]] 
+
+A '''phantom island''' is a purported [[island]] which has appeared on maps but was later found to not exist. They usually originate from the reports of early sailors exploring new regions, and are commonly the result of navigational errors, mistaken observations, unverified misinformation, or deliberate fabrication. Some of these islands in high latitudes may also result from iceberg sightings. Some have remained on maps for centuries before being "un-discovered".
+
+Unlike [[lost lands]], which are claimed (or known) to have once existed but to have been swallowed by the sea or otherwise destroyed, a phantom island is one that is claimed to exist contemporaneously, but later found not to have existed in the first place (or found not to be an island, as with the [[Island of California]]).
+
+==Examples==
+Various phantom islands were thought to have been discovered at various points, mostly during the 19th century.
+
+''Dougherty Island'' was first spotted in 1841 by '''Captain Daniel Dougherty''' of the ''James Stewart'', an Irish whaler, who reported discovering it at {{Coord|59|20|S|120|20|W|}}, some 2500 miles west of the southern tip of South America. He described it as 5–6 miles long with a high bluff to the northeast and covered in snow. Dougherty's discovery was confirmed  by '''Captain Keates''' of the ''Louise'' in 1860, giving its coordinates as {{Coord|59|20|S|120|18|W|}}, and by '''Captain Stannard''' of the ''Cingalese'' in 1886, giving the location as {{Coord|59|21|S|119|7|W|}}.<ref>{{cite book |last=Stommel |first=Henry |authorlink=Henry Stommel |title=Lost Islands: The Story of Islands That Have Vanished from Nautical Charts |publisher=University of British Columbia Press |location=Vancouver |year=1984 |isbn=0-7748-0210-3 |url-access=registration |url=https://archive.org/details/lostislands00henr }}</ref> The island continued to appear on maps as late as 1934.<ref>{{cite book |title=Rand McNally World Atlas Pictorial Edition |year=1934 |location=Chicago |publisher=Rand McNally & Company |page=61}}</ref>
+
+''Emerald Island'' was first sighted by the [[United Kingdom|British]] sealing ship ''Emerald'', captained by '''William Elliot''', in December 1821,<ref name="Headland">Headland, Robert (1989). [https://books.google.com/books?id=Sg49AAAAIAAJ&pg=PA123&lpg=PA123 Chronological list of Antarctic expeditions and related historical events], p. 123. Cambridge University Press. {{ISBN|0-521-30903-4}}.</ref> and the name of the supposed island is derived from the name of this ship. It was presumed to be a small (but high and mountainous) island located at {{Coord|57|30|S|162|12|E|}}, some 1000 miles SSE of New Zealand.<ref name="Headland"/><ref name="TRSNZ1890"/>
+
+No trace of the island was found by the 1840 [[United States Exploring Expedition]].<ref name=Stanton>{{cite book|last1=Stanton|first1=William|title=The Great United States Exploring Expedition|date=1975|publisher=University of California Press|location=Berkeley|isbn=0520025571|pages=[https://archive.org/details/greatunitedstate00will/page/153 153]|url-access=registration|url=https://archive.org/details/greatunitedstate00will/page/153}}</ref><ref>{{cite news |title=The Antarctic Continent |work=Hobart Courier |page=3 |date=Jan 12, 1841 |accessdate=May 6, 2009 |quote=Emerald Island not found where laid down. |url=http://trove.nla.gov.au/newspaper/article/2957300 }}</ref> Although a [[Sea captain|captain]] visiting [[Port Chalmers]] reported seeing it sometime before 1890,<ref name="TRSNZ1890">[http://rsnz.natlib.govt.nz/volume/rsnz_23/rsnz_23_00_005690.html Reference in an 1890 paper of the Transactions of the Royal Society of New Zealand]</ref> a search by the ''[[Nimrod (1867 ship)|Nimrod]]'' in 1909 turned up nothing.<ref>{{cite journal |last=Davis |first=J.K. |date=Dec 1910 |title=Voyage of the S. Y. "Nimrod.": Sydney to Monte Video Viâ Macquarie Island, May 8-July 7, 1909 |journal=The Geographical Journal |volume=36 |issue=6 |pages=696–703 |doi=10.2307/1776845 |publisher=Blackwell Publishing |jstor=1776845 |url=https://zenodo.org/record/1449264 }}<!--|accessdate=May 6, 2009 --></ref> Nevertheless, it appeared on a map as late as 1987 in a desk calendar book (with atlas) published by [[American Express]].{{cn|date=February 2021}}
+
+The ''Royal Company's Islands'' were reported by some early [[Exploration|explorers]] to lie southwest of [[Tasmania]].  They were first heard of ''before'' 1840, but the original report cannot be traced. Many old [[Map|charts]] show them at {{Coord|50|20|S|140|0|E|}} or {{Coord|52|20|S|143|0|E|}}.
+
+The ''Nimrod Islands'' were first reported in 1828 by '''Captain Eilbeck''' of the ship ''Nimrod'' while sailing from [[Port Jackson]] around [[Cape Horn]]. Their reported location was east of [[Emerald Island (phantom)|Emerald Island]] and west of [[Dougherty Island]], at approximately {{coord|56|S|158|W|}}.<ref>{{cite book | last = Stommel | first = Henry | title = Lost Islands: The Story of Islands That Have Vanished from Nautical Charts | publisher = University of British Columbia Press | location = Vancouver | year = 1984 | isbn = 0-7748-0210-3 | pages = [https://archive.org/details/lostislands00henr/page/73 73–76] | url-access = registration | url = https://archive.org/details/lostislands00henr/page/73 }}</ref>
+
+''Middle Island'', once thought to be in the South Shetland Islands, was first sighted along with the rest of the archipelago by British mariner [[William Smith (mariner)|William Smith]], on the vessel ''[[William (1811 Blythe ship)|William]]'', in 1819, although Dutch mariner [[Dirck Gerritsz Pomp|Dirck Gerritsz]] in 1599 or Spanish Admiral [[Gabriel de Castilla]] in 1603 might have sighted the South Shetlands. Additionally, North or South American sealers might have also visited the [[archipelago]] before Smith, though who truly saw them first remains unclear.<ref>Ivanov, L. [https://web.archive.org/web/20150708084208/http://livingston-island.weebly.com/ General Geography and History of Livingston Island.] In: ''Bulgarian Antarctic Research: A Synthesis''. Eds. C. Pimpirev and N. Chipev. Sofia: St. Kliment Ohridski University Press, 2015, pp. 17–28, {{ISBN|978-954-07-3939-7}}</ref>
+
+Some phantom islands may have been purely mythical, such as the [[Isle of Demons]] near [[Newfoundland (island)|Newfoundland]], which may have been based on local legends of a haunted island. The far-northern island of [[Thule]] was reported to exist by the 4th-century BC Greek explorer [[Pytheas]], but information about its purported location was lost; explorers and geographers since have speculated that it was the [[Shetland Islands]], [[Iceland]], [[Scandinavia]], or possibly nonexistent. The island of [[Brasil (mythical island)|Hy-Brasil]] was sometimes depicted on maps west of Ireland, but all accounts of it have been fanciful.
+
+Some phantom islands arose through the faulty positioning of actual islands, or other geographical errors. [[Pepys Island]] was a misidentification of the [[Falkland Islands]]. The [[Baja California Peninsula]] and the [[Banks Peninsula]] in [[New Zealand]] each appear as islands on some early maps, but were later discovered to be attached to their mainlands. [[Isle Phelipeaux]], an apparent duplication of [[Isle Royale]] in [[Lake Superior]],<ref>{{Cite book|url={{GBurl|id=8LqC9MHAl54C|q=Michipicoten+pontchartrain|pg=PA837}}|title=Canada and its Provinces|date=1914|language=en}}</ref> appeared on explorers' maps for many years, and even served as a landmark for the border between the United States and the territory that would become Canada, before subsequent exploration by surveyors determined that it did not exist. 
+
+[[Sandy Island, New Caledonia|Sandy Island]] appeared on maps of the [[Coral Sea]] beginning in the late 19th century. Purportedly, it existed between the [[Chesterfield Islands]] and Nereus Reef near [[New Caledonia]]; however, it was "undiscovered" in the 1970s. Nonetheless, it continued to be included in mapping data sets into the early 21st century, until its non-existence was re-confirmed in 2012.<ref name="bbc2">{{cite web|date=22 November 2012|title=South Pacific Sandy Island 'proven not to exist'|url=https://www.bbc.co.uk/news/world-asia-20442487 |publisher=BBC News |accessdate=22 November 2012}}</ref><ref name="guardian2">{{cite web|date=22 November 2012|title=The Pacific island that never was|url=https://www.theguardian.com/world/2012/nov/22/sandy-island-missing-google-earth|accessdate=22 November 2012|work=The Guardian}}</ref><ref name="Eos">{{cite journal|last=Seton|first=Maria |author2=Williams, Simon |author3=Zahirovic, Sabin|title=Obituary: Sandy Island (1876–2012)|journal=[[Eos (journal)|Eos, Transactions, American Geophysical Union]]|date=9 April 2013|volume=94|issue=15|pages=141–148|issn=2324-9250|doi=10.1002/2013eo150001|bibcode=2013EOSTr..94..141S |doi-access=free}}</ref>
+
+Other phantom islands are misidentifications of [[Breaker (reef)|breakers]], icebergs, fog banks, [[pumice raft]]s from underwater volcanoes, or optical illusions. Observed in the [[Weddell Sea]] in 1823 but never again seen, [[New South Greenland]] may have been the result of a [[Mirage#Superior mirage|superior mirage]]. Some such as [[Thompson Island (South Atlantic)|Thompson Island]] or [[Bermeja]] may have been actual islands subsequently destroyed by volcanic explosions, earthquakes, submarine landslides, or low-lying lands such as [[shoal|sand bank]]s that are no longer above water. [[Pactolus Bank]], visited by [[Francis Drake|Sir Francis Drake]] in 1578, may fit into this former sand bank category.
+
+In some cases, cartographers intentionally include [[Fictitious entry#Maps|invented geographic features]] in their maps, either for fraudulent purposes or to [[copyright trap|catch plagiarists]].<ref>[{{GBurl|id=UIUOAAAAQAAJ|pg=PA47}} ''Antarctica''], p. 47, Paul Simpson-Housley, 1992.</ref><ref>[{{GBurl|id=PYdBH4dOOM4C|pg=PA435}} ''Exploring Polar Frontiers''], p. 435, William James Mills, 2003.</ref>
+
+{{wide image|Overview of the phantom islands.jpg|900px|Map of region below [[Tropic of Capricorn]], showing several phantom islands (circled, three phantom types)}}
+
+==Popular culture==
+The American author [[Herman Melville]] mentions the phenomenon in his novel ''[[Moby Dick|Moby-Dick]]''. After killing and processing its first [[sperm whale]], the sailors of the ''Pequod'' release its carcass to sea, and this prompts the narrator to claim that such floating corpses are sometimes the origins of phantom reefs and shoals: 
+{{blockquote|1=Desecrated as the [whale] body is, a vengeful ghost survives and hovers over it to scare. Espied by some timid man-of-war or blundering discovery-vessel from afar, when the distance obscuring the swarming fowls, nevertheless still shows the white mass floating in the sun, and the white spray heaving high against it; straightaway the whale's unharming corpse, with trembling fingers is set down in the log—''shoals, rocks, and breakers hereabouts: beware!'' And for years afterwards, perhaps, ships shun the place.<ref>Melville, (1851), Chapter 69, "The Funeral".</ref>}}
+
+==List of phantom islands==
+{| class="sortable wikitable"
+! width=150|Name
+! width=150|Date of<br>alleged<br> discovery
+!class=unsortable| Notes
+|-
+|Anaa-ti
+|Unknown
+|Location given as 22° 15′ S, 137° 30′ W, in the [[Tuamotus]]. Believed to be a mistaken sighting of a nearby island.<ref name=":3" />
+|-
+| [[Anson Archipelago]]
+|
+|
+|-
+| [[Antillia]] || {{sort|0714|{{circa|14}}/15th century}} || The island, like the more popular [[Atlantis]], is a fictional island in the Atlantic originating from an Iberian legend.
+|-
+|Antonio d'Ulloa Island
+|Unknown
+|Discovered by the Spanish captain [[Antonio de Ulloa]] at 37° 02′ S, 78° 20′ W. Noted as doubtful in 1875.<ref name=":3" />
+|-
+|Arthur Island
+|Unknown
+|Location given by Arrowsmith as 3° 30′ S, 176° W. Noted to be needing confirmation of existence and position in 1851; not seen on modern maps.<ref name=":2" />
+|-
+| [[Atlantis]] || {{sort|-360|{{circa|360 BC}}}}  || Ancient Greek legend described by [[Plato]], later hypothesized to be real, and depicted on a 1664 map by [[Athanasius Kircher]].
+|-
+| [[Aurora Islands]] || 1762 || Discovered by Spanish merchant ship ''Aurora'', currently thought to be the [[Shag Rocks, South Georgia|Shag Rocks]].
+|-
+| [[Bacalao (phantom island)|Bacalao]] || 1472 || [[Gaspar Frutuoso]] noted its discovery by [[João Vaz Corte-Real]] in 1472 in ''Saudades da Terra.''
+|-
+|Bale of Cotton
+|1767
+|A rock in the mouth of the [[Bay of Bengal]], located at 5° 22′ N "100 [[League (unit)|leagues]] east from [[Galle|Pointe de Galle]]." A passenger on the boat that saw the rock claimed to have physically gone onto it. Doubtful by 1817 and not seen on modern maps.<ref name=":3" />
+|-
+| [[Bermeja]] || 1539 || Discovered in the early 16th century by Spain, but mysteriously vanished sometime during the 17th century. While no dominant theory holds, it is possible that the island submerged due to tectonic movements, supported by the existence of a seamount at {{coord|22|38.76|N|90|51.3|W}} and the nearby [[Scorpion Reef]].
+|-
+|Bonetta Rocks
+|Unknown
+|Location given as 16° 32′ N, 20° 57′ W, between [[Cape Verde]] and [[Mauritania]]. Could not be found in 1838.<ref name=":3" />
+|-
+| [[Bradley Land]] || 1909 || A mass of land named by [[Frederick Cook]] which he claimed to have seen between ({{coord|84|20|N|102|0|W|}}) and ({{coord|85|11|N|102|0|W|}}) during a 1909 expedition.
+|-
+| [[Brasil (mythical island)|Brasil]] or Hy-Brasil|| 1325 || Said to lie in the Atlantic Ocean west of Ireland. Irish myths described it as cloaked in mist except for one day every seven years, when it became visible but still could not be reached.  Several 16th century maps showing the island of Brasil also showed an island labelled ''Demar'' further south-west.
+|-
+|Britomart Island
+|1822
+|Discoverer unknown; location given as 19° 52' S, 145° 50' W. Noted to be doubtful in 1851; not seen on modern maps.<ref name=":2">{{Cite book |last=Findlay |first=Alexander George |url=https://books.google.com/books?id=p5tDAAAAIAAJ&q=quiros |title=A Directory for the Navigation of the Pacific Ocean: The islands, etc., of the Pacific Ocean |date=1851 |publisher=R.H. Laurie |language=en}}</ref>
+|-
+| [[Buss Island]] || 1578 || Found in the waters near Greenland, in which [[Martin Frobisher]], the leader of the island-finding expedition, probably made a mistake in dead reckoning and mistook optical effects near Greenland for a new island.
+|-
+| [[Byers's Island]] 
+| 
+| 
+|-
+| {{nowrap|[[Island of California]]}} || 1510 || A misconception about the [[Baja California Peninsula]] being an island due to an assumption that the [[Gulf of California]] was instead a [[strait]] separating California from the rest of the Americas.
+|-
+| [[Candyn]] 
+| 
+| 
+|-
+| [[Cassiterides]] || {{sort|-430|430 BC}}  || Ancient source of Phoenician tin. Exact location unknown but thought to have possibly referred to now silt-connected islands within the marshes of [[Brière]].
+|-
+|Clark's Reef
+|Unknown
+|Discoverer unknown, location given as 8° 18′ S, 139° 50′ (or 52′) W. Admiral Du Petit Thouars could not find the reef, sounding 200 fathoms.<ref name=":2" />
+|-
+|[[Cloate's Island]] 
+|1618
+|Various locations; sometimes 21° 30′ S, 92° 42′ E, in the Indian Ocean, west of [[Australia]].<ref name=":3" /> Probably the headland now known as [[Point Cloates]].
+|-
+| [[Crockerland]] || 1906 || A hoax invented by Arctic explorer [[Robert E. Peary]] to gain more financial aid from George Crocker, one of his financial backers.
+|-
+| [[Davis Land]] || 1687 || Supposedly sighted by the pirate [[Edward Davis (buccaneer)|Edward Davis]] in the Pacific along the southern latitude of 27 to 28 degrees, which was on the same latitude as the Spanish-controlled gold mines of Copiago. At the time, it was believed that gold could be found elsewhere along the latitude so several navigators were instructed to seek it out on their voyages. Never found, it was also believed by [[William Dampier]] to be the coast of Terra Australis Incognita.<ref>{{cite book |last1=Dunmore |first1=John |title=Chasing a Dream: The Exploration of the Imaginary Pacific |date=2016 |publisher=Upstart Press |location=Auckland |isbn=978-1-927262-79-5 |pages=81–82}}</ref> 
+|-
+| [[Isle of Demons]] || 1508 || Probably a relocated version of the island of [[Satanazes]] (see island below).
+|-
+|Denia/Davia
+|Unknown
+|Location given as 41° or 42° S, 20° E, in close vicinity of Marzeveen/Maarseveen. Not seen on modern maps.<ref name=":3" />
+|-
+|Diego Alvarez
+|Unknown
+|Location given as 39° 10′ S, 11° 15′ W, between [[Tristan da Cunha]] and [[Gough Island|Gough]]. Not seen on modern maps.<ref name=":3" />
+|-
+| [[Dougherty Island]] || 1841 || Because it is near Antarctica, it is likely that the discoverer, Captain Dougherty, and future explorers who confirmed it, saw fog banks and icebergs conveniently situated in the right place and time.
+|-
+|Dragon Island
+|1869
+|Reported by Capt. Andrew of the bark ''Dragon'' at 24° 30′ N, 136° 36′ W. Found nonexistent in 1875.<ref name=":3" />
+|-
+|Dunkin's Reef
+|1824
+|Discovered by Dunkin; location given as 9° 50′ N, 154° 10′ E. Described as an extensive shoal. Noted as doubtful and possibly a mistaken sighting in 1851; not seen on modern maps.<ref name=":2" />
+|-
+| [[Elizabeth Island (Cape Horn)|Elizabeth Island]] || 1578 || Described by [[Francis Drake]], who reported harbouring there during his circumnavigation. Not found by subsequent explorers; in 1939 [[Felix Riesenberg]] suggested [[Pactolus Bank]] as a possible remnant, though recent surveys suggest the Bank may itself be a phantom feature.
+|-
+| [[Emerald Island (phantom)|Emerald Island]] || 1821 || Probably fog banks and icebergs (see [[Dougherty Island]] above); the abyssal plain below it was named Emerald Plain, however, in recognition of the nonexistent island.
+|-
+|Emily Rock
+|1869
+|Sighted at 25° 38' S, 87° 25' W by the [[Barque|bark]] ''Emily''. Reportedly measured to be 15' tall and 120' long. 2 other sightings were reported in 1873, now described as being 3/4th mile long and 20 feet at its tallest point, made of sandy volcanic stone. Several vessels passed through the area but did not see it.<ref name=":0">{{Cite book |last=Office |first=United States Hydrographic |url=https://books.google.com/books?id=N30PAQAAIAAJ&dq=Yosemite+Rock+Sefton+Reef&pg=PA295 |title=H.O. Pub |date=1920 |language=en}}</ref>
+|-
+| [[Ernest Legouve Reef]] || 1902 || A reef supposedly found by the captain of the French ship, Ernest Legouvé, which is near the exact location of the fictional [[Lincoln Island (Mysterious Island)|Lincoln Island]], the main setting for [[Jules Verne]]'s book ''[[The Mysterious Island]]'', also appearing in ''[[In Search of the Castaways]]''.
+|-
+| [[Estotiland]] || 1558 || An island appearing on the [[Zeno map]] at the current location of [[Labrador]].
+|-
+|Faith Island
+|Unknown
+|Location given as 21° 10′ S, 138° 52′ W, in the [[Tuamotus]]. Believed to be a mistaken sighting of a nearby island.<ref name=":3" />
+|-
+| [[Fata Morgana Land]] || 1907 || [[J.P. Koch]], together with [[Aage Bertelsen]], was reported to have first seen Fata Morgana Land ({{langx|da|Fata Morgana Landet}}) lying in the [[Arctic Ocean]] around 80°00´N 10°00´W between NE Greenland and Svalbard. This elusive land was allegedly seen as well by [[Lauge Koch]] from the air in 1933.<ref name="cat">{{cite web | title = Catalogue of place names in northern East Greenland | publisher = Geological Survey of Denmark | url = http://www.geus.dk/publications/bull/nr21/nr21_p117-368.pdf3 | access-date = 21 April 2016 | archive-date = 13 May 2020 | archive-url = https://web.archive.org/web/20200513044819/http://www.geus.dk/publications/bull/nr21/nr21_p117-368.pdf3 | url-status = dead }}</ref>
+|-
+| [[Filippo Reef]] || 1886 || This reef, part of the [[Line Islands]], was first seen by the ship ''Filippo'' and was seen again in 1926 when both ships saw breakers in the same area, suggesting a depth of {{convert|0.6|to|0.9|m|ft|0|abbr=off}}. Current observations show the reported location to have a depth of {{convert|3.3|mi|km mi nmi|abbr=off|order=out}}, and the nearest shallow seamount is about {{convert|2.9|mi|km mi nmi|abbr=off|order=out}} deep, disproving the existence of the island.
+|-
+| [[Fonseca Island]] || 1544 || An island sighted east of [[Barbados]].
+|-
+| [[Frisland]] || 1558 || Another island on the [[Zeno map]], possibly a renamed [[Iceland]].
+|-
+| [[Ganges Island]] || {{sort|1950|20th century}} || A nonexistent island off the coast of [[Japan]] to the southwest of the [[Shatsky Rise]].
+|-
+|Isle Grande
+|1675
+|Discovered by [[Anthony de la Roché|Antonio de la Roche]]. Roche only passed the island on its eastern side. Various locations given, all at 45° 15′ S, but otherwise differing at 38° 15′ W (per la Roche), 45° 30′ W, and 35° 30′ W; considered uncertain by 1808. Possibly a mistaken sighting of a projecting [[headland]] from [[South America]], as la Roche never saw the other side.<ref name=":3" />
+|-
+| [[Great Ireland]]
+|
+|
+|-
+| [[Groclant]] || 1569 || An island to the west of [[Greenland]], perhaps a misreading of the island's name, or [[Baffin Island]].
+|-
+| [[Haymet Rocks]]
+|1863
+|Reported to be located South of [[Rarotonga]]; two rocks, about 0.25 miles apart, with 7 or 8 feet of water over them; have not been found since. 
+|-
+|Humphrey Island
+|1822
+|Discoverer unknown; location given as 16° 52' S, 140° 30' W. Krusenstern doubted its existence and was noted as doubtful in 1851; not seen on modern maps.<ref name=":2" />
+|-
+|[[Hyperborea]]
+|Antiquity to 17th century
+|Hypothetic land of a mythical people living in the far north of the known world, depicted as the mirror continent of [[Antarctica]] on the [[Mercator 1569 world map|Mercator]] map.
+|-
+| [[Ilha de Vera Cruz]] || 1500 || A supposed 'island' found by Portuguese explorers, which turned out not to be an island but rather what is currently known as [[Brazil]].
+|-
+| [[Jacquet Island]] || {{sort|1000|Middle Ages}} || An island just to the east of the [[Flemish Cap]]; it was believed to exist into the 19th century, during which cartographers discussed it as a possible midway point for the [[Transatlantic telegraph cable]].
+|-
+| [[Jave la Grande]]
+| 
+| 
+|-
+| [[Juan de Lisboa]] || {{sort|1600|17th century}} || Reported on maps as being southeast of [[Madagascar]].
+|-
+| [[Jupiter Reef]] || 1878 || Nonexistent reef in the Line Islands (in fact [[Line Islands]] are more than {{convert|2000|mi|km mi nmi|abbr=off|order=out}} away), to the south of the also nonexistent [[Ernest Legouve Reef]] (see above).
+|-
+| [[Kantia]] || 1884 || Found in 1884 by Johan Otto Polter, who, in four later expeditions through 1909, disproved the island's existence.
+|-
+|[[Keenan Land]]
+|1870s
+|Large landmass reportedly discovered in the Arctic north of [[Alaska]]; numerous searches failed to relocate it.
+|-
+|Kentzell's Island
+|1856
+|Reported by Capt. Kentzell of San Francisco at approx. 40° N, 150° 30′ W. The island, 20 miles long and "very low," was said to have a large [[Pinniped|seal]] and [[Elephant seal|sea elephant]] population, and therefore was kept secret by [[Seal hunting|seal hunters]]. Searches failed to find it while sightings still came in through the 1860s, including one by the ''[[Kanrin Maru]]'' in 1859. Finally disproven by a survey in 1867.<ref name=":3">{{Cite book |last=Stommel |first=Henry M. |date=1984 |title=Lost Islands: The Story of Islands That Have Vanished from Nautical Charts |url=http://archive.org/details/lostislands00henr |url-access=registration |location=Vancouver, BC |publisher= University of British Columbia Press |via=the Internet Archive |isbn=978-0-7748-0210-9}}</ref>
+|-
+|Kettendyk's Droogte
+|Unknown
+|Location given as 33° S, 4° 25′ E, northeast of [[Tristan da Cunha]] and west of [[South Africa]]. Unsuccessfully searched for, and not seen on modern maps.<ref name=":3" />
+|-
+| Kianida Island<br>or ''Cianeis Insula'' || 1467 || Supposedly known in [[Classical antiquity|Antiquity]], a large island the size of [[Thassos]] but situated off the [[Black Sea]] coast of [[Thrace]] in the present Bulgaria-Turkey border area. Depicted on the 1467 map ''Nona Europae Tabula'' by [[Nicolaus Germanus]] based on [[Claudius Ptolemy]]'s [[Ptolemy's Geography|Geography]].<ref>{{citation |author=Claudius Ptolemaeius |author-mask=Ptolemy |author-link=Claudius Ptolemy |display-authors=0 |url=https://archive.org/details/cosmographia00ptol/page/n195 |language=la|editor-last=Germanus |editor-first=Nicolaus |publisher=Leinhart Holle |date=1482 |location=Ulm |title=Claudii Ptolomei Viri Alexandrini Cosmographie Octavus et Ultimus Liber Explicit Opus }}.</ref> According to Bulgarian geomorphologist Dinyo Kanev, probably destroyed by sea in the [[Middle Ages]].<ref>Dikov, Ivan. [http://brewminate.com/roman-era-map-shows-large-now-sunken-island-off-black-sea-coast/ Roman Era Map Shows Large Now-Sunken Island Off Black Sea Coast.] Brewminate, 23 June 2018.</ref>
+|-
+|Krusenstern Rock
+|1804
+|Reported as a breaker at 22° 15' N, 175° 37' W. Capt. R. Suffern of the ''Craigerne'' reported that he was at these exact coordinates in 1897 but there was no sign of the rock.<ref name=":1">{{Cite book |last=Survey |first=U. S. Coast and Geodetic |url=https://books.google.com/books?id=Tuo6AQAAMAAJ&dq=Krusenstern+Rock&pg=PA52 |title=Coast Pilot Notes on Hawaiian Islands: February 21, 1912 |date=1912 |publisher=U.S. Government Printing Office |language=en}}</ref> 
+|-
+|L'Enfants Perdu Islands
+|1768
+|Discovered by [[Louis Antoine de Bougainville|Bougainville]], variously placed at 14° 16′ S, 177° 23′ W or 14° 20′ S, 176° 40′ W. Found doubtful in 1875 after searches found no land in the area. Possibly a mistaken sighting of the [[Hoorn Islands|Horne Islands]].<ref name=":3" />
+|-
+|Jane Island
+|Unknown
+|Location given as 16° 10′ N, 173° 15′ W. Could not be found in 1841, and the island being a mistaken sighting of [[Johnston Atoll]] was ruled out due to latitude. Not seen on modern maps.<ref name=":3" />
+|-
+| [[Los Jardines]] || 1528 || A pair of phantom islands to the east of the [[Marshall Islands]].
+|-
+|Jesus Island
+|1567
+|Reported by [[Álvaro de Mendaña de Neira|Mendaña]] at 6° 45′ S, 171° 30′ E. Krusenstern doubted its existence and it was noted as doubtful in 1851; not seen on modern maps.<ref name=":2" />
+|-
+|[[María de Lajara]] or Maria Laxar || {{sort|1600|17th century}} || Usually located northeast from Hawaii, but perhaps originally one of the [[Bonin Islands]]. 
+|-
+| [[Maria Theresa Reef]] (aka Tabor Island or Tabor Reef) || 1843 || Another nonexistent reef in the Line Islands (in fact [[Line Islands]] are more than {{convert|2000|mi|km mi nmi|abbr=off|order=out}} away), slightly to the southwest-west of the phantom island, [[Jupiter Reef]]. It is a setting for Jules Verne's book ''[[In Search of the Castaways]]''.
+|-
+|Maria Rock
+|Unknown
+|Location given as 19° 45′ N, 20° 50′ W, off of [[Mauritania]]. Could not be found in 1838.<ref name=":3" />
+|-
+|Marzeveen/Maarseveen
+|Unknown
+|Location given as 41° or 42° S, 20° E, in close vicinity of Denia/Davia. Not seen on modern maps.<ref name=":3" />
+|-
+| [[Matsyn Island]]
+|
+|
+|-
+|Maury Island
+|Unknown
+|Location given as 27° S, 95° 06′ W. Not seen on modern maps, but could not be located on any historical maps either.<ref name=":3" />
+|-
+| [[Mayda]] or Isle of Mam|| 1367 || A crescent-shaped island in the North Atlantic that does not appear to exist; however, there is a crescent-shaped group of seamounts {{convert|120|ft|m|abbr=off|order=flip}} deep near its described location.
+|-
+|Merrill Island
+|1832
+|Reported by Captain Harding Merrill of the ''Comboy'' at 16° 38′ S, 141° W. Reportedly inhabited by people resembling [[Native Hawaiians|Hawaiians]]. Noted doubtful in 1851; not seen on modern maps.<ref name=":2" />
+|-
+|Islas de Mesa
+|1555
+|A Spanish navigator named [[Juan Gaetano]] charted an archipelago of islands in the Central Pacific Ocean at approximately 20° N, 138° W that he named the "Islas de Mesa," with islands named {{lang|es|La Mesa}}, {{lang|es|La Desgraciada}}, and {{lang|es|Los Monjes}}.  These islands were removed from Spanish charts after [[James Cook]] landed in Hawaiʻi in 1778, and it is believed that the "Islas de Mesa" are actually the [[Hawaiian Islands]] with their location recorded as being 17 degrees of longitude west of their actual location (an error of about {{convert|1100|mi|km|disp=or}}) due to Gaetano's inability to accurately find their longitude.<ref>{{cite journal|last=Hayford|first=John F.|title= The Longitude of Honolulu, Various Determinations, 1555-1903|date=November 6, 1903|journal=Science|volume=18|number=462|pages=589-593|url=https://www.jstor.org/stable/1630836|access-date=February 6, 2026}}</ref><ref>{{cite book|last=Nordyke|first=Eleanor C.|title=The Peopling of Hawaii|year=1989|publisher=University of Hawaii Press|page=15|url=https://books.google.com/books?id=jRq09rgP_HYC&lpg=PA14&pg=PA15#v=onepage&q&f=false|access-date=February 6, 2026}}</ref>
+|-
+|Minnehaha Rock
+|1879
+|Sighted by Capt. Beckwith of the ''Victoria'' at 25° 50' S, 106° 20' W. No subsequent sightings have been made.<ref name=":0" />
+|-
+|Mokupāpapa
+|Unknown
+|Known to the [[Native Hawaiians]] as a 'flat island' (translated literally from its name) to the southwest of the island of [[Niʻihau]], past [[Kaʻula]], described variously as 'a five-hour sail' from the latter and 'halfway to [[Tahiti]]' and actively being traveled to in [[James Cook]]'s time, but a search by the voyage's men could not find it.<ref>{{cite news |last1=Hitt |first1=Christine |title=The search for Hawaii's missing island |url=https://www.sfgate.com/hawaii/article/moku-papapa-hawaii-five-fathom-pinnacle-19832554.php |access-date=20 October 2024 |work=SFGate |date=18 October 2024}}</ref>
+|-
+|Nachtegal Rock
+|1861
+|Seen by {{HMS|Sphinx|1748|6}} at 40° 20′ S, 52° 55′ E. Last seen in charts in 1878.<ref name=":3" />
+|-
+|Nameless Island
+|Unknown
+|Discoverer unknown; location given as 2° 50′ S, 170° 18′ E. Noted as doubtful in 1851; not seen on modern maps.<ref name=":2" />
+|-
+|New Badalgo
+|Unknown
+|Location given as 18° 15′ N, 143° 40′ W. Not seen on modern maps.<ref name=":3" />
+|-
+| [[New South Greenland]] || 1823 || Unknown odd island near Antarctica, which captain [[Benjamin Morrell]] of the ship Wasp saw while traveling north from Antarctica. He thought it to be the [[Antarctic Peninsula]] (then called New South Greenland), but his reported location during the voyage, while perfectly copying the expected path for traveling up the peninsula, was over {{convert|310|mi|km mi nmi|abbr=off|order=out}} to the east and {{convert|60|mi|km mi nmi|abbr=off|order=out}} to the north of the actual position of the Antarctic Peninsula, suggesting either a huge miscalculation in location or sightings of icebergs and fog, typical of phantom islands in the Antarctic Circle.
+|-
+|New York and Nexsen Islands
+|1798
+|Reported by a Mr. Fanning on the ''Betsy'' at 8° 9′ S, 141° 30.5′ W based on location seven hours after sighting. Smoke noted, suggesting inhabitants. Observed from four to six leagues away and not approached. Suspected in 1851 to be a mistaken sighting of two nearby islands; not seen on modern maps.<ref name=":2" />
+|-
+| [[Nimrod Islands]] || 1828 || A group of islands between [[Emerald Island (phantom)|Emerald Island]] and [[Dougherty Island]], both of which are nonexistent. Probably a group of icebergs together.
+|-
+| [[Pactolus Bank]] || 1885 || An oceanic bank {{convert|400|ft|m|abbr=off|order=flip}} deep off the west coast of [[Cape Horn]], suggested as the remains of [[Elizabeth Island (Cape Horn)|Elizabeth Island]]. A 1956 search of the area turned up no shallow areas in the reported location.
+|-
+|Passion/Paxarus Island
+|Unknown
+|Location given as 25° 48′ N, 136° 36′ W or 26° 12′ N, 136° W. No sign of the island could be found in 1873.<ref name=":3" />
+|-
+| [[Mount Penglai]] || Antiquity || An island thirty-thousand leagues to the east off the coast of [[Shandong]]. Associated with numerous East Asian myths and legends.
+|-
+| [[Pepys Island]] || 1683 || In 1683, [[Ambrose Cowley]] reported an unknown island where he thought the Falklands were, but his location was 4 degrees to the north of the Falkland Islands. While it is possible that he made a mistake in seeing a nonexistent island, it is more likely he saw one of the Falkland Islands and made a 4-degree error in his location.
+|-
+| Petermannland || {{sort|1867|Between 1860 and 1874}} || North of [[Franz Josef Land]], named after [[August Heinrich Petermann]].
+|-
+| [[Isle Phelipeaux]] || 1744 || A nonexistent island in [[Lake Superior]] referenced in the 1783 [[Treaty of Paris (1783)|Treaty of Paris]].
+|-
+| [[Podesta (island)|Podesta]] || 1879 || An island {{convert|1390|km|mi nmi|abbr=off}} to the west of [[El Quisco, Chile]], that was discovered to be fake in 1935 and promptly removed. Other phantom islands were also found in the vicinity in 1912 and 1858 (see [[Sarah Ann Island]]).
+|-
+|Polvaro Island
+|1505
+|Usually placed at or near 9° 20′ S, 89° E. Reportedly discovered after a Portuguese ship withdrawing from [[Malacca City|Malacca]] to [[Kanyakumari|Cape Comorin]] was lost nearby. Sometimes called ''Apaluria''; sighted into the 18th century. Said to be low, woody, eight to 10 miles long. Absence noted in 1866; allegedly "exploded."<ref name=":3" />
+|-
+|Recreation Island
+|Unknown
+|Location given as 15° 35′ S, 150° W, north of [[Tahiti]]. Position passed over with no sign of land, removed in 1864.<ref name=":3" />
+|-
+|Reed/Redfield Rocks
+|1850
+|First sighting reported by Capt. Reed of the brig ''Emma'' at 37° 24′ N, 137° 22′ W in the ''Shipping Gazette''. More sightings were made in varying locations in 1851, 1856, and 1866. They were said to be two rocks, 600–900 feet long and 50–40 feet across, under 3–5 fathoms of water and breakers in rough weather. Four surveys from 1871 to 1875 could not find them, but another sighting in 1889 said they were now four feet above the water. Another survey in 1902 disproved their existence, but were still marked on maps as doubtful.<ref name=":3" />
+|-
+| [[Rivadeneyra Shoal]] || 1842 || A shoal in the eastern Pacific Ocean.
+|-
+| [[Rocabarraigh]]
+|
+|
+|-
+|Ilha dos Romeiros
+|Unknown
+|Location given as 28° 40′ S, 74° E, between [[Madagascar]] and [[Australia]]. Removed from charts by 1856 or earlier.<ref name=":3" />
+|-
+|Roque Piz
+|1649
+|First seen in a chart by [[João Teixeira Albernaz I|João Teixeora]], located at 6° S, 60° E. Seen on maps as late as 1865, described as being three flat islands. Likely a mistaken sighting of the [[Seychelles]] or [[Chagos Archipelago|Chagos]].<ref name=":3" />
+|-
+| [[Royal Company's Islands]] || {{sort|1830|Before 1840}} || A fictional island widely believed during the 19th century to be to the southwest of [[Tasmania]]. While not found by numerous expeditions in 1840, 1889, 1902, 1909, and 1912, the island was not officially removed from nautical charts until 1904.
+|-
+| [[Royllo]] || 1424 || A small island to the west of the mythical [[Antillia]] (see Antillia above). 
+|-
+| [[Rupes Nigra]] || {{sort|1300|14th century}} || A magnetic, black island at the exact [[North magnetic pole|Magnetic North Pole]], invented as an explanation for why all compasses point north.
+|-
+| [[Saint Brendan's Island]] || {{sort|0512|512}}  || Claimed to have been first visited in 512 by the monk St. Brendan and 14 others, along with later reports up to 1772.
+|-
+|St. Elmo
+|1606
+|Reported by Quiros, location 21° 20' S, 143° 50' W. Said to be low, surrounded by coral reefs, with a 30 [[Spanish units of measurement|Spanish leagues]] circumference. Noted as doubtful in 1851; not seen on modern maps.<ref name=":2" />
+|-
+| [[St. Matthew Island (phantom island)|St. Matthew Island]] || 1516 || An island near the coast of Africa, roughly {{convert|1000|km|mi nmi|abbr=off}} east-northeast of [[Ascension Island]] and possibly confused with the same latitude [[Annobón Province|Annobón Island]].
+|-
+| [[Sandy Island, New Caledonia|Sandy Island]] || 1774 || Another phantom, small island to the west of [[New Caledonia]] that was recorded on many maps until 2012, when a surveying ship passed by and disproved its existence. The current leading explanation is that the island was a raft of buoyant [[pumice]] from a recent nearby seamount eruption.
+|-
+| [[Sannikov Land]] || 1809 || An island near the [[De Long Islands]], north of Russia, that probably did exist but was destroyed due to [[coastal erosion]].
+|-
+| [[Sarah Ann Island]] || 1858 || A phantom island near [[Easter Island]], similar to [[Podesta (island)|Podesta island]]. See [http://www.lib.utexas.edu/maps/onc/txu-pclmaps-oclc-8322829_r_22.jpg Operational Navigation Chart] of the [[United States Department of Defense]].
+|-
+| [[Satanazes]] || 1424 || This island was originally noted on maps in 1424, originating from popular legend of devils and demons attacking ships that went into the area, but the island was subsequently removed because it obviously did not exist. The island, often drawn to the north of the mythical [[Antillia]], was purportedly full of evil demons but was sometimes called Salvaga to avoid using the profanity "devil".
+|-
+| [[Saxemberg Island]] || 1670 || An odd island midway between South America and Africa that numerous captains reported seeing in 1804, 1809, and 1816. While most had conflicting reports, all of them found the island in the same location; however, none of them actually made landfall. It is possible the island was volcanic and later erupted and destroyed itself. It is also possible that they were looking at [[Tristan de Cunha]] island.
+|-
+| [[Schjetman Reef]] || 1868 || To the west of the [[Hawaiian Islands]], Schjetman Reef was originally found in 1868 to be an island {{convert|1.5|nmi|km mi nmi|abbr=off|order=out}} long and {{convert|0.5|nmi|km mi nmi|abbr=off|order=out}} wide. Later searches in 1880, 1923, and 1924 could not find the island.
+|-
+| Sefton Reef || 1808 || Approx. 83°W, 37°S (southwest of [[Robinson Crusoe Island]]), noted as "position doubtful" in Operational Navigation Chart<ref>{{cite web|url=http://www.lib.utexas.edu/maps/onc/txu-pclmaps-oclc-8322829_r_22.jpg |format=JPG |title=Photographic image of Relief Portrayal : ONC R-22 |website=Lib.utexas.edu |access-date=2016-10-01}}</ref> of the [[United States Department of Defense]]. 
+|-
+| [[Terra Nova Islands]] || 1961 || Thought to lie off Oates Coast, East Antarctica.
+|-
+| [[Thompson Island (South Atlantic)|Thompson Island]] || 1825 || An island in the south Atlantic Ocean discovered by the whaling ship captain George Norris; it has not been seen since 1893.
+|-
+| [[Thule]] || {{sort|-325|325 BC}} || A mythical island in the far north, possibly at or above the [[Arctic Circle]], mentioned in many works from the Roman and Medieval period. Sources in antiquity placed Thule several days travel north of [[Great Britain]]<ref>[[Pliny the Elder]], [[Natural History (Pliny)|Natural History]]; [http://penelope.uchicago.edu/holland/pliny6.html Book VI, Chapter 34]</ref> visible from [[Orkney]];<ref>[[Tacitus]], [[Agricola (book)
+|Agricola]], [http://www.thelatinlibrary.com/tacitus/tac.agri.shtml 10].</ref> or north of [[Scythia]].<ref>[[Pomponius Mela]], De Situ Orbis, III, 57.</ref> More modern scholars have suggested Thule may have been [[Ireland]];<ref>[[Charles Vallancey]] (1772) [https://archive.org/details/anessayonantiqu00vallgoog An essay on the antiquity of the Irish language]</ref> the Estonian island of [[Saaremaa]];<ref name="Silverwhite">{{cite book
+ | author = Lennart Meri
+ | year = 1976
+ | title = Hõbevalge (Silverwhite)
+ | publisher = Eesti Raamat
+ | location = [[Tallinn]], [[Estonia]]
+ | title-link =Silverwhite
+ | author-link =Lennart Meri
+ }}</ref> or the Norwegian island of [[Smøla (island)|Smøla]].<ref name=Germania>Andreas Kleineberg, Christian Marx, [[Eberhard Knobloch]] und Dieter Lelgemann: ''Germania und die Insel Thule. Die Entschlüsselung von Ptolemaios' "Atlas der Oikumene".'' Wissenschaftliche Buchgesellschaft, Darmstadt 2010.</ref>
+|-
+|Tiburones
+|Unknown
+|Captain D'Urville asked the residents of [[Ua Pou|Uapoa]] about this island in August 1838. They claimed it existed, reporting it had high land, one sandy beach which could be approached in good weather, and a single male inhabitant (the others having fled). Location given as 11° S, 143° W; noted doubtful in 1851 and not seen on modern maps.<ref name=":2" />
+|-
+| [[Torca Island]] || 1693 || A mythical island near [[Ambon Island|Ambon]] in Indonesia purportedly destroyed by a volcanic eruption.
+|-
+| [[Hatohobei#Transit Reef|Transit Reef]] || {{sort|1750|18th century}} || A possible reef in Southern Palau. While this reef probably exists, some maps do not list it as an actual location, and, although the reef doesn't have any land, the native name of the island, Pieraurou, means 'Sandy Navigation Point', implying a sandy island or sand bar.
+|-
+|Truls Island
+|1962
+|Reported by the tanker ''Truls'' at 56° S, 23° 15′ E. Marked on USHO Chart 5188B in October 1969 as "ED" (existence doubtful).<ref name=":3" />
+|-
+| [[Tuanaki]] || 1842 || A vanished group of islets in the [[Cook Islands]] at which a sailor allegedly spent 6 days, but a ship traveling in the waters two years later found no island.
+|-
+|Turnbull Island
+|Unknown
+|Location given as 19° 52′ S, 143° 32′ W. Noted as doubtful in 1864 and removed from charts after 1875.<ref name=":3" />
+|-
+|Two Brothers Reef
+|1823
+|Reportedly struck by a whaling ship in 1823, location listed as 24° 14' N, 168° 28′ W. Existence doubtful by 1912 due to lack of sightings; not seen on modern maps.<ref name=":1" />
+|-
+| [[Wachusett Reef]] || 1899 || A nonexistent reef in the Line Islands – in fact [[Line Islands]] are more than {{convert|2000|mi|km mi nmi|abbr=off|order=out}} away – along with [[Ernest Legouve Reef]], [[Jupiter Reef]], and [[Maria Theresa Reef]]. This reef, the largest of the three, was thought to be {{convert|30|-|35|ft|m|round=0.5|abbr=off|order=flip}} deep. None of these reefs are currently believed to have actually existed.
+|-
+|Walker Island || 1810s || A claimed "island" southeast of Hawaii reportedly discovered by a captain named Walker sometime between 1812 and 1814. It is shown slightly east of the phantom island [[Sarah Ann Island|Sarah Ann Island]] on some maps. Another theory suggests that it may have been confused with [[Teraina|Washington Island]].
+|-
+| [[Willoughby's Land]]
+|
+|
+|-
+| Yosemite Rock || 1903 || Approx. 83°W, 32°S (northwest of [[Robinson Crusoe Island]]), noted as "Existence doubtful" in [http://www.lib.utexas.edu/maps/onc/txu-pclmaps-oclc-8322829_r_22.jpg Operational Navigation Chart] of the [[United States Department of Defense]].{{clarify|date=January 2023|reason=Unclear whether this is still noted as existence doubtful in charts more recent than 1976 or in older charts or just this one chart}}
+|-
+|''(unnamed bank)''
+|Before 1901
+|Shown on historical charts at 30° 55' N, 177° 30' E and 42 fathoms deep. Soundings of this area in 1901 and 1902 failed to locate the bottom at 100 fathoms, and it is not seen on modern maps.<ref name=":1" />
+|-
+|''(unnamed rock)''
+|1869
+|Sighted by the steamer ''Great Pacific'' at 25° 40' S, 85° 0' W. The ''Sumbawa'' passed through the area in 1904 but did not see it.<ref name=":0" />
+|-
+|''(unnamed breakers)''
+|1901
+|Reported at 21° 55' N, 176° 05' W.<ref name=":1" /> There is no indication of these breakers on modern maps.
+|-
+|}
+
+==See also==
+{{Portal|Islands}}
+* [[Former island]]
+* [[Fictitious entry]]
+* [[List of fictional islands]]
+* [[List of lost lands]]
+* [[Lost city]]
+* [[Null Island]]
+* [[Mythical place]]
+* [[Phantom settlement]]
+* [[Terra incognita]]
+* [[Vigia (nautical)|Vigia]] 
+
+==References==
+{{Reflist}}
+
+==Further reading==
+* {{cite book |last=Brooke-Hitching |first=Edward|title=The Phantom Atlas: The Greatest Myths, Lies and Blunders on Maps|year=2016|publisher=Simon & Schuster UK|location=London|isbn=978-1-4711-5945-9}}
+* Firestone, Clark Barnaby. ''The Coasts of Illusion: A Study of Travel Tales'', Harper Books, 1924.
+* Gaddis, Vincent, ''Invisible Horizons'', Chilton Books. New York. 1965.
+* {{cite news | last=Gould | first=Rupert T. |title=The Auroras, and Other Doubtful Islands |work=Oddities: A Book of Unexplained Facts | publisher=Kessinger Publishing | year=1928 |pages=124–163 }}
+* Ivanov, L., and N. Ivanova. Phantom islands. In: [https://www.researchgate.net/publication/364087925_The_World_of_Antarctica ''The World of Antarctica''.] Generis Publishing, 2022. pp.&nbsp;74–77. {{ISBN|979-8-88676-403-1}}
+* Johnson, Donald S., ''Phantom Islands of the Atlantic'', New York, Walker Publishing, 1996 (Rev. ed.).
+* Liesemer, Dirk. ''Lexikon der Phantominseln''. Hamburg: Mareverlag, 2016, {{ISBN|978-3-86648-236-4}}.
+* {{Cite web |title=Thompson Island |url=http://www.volcano.si.edu/world/volcano.cfm?vnum=1806-03- |archive-url=https://web.archive.org/web/20090419113232/http://www.volcano.si.edu/world/volcano.cfm?vnum=1806-03- |archive-date=2009-04-19 |publisher=Global Volcanism Program, Department of Mineral Sciences, [[National Museum of Natural History]], [[Smithsonian Institution]]}}
+* {{cite book |last = Ramsay |first = Raymond |title = No Longer on the Map |publisher = Viking Press |location = New York |year = 1972 |isbn = 978-0-670-51433-5 }}
+* Walsh, William Shepard. ''A Handy Book of Curious Information'', J. B. Lippincott, 1913.
+
+==External links==
+{{commons category}}
+* [https://www.nationalgeographic.com/travel/article/these-fabled-ghost-islands-exist-only-in-atlases National Geographic article discussing ghost islands]
+
+{{Continents of Earth}}
+
+[[Category:Phantom islands| ]]
