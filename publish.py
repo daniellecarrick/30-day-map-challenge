@@ -115,6 +115,7 @@ def gallery(days: list[dict]) -> None:
 .gallery h1 {{ font-family: var(--font-head); font-size: clamp(26px, 4vw, 36px); line-height: 1.15; margin: 0 0 8px; }}
 .gallery .lede {{ margin-bottom: 4px; }}
 .progress {{ color: var(--muted); font-size: 14px; margin: 0; }}
+.progress a {{ color: var(--ink); }}
 .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 20px; }}
 .card {{ border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); border-radius: 10px; overflow: hidden;
          background: var(--bg); display: flex; flex-direction: column; }}
@@ -134,7 +135,7 @@ def gallery(days: list[dict]) -> None:
   <header>
     <h1>{SITE_TITLE}</h1>
     <p class="lede">{SITE_BLURB}</p>
-    <p class="progress">{len(days)} of 30 days</p>
+    <p class="progress">Built by <a href="https://www.daniellecarrick.com">Danielle Carrick</a></p>
   </header>
   <section class="grid">{''.join(cards)}
   </section>

@@ -1,0 +1,9 @@
+{
+  "day": 15,
+  "theme": "Inside out",
+  "title": "Turn the Earth inside out and six Pacific trenches tower over Everest",
+  "description": "A 3D globe with real relief pushed out of the surface and exaggerated, then flipped around sea level: trenches become mountains, mid-ocean ridges become rift valleys and the continents become seas. Data: ETOPO1, NOAA NCEI.",
+  "html": "out/map.html",
+  "png": "out/map.png",
+  "published": "2026-11-15"
+}
