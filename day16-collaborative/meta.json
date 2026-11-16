@@ -1,0 +1,9 @@
+{
+  "day": 16,
+  "theme": "Collaborative map",
+  "title": "The world, as everyone drew it",
+  "description": "Every outline visitors drew in Day 13's game, freehand on a world map with coastlines but no borders, layered into one map: a heat map of where people put each of 17 countries, and the crowd's outline (the area inside at least half the drawings) next to the real border. It updates live as more people play Day 13. Overlap and size are measured on an equal-area map. Data: visitors' drawings. Map: Natural Earth.",
+  "html": "out/map.html",
+  "png": "out/map.png",
+  "published": "2026-11-16"
+}

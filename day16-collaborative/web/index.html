@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The World, As Drawn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .sphere { fill: color-mix(in srgb, var(--ink) 3%, var(--bg)); stroke: color-mix(in srgb, var(--ink) 25%, transparent); stroke-width: .8; vector-effect: non-scaling-stroke; }
+  .grat { fill: none; stroke: color-mix(in srgb, var(--ink) 9%, transparent); stroke-width: .6; vector-effect: non-scaling-stroke; }
+  .land { fill: color-mix(in srgb, var(--ink) 11%, var(--bg)); stroke: color-mix(in srgb, var(--ink) 40%, transparent); stroke-width: .6; vector-effect: non-scaling-stroke; }
+  .band { stroke: none; pointer-events: none; }
+  .crowd { fill: color-mix(in srgb, var(--seq-4) 30%, transparent); stroke: var(--seq-6); stroke-width: 1.8; stroke-dasharray: 5 3; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .heat .crowd { fill: none; }
+  .truth { fill: none; stroke: var(--ink); stroke-width: 1.2; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .truth.on, .crowd.on { stroke-width: 2.6; }
+  .dim .band:not(.on), .dim .crowd:not(.on) { opacity: .25; }
+
+  .stage { flex: 1 1 auto; min-height: 0; display: flex; gap: 18px; }
+  .stage .map-wrap { flex: 1 1 auto; min-width: 0; }
+  .panel { flex: 0 0 310px; overflow-y: auto; padding: 0 0 4px 18px; border-left: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); }
+  .panel h2 { font: 700 18px/1.25 var(--font-head); margin: 0 0 6px; }
+  .live { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+  .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+  .live.on i { background: var(--cat-3); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat-3) 25%, transparent); }
+  .finds { margin: 0 0 16px; padding: 0; list-style: none; }
+  .finds li { margin: 0 0 10px; padding-left: 12px; border-left: 3px solid var(--seq-3); }
+  .finds b { font-weight: 700; }
+  .cta { margin: 0 0 16px; }
+  .cta a { font-weight: 700; color: inherit; }
+  .lede a { color: inherit; }
+  table.rank { width: 100%; border-collapse: collapse; }
+  .rank th { text-align: left; color: var(--muted); font-weight: 600; padding: 0 0 4px; }
+  .rank th.n, .rank td.n { text-align: right; white-space: nowrap; }
+  .rank td { padding: 4px 0; border-top: 1px solid color-mix(in srgb, var(--ink) 10%, transparent); cursor: pointer; }
+  .rank tr:hover td, .rank tr.on td { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+  .rank .bar { display: block; height: 6px; margin-top: 3px; background: var(--seq-4); border-radius: 3px; }
+  .rank .m { color: var(--muted); }
+  .tip .m { color: var(--muted); }
+  .tip table { border-collapse: collapse; margin-top: 4px; }
+  .tip td { padding: 1px 0; } .tip td + td { padding-left: 10px; text-align: right; }
+  .reset { position: absolute; top: 8px; right: 8px; z-index: 3; padding: 8px 12px; box-shadow: 0 1px 3px rgba(0,0,0,.18); visibility: hidden; }
+  .reset.on { visibility: visible; }
+  @media (max-width: 640px) {
+    .stage { flex-direction: column; }
+    .panel { flex: none; border-left: 0; padding: 12px 0 0; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">Every outline people drew in <a id="d13">Day 13's game</a>, freehand on a world map with coastlines but no borders, layered into one map. The dashed line is the crowd's version of each country: the area inside at least half of its drawings.</p>
+    <div class="controls"><div id="view"></div></div>
+  </header>
+  <div class="stage">
+    <div class="map-wrap" id="map">
+      <button class="play reset" id="reset" type="button" aria-label="Show the whole world">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Whole world
+      </button>
+    </div>
+    <aside class="panel" id="panel">
+      <div class="live" id="live"><i></i><span id="liveText">Loading the latest drawings…</span></div>
+      <h2>What the crowd got right and wrong</h2>
+      <ul class="finds" id="finds"></ul>
+      <p class="cta">This map grows as people play. <a id="d13b">Draw five countries</a> and yours join it.</p>
+      <table class="rank" id="rank"></table>
+    </aside>
+  </div>
+  <footer>Overlap = shared area ÷ combined area, measured on an equal-area map · Data: drawings by visitors to <a id="d13c">Day 13</a>, updated live · Map: <a href="https://www.naturalearthdata.com/">Natural Earth</a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const WORKER = (D.worker || "").replace(/\/$/, "");
+const W = 1000, H = 520, REFRESH_MS = 5 * 60 * 1000;
+const LEVELS = D.levels, MAJ = D.majority;
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = v => `${Math.round(v * 100)}%`;
+const times = r => r >= 0.95 && r <= 1.05 ? "about the right size" : r > 1 ? `${r.toFixed(1)}× too big` : `${pct(r)} of real size`;
+const km = v => `${(v < 1000 ? Math.round(v / 10) * 10 : Math.round(v / 100) * 100).toLocaleString()} km`;
+const tip = MapKit.tooltip();
+
+const unmilli = c => typeof c[0] === "number" ? [c[0] / 1000, c[1] / 1000] : c.map(unmilli);
+for (const fc of [D.land, D.countries]) for (const f of fc.features) f.geometry.coordinates = unmilli(f.geometry.coordinates);
+const byCode = new Map(D.countries.features.map(f => [f.properties.code, f]));
+const NAME = new Map(D.targets.map(t => [t.code, t.name]));
+const CODES = D.targets.map(t => t.code);
+
+d3.select("#title").text(D.title);
+d3.select("#day").text(D.day);
+d3.selectAll("#d13, #d13b, #d13c").attr("href", D.day13);
+
+// ---------- map ----------
+const proj = d3.geoEqualEarth().fitExtent([[6, 6], [W - 6, H - 6]], { type: "Sphere" });
+const path = d3.geoPath(proj);
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", "World map of everyone's drawings of 17 countries");
+const root = svg.append("g");
+root.append("path").attr("class", "sphere").attr("d", path({ type: "Sphere" }));
+root.append("path").attr("class", "grat").attr("d", path(d3.geoGraticule10()));
+root.append("path").attr("class", "land").attr("d", path(D.land.features[0]));
+svg.append("clipPath").attr("id", "globe").append("path").attr("d", path({ type: "Sphere" }));
+const marks = root.append("g").attr("clip-path", "url(#globe)");
+const bandLayer = marks.append("g"), crowdLayer = marks.append("g"), truthLayer = root.append("g");
+truthLayer.selectAll("path").data(CODES).join("path").attr("class", "truth").attr("d", c => path(byCode.get(c)));
+
+let tf = d3.zoomIdentity;
+const zoom = d3.zoom().scaleExtent([1, 30]).translateExtent([[0, 0], [W, H]])
+  .on("zoom", ev => { tf = ev.transform; root.attr("transform", tf); d3.select("#reset").classed("on", tf.k > 1.01); });
+svg.call(zoom);
+d3.select("#reset").on("click", () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity));
+const fitTo = ([[x0, y0], [x1, y1]]) => {
+  const k = Math.max(1, Math.min(30, 0.6 * Math.min(W / Math.max(x1 - x0, 1), H / Math.max(y1 - y0, 1))));
+  svg.transition().duration(700).call(zoom.transform, d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k));
+};
+const union = (a, b) => [[Math.min(a[0][0], b[0][0]), Math.min(a[0][1], b[0][1])], [Math.max(a[1][0], b[1][0]), Math.max(a[1][1], b[1][1])]];
+const mainBounds = f => f.geometry.type !== "MultiPolygon" ? path.bounds(f)
+  : path.bounds({ type: "Polygon", coordinates: d3.greatest(f.geometry.coordinates, c => d3.geoArea({ type: "Polygon", coordinates: c })) });
+
+let view = "heat";
+MapKit.segmented("#view", [{ value: "heat", label: "Everyone's drawings" }, { value: "crowd", label: "The crowd's outlines" }], v => {
+  view = v; d3.select("#map").classed("heat", v === "heat"); bandLayer.style("display", v === "heat" ? null : "none");
+}, "heat");
+d3.select("#map").classed("heat", true);
+
+MapKit.legend(svg, {
+  x: 4, y: H - 4, anchor: "bottom", width: 180,   // South Pacific corner, left of South America
+  title: "Share of drawings\ncovering this spot",
+  stops: [[0.1, css("--seq-1")], [0.4, css("--seq-3")], [0.7, css("--seq-5")], [1, css("--seq-7")]],
+  ticks: [[0.1, "10%"], [0.5, "50%"], [1, "100%"]],
+  keys: [{ draw: g => g.append("path").attr("d", "M-7 0H7").attr("class", "crowd").style("vector-effect", "none").style("fill", "none"), label: "Crowd's outline" },
+         { draw: g => g.append("path").attr("d", "M-7 0H7").attr("class", "truth").style("vector-effect", "none"), label: "Real border" }],
+});
+
+// ---------- analysis: rasterize on the equal-area map, so cell counts compare areas fairly ----------
+// Make a ring's longitudes continuous, then clamp at the 180° edge. A drawing that runs off the map's edge
+// (Russia's east end) is saved with points like -175° instead of 185°; read as-is it spans the whole world.
+function unwrap(r) {
+  const out = [r[0].slice()];
+  for (const [x, y] of r.slice(1)) { const px = out[out.length - 1][0]; out.push([x + 360 * Math.round((px - x) / 360), y]); }
+  const shift = -360 * Math.round(d3.mean(out, q => q[0]) / 360);
+  return out.map(([x, y]) => [Math.max(-179.999, Math.min(179.999, x + shift)), y]);
+}
+const ringToPts = r => unwrap(r).map(q => proj(q)).filter(p => p && isFinite(p[0]));
+function rasterBox([[x0, y0], [x1, y1]], max) {
+  const s = max / Math.max(x1 - x0, y1 - y0, 1e-6);
+  return { x0, y0, s, w: Math.max(1, Math.ceil((x1 - x0) * s)), h: Math.max(1, Math.ceil((y1 - y0) * s)) };
+}
+function ctxFor(box) {
+  const c = new OffscreenCanvas(box.w, box.h), ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.setTransform(box.s, 0, 0, box.s, -box.x0 * box.s, -box.y0 * box.s);
+  return ctx;
+}
+const drawPoly = (ctx, s) => { ctx.beginPath(); s.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.fill(); };
+function maskOf(box, fill) {
+  const ctx = ctxFor(box); fill(ctx);
+  const a = ctx.getImageData(0, 0, box.w, box.h).data, m = new Uint8Array(box.w * box.h);
+  for (let i = 0; i < m.length; i++) m[i] = a[i * 4 + 3] > 127;
+  return m;
+}
+const featureMask = (box, f) => maskOf(box, ctx => { ctx.beginPath(); d3.geoPath(proj, ctx)(f); ctx.fill(); });
+const polyBounds = s => [[d3.min(s, p => p[0]), d3.min(s, p => p[1])], [d3.max(s, p => p[0]), d3.max(s, p => p[1])]];
+// one drawing against one country: overlap, size, how far off center
+function score(s, f) {
+  const box = rasterBox(union(polyBounds(s), path.bounds(f)), 300);
+  const A = maskOf(box, ctx => drawPoly(ctx, s)), B = featureMask(box, f);
+  let both = 0, either = 0, a = 0, t = 0;
+  for (let i = 0; i < A.length; i++) { a += A[i]; t += B[i]; both += A[i] & B[i]; either += A[i] | B[i]; }
+  const c = proj.invert(d3.polygonCentroid(s));
+  return { iou: either ? both / either : 0, size: t ? a / t : 0, both, km: c ? d3.geoDistance(c, d3.geoCentroid(f)) * 6371 : NaN };
+}
+// Grid box: every drawing, so even the faintest band isn't cut off
+function gridBox(polys) {
+  const b = polys.map(polyBounds).reduce(union);
+  const m = 0.03 * Math.max(b[1][0] - b[0][0], b[1][1] - b[0][1]);
+  return [[b[0][0] - m, b[0][1] - m], [b[1][0] + m, b[1][1] + m]];
+}
+// share of drawings covering each cell: additive canvas, 1 unit of red per drawing, 255 per pass
+function coverage(polys, b) {
+  const box = rasterBox(b, 500), n = box.w * box.h, v = new Float32Array(n);
+  for (let i = 0; i < polys.length; i += 255) {
+    const ctx = ctxFor(box); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = "rgb(1,0,0)";
+    for (const p of polys.slice(i, i + 255)) drawPoly(ctx, p);
+    const a = ctx.getImageData(0, 0, box.w, box.h).data;
+    for (let j = 0; j < n; j++) v[j] += a[j * 4];
+  }
+  for (let j = 0; j < n; j++) v[j] /= polys.length;
+  return { ...box, v };
+}
+
+function analyse(rings) {
+  const st = {};
+  for (const c of CODES) {
+    const f = byCode.get(c), polys = (rings[c] || []).map(ringToPts).filter(p => p.length >= 3);
+    const s = st[c] = { code: c, name: NAME.get(c), n: polys.length, polys, area: d3.geoArea(f) };
+    if (s.n < D.min_drawings) continue;
+    s.scores = polys.map(p => score(p, f));
+    s.iou = d3.median(s.scores, d => d.iou); s.size = d3.median(s.scores, d => d.size); s.km = d3.median(s.scores, d => d.km);
+    const g = s.grid = coverage(polys, gridBox(polys));
+    s.agree = d3.max(g.v); s.agreeK = Math.round(s.agree * s.n);
+    const T = featureMask(g, f);
+    let both = 0, either = 0, m = 0;
+    for (let i = 0; i < g.v.length; i++) { const a = g.v[i] >= MAJ - 1e-6; m += a; both += a & T[i]; either += a | T[i]; }
+    s.majIou = m ? both / either : null;
+  }
+  return st;
+}
+
+// ---------- drawing the layers ----------
+const toMap = g => d3.geoPath(d3.geoTransform({ point(x, y) { this.stream.point(g.x0 + x / g.s, g.y0 + y / g.s); } }));
+function render(st) {
+  const ok = CODES.filter(c => st[c].grid);
+  // band by band across every country, so where two heat maps meet the higher share sits on top
+  const bands = [];
+  LEVELS.forEach((L, i) => ok.forEach(c => bands.push({ c, i, g: d3.contours().size([st[c].grid.w, st[c].grid.h]).contour(st[c].grid.v, L) })));
+  bandLayer.selectAll("path").data(bands).join("path").attr("class", "band")
+    .attr("d", d => toMap(st[d.c].grid)(d.g)).attr("fill", d => css(`--seq-${d.i + 1}`));
+  const crowd = ok.filter(c => st[c].majIou != null).map(c => ({ c, g: d3.contours().size([st[c].grid.w, st[c].grid.h]).contour(st[c].grid.v, MAJ - 1e-6) }));
+  crowdLayer.selectAll("path").data(crowd).join("path").attr("class", "crowd").attr("d", d => toMap(st[d.c].grid)(d.g));
+}
+
+// ---------- panel ----------
+function findings(st) {
+  const ok = CODES.map(c => st[c]).filter(s => s.grid), out = [];
+  const withMaj = ok.filter(s => s.majIou);
+  if (withMaj.length) {
+    const b = d3.greatest(withMaj, s => s.majIou);
+    out.push(`<b>${esc(b.name)} is the crowd's best.</b> Its outline overlaps the real border by ${pct(b.majIou)}.`);
+  }
+  if (ok.length >= 6) {
+    const by = ok.slice().sort((a, b) => a.area - b.area);
+    const med = g => d3.median(g.flatMap(s => s.scores.map(d => d.size)));
+    out.push(`<b>Small countries come out big.</b> The five smallest (${by.slice(0, 5).map(s => esc(s.name)).join(", ")}) were drawn a median ${med(by.slice(0, 5)).toFixed(1)}× their real size. The five biggest: ${med(by.slice(-5)).toFixed(1)}×.`);
+  }
+  const ner = st.NER, nga = byCode.get("NGA");
+  if (ner && ner.grid) {
+    const k = ner.polys.filter((p, i) => score(p, nga).both > ner.scores[i].both).length;
+    out.push(`<b>Niger or Nigeria?</b> ${k} of ${ner.n} drawings of Niger cover more of Nigeria than of Niger.`);
+  }
+  const noMaj = ok.filter(s => s.majIou == null).sort((a, b) => a.agree - b.agree);
+  if (noMaj.length) {
+    const w = noMaj[0];
+    out.push(`<b>No agreement on ${noMaj.length === 1 ? esc(w.name) : `${noMaj.length} countries`}.</b> ${noMaj.length === 1 ? "No" : `For ${noMaj.map(s => esc(s.name)).join(", ")}, no`} spot is inside half the drawings. ${esc(w.name)} is the most scattered: no spot is in more than ${w.agreeK} of ${w.n}.`);
+  }
+  d3.select("#finds").html(out.map(s => `<li>${s}</li>`).join(""));
+}
+function headline(st) {
+  const ok = CODES.map(c => st[c]).filter(s => s.grid), withMaj = ok.filter(s => s.majIou);
+  if (!withMaj.length) return D.title;
+  const b = d3.greatest(withMaj, s => s.majIou), w = d3.least(ok, s => s.agree);
+  return `The crowd's ${b.name} overlaps the real one by ${pct(b.majIou)}. Its ${w.name}: no spot is in more than ${w.agreeK} of ${w.n} drawings`;
+}
+let current = null;
+function table(st) {
+  const rows = CODES.map(c => st[c]).sort((a, b) => (b.agree ?? -1) - (a.agree ?? -1));
+  const t = d3.select("#rank");
+  t.html(`<thead><tr><th>Country</th><th class="n">Most agree on one spot</th></tr></thead><tbody></tbody>`);
+  t.select("tbody").selectAll("tr").data(rows).join("tr")
+    .html(s => s.grid
+      ? `<td>${esc(s.name)} <span class="m">· ${s.n}</span><span class="bar" style="width:${pct(s.agree)}"></span></td><td class="n">${s.agreeK} of ${s.n}</td>`
+      : `<td>${esc(s.name)} <span class="m">· ${s.n}</span></td><td class="n m">needs ${D.min_drawings}</td>`)
+    .on("mouseenter", (_, s) => highlight(s.code)).on("mouseleave", () => highlight(null))
+    .on("click", (_, s) => { const f = byCode.get(s.code); fitTo(s.grid ? union(mainBounds(f), gridBox(s.polys)) : mainBounds(f)); });
+}
+function highlight(c) {
+  current = c;
+  marks.classed("dim", !!c);
+  bandLayer.selectAll("path").classed("on", d => d.c === c);
+  crowdLayer.selectAll("path").classed("on", d => d.c === c);
+  truthLayer.selectAll("path").classed("on", d => d === c);
+  d3.select("#rank").selectAll("tbody tr").classed("on", s => s.code === c);
+}
+
+// ---------- hover: what's here, and whose drawings cover it ----------
+let ST = {};
+svg.on("pointermove", ev => {
+  const p = tf.invert(d3.pointer(ev, svg.node())), ll = proj.invert(p);
+  const f = ll && D.countries.features.find(f => d3.geoContains(f, ll));
+  const hits = [];
+  for (const c of CODES) {
+    const g = ST[c] && ST[c].grid; if (!g) continue;
+    const gx = Math.floor((p[0] - g.x0) * g.s), gy = Math.floor((p[1] - g.y0) * g.s);
+    if (gx >= 0 && gy >= 0 && gx < g.w && gy < g.h && g.v[gy * g.w + gx] > 0) hits.push([ST[c], g.v[gy * g.w + gx]]);
+  }
+  hits.sort((a, b) => b[1] - a[1]);
+  if (!f && !hits.length) return tip.hide();
+  const real = f ? f.properties.name : "Ocean", tgt = f && ST[f.properties.code];
+  tip.show(ev, `<b>${esc(real)}</b>${tgt && tgt.grid ? `<div class="m">${tgt.n} drawings · median overlap ${pct(tgt.iou)} · ${times(tgt.size)} · ${km(tgt.km)} off center</div>` : ""}
+    ${hits.length ? `<table>${hits.slice(0, 4).map(([s, v]) => `<tr><td>Inside ${esc(s.name)} drawings</td><td>${Math.round(v * s.n)} of ${s.n}</td></tr>`).join("")}</table>`
+                  : `<div class="m">No one's drawing covers this spot</div>`}`);
+});
+svg.on("pointerleave", () => tip.hide());
+
+// ---------- data: snapshot first, then live from the Day 13 Worker ----------
+const snap = Object.fromEntries(Object.entries(D.snapshot).map(([c, rs]) => [c, rs.map(r => r.map(([x, y]) => [x / 100, y / 100]))]));
+function update(rings, liveAt) {
+  ST = analyse(rings);
+  render(ST); findings(ST); table(ST); highlight(current);
+  d3.select("#title").text(headline(ST));
+  label(liveAt);
+}
+let lastLive = null;
+function label(liveAt) {
+  const n = d3.sum(CODES, c => ST[c].n);
+  d3.select("#live").classed("on", !!liveAt);
+  d3.select("#liveText").text(liveAt ? `Live · ${n.toLocaleString()} drawings · updated ${liveAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+    : lastLive ? `${n.toLocaleString()} drawings as of ${lastLive.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} (couldn't refresh)`
+    : `${n.toLocaleString()} drawings as of ${D.snapshot_date} (couldn't reach the live data)`);
+}
+async function fetchLive() {
+  const res = await Promise.all(CODES.map(c => fetch(`${WORKER}/drawings?country=${c}`).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })));
+  return Object.fromEntries(res.map(j => [j.country, j.drawings.map(d => d.ring)]));
+}
+async function refresh() {
+  if (!WORKER) return;
+  try { const r = await fetchLive(); lastLive = new Date(); update(r, lastLive); }
+  catch { label(null); }
+}
+update(snap, null);
+if (WORKER) d3.select("#liveText").text("Loading the latest drawings…");
+refresh();
+setInterval(() => { if (document.visibilityState === "visible") refresh(); }, REFRESH_MS);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
+</script>
+</body>
+</html>

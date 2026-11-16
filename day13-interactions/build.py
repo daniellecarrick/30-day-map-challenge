@@ -78,9 +78,23 @@ def load_drawings() -> dict[str, list[list]]:
     return out
 
 
+def unwrap(ring):
+    """Make a ring's longitudes continuous. A drawing that runs off the map's edge at 180° (Russia's east end)
+    is saved with points like -175° instead of 185°; unwrapped, they sit past the edge and get clamped to it,
+    instead of jumping across the whole world."""
+    out = [list(ring[0])]
+    for x, y in ring[1:]:
+        px = out[-1][0]
+        x += 360 * round((px - x) / 360)
+        out.append([x, y])
+    mean = sum(x for x, _ in out) / len(out)
+    shift = -360 * round(mean / 360)
+    return [(x + shift, y) for x, y in out]
+
+
 def to_poly(ring, crs=CRS):
     """A visitor's ring (lon/lat) as a valid polygon in the equal-area CRS."""
-    ring = [(min(180, max(-180, x)), min(89.9, max(-89.9, y))) for x, y in ring]
+    ring = [(min(180, max(-180, x)), min(89.9, max(-89.9, y))) for x, y in unwrap(ring)]
     try:
         s = gpd.GeoSeries([Polygon(ring)], crs="EPSG:4326").to_crs(crs)
         return make_valid(s.iloc[0]).buffer(0)

@@ -462,7 +462,15 @@ function simplify(p, tol) {
 }
 const toRing = s => s.map(p => proj.invert(p)).filter(q => q && isFinite(q[0]) && isFinite(q[1]))
   .map(([lo, la]) => [Math.round(Math.max(-180, Math.min(180, lo)) * 100) / 100, Math.round(Math.max(-90, Math.min(90, la)) * 100) / 100]);
-const fromRing = r => r.map(q => proj(q));
+// Make a ring's longitudes continuous, then clamp at the 180° edge. A drawing that runs off the map's edge
+// (Russia's east end) is saved with points like -175° instead of 185°; read as-is it spans the whole world.
+function unwrap(r) {
+  const out = [r[0].slice()];
+  for (const [x, y] of r.slice(1)) { const px = out[out.length - 1][0]; out.push([x + 360 * Math.round((px - x) / 360), y]); }
+  const shift = -360 * Math.round(d3.mean(out, q => q[0]) / 360);
+  return out.map(([x, y]) => [Math.max(-179.999, Math.min(179.999, x + shift)), y]);
+}
+const fromRing = r => unwrap(r).map(q => proj(q));
 
 // ---------- scoring: rasterize on the equal-area map, so pixel counts compare areas fairly ----------
 function rasterBox(b, max = 420) {
