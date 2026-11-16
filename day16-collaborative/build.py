@@ -9,6 +9,7 @@ draws the PNG from the same snapshot.
 
 Writes:
   - out/map.png    (static, for posting)
+  - out/map-only.png (just the map: no title, callouts, legend or credit)
   - out/map.html   (interactive, self-contained, live)
 
 Data: visitors' drawings (Day 13 Worker + D1); Natural Earth 1:110m countries
@@ -113,11 +114,9 @@ def headline(st):
             f"For {TARGETS[worst][0]}, no spot is in more than {w['agree_k']} of {w['n']} drawings")
 
 
-def png(countries, st, title):
-    S.apply()
+def draw_map(ax, countries, st):
+    """Land, the heat map and the real borders: the map with nothing on top."""
     land = gpd.GeoSeries([countries.geometry.union_all()], crs=countries.crs).to_crs(CRS).simplify(8000)
-    fig, ax = plt.subplots(figsize=S.MAP["png_size_in"])
-    ax.set_position([0.01, 0.07, 0.98, 0.83])
     land.plot(ax=ax, color=S.TOKENS["color"]["light"]["ctl"], edgecolor=S.MUTED, linewidth=0.3)
     ok = [c for c in TARGETS if st[c]["n"] >= MIN]
     # Paint band by band across every country, so where two countries' heat maps meet the higher share wins
@@ -130,6 +129,24 @@ def png(countries, st, title):
     x0, y0, x1, y1 = land.total_bounds
     ax.set_xlim(x0, x1); ax.set_ylim(y0, y1)
     ax.set_aspect("equal"); ax.set_axis_off()
+    return ok
+
+
+def png_bare(countries, st):
+    """Map only: no title, callouts, legend or credit (for reuse in other layouts)."""
+    S.apply()
+    fig = plt.figure(figsize=(S.MAP["png_size_in"][0], S.MAP["png_size_in"][0] * 0.5))
+    ax = fig.add_axes([0.005, 0.01, 0.99, 0.98])
+    draw_map(ax, countries, st)
+    fig.savefig(OUT / "map-only.png", dpi=S.MAP["png_dpi"], bbox_inches="tight", pad_inches=0.05)
+    plt.close(fig)
+
+
+def png(countries, st, title):
+    S.apply()
+    fig, ax = plt.subplots(figsize=S.MAP["png_size_in"])
+    ax.set_position([0.01, 0.07, 0.98, 0.83])
+    ok = draw_map(ax, countries, st)
 
     # call out the extremes
     if ok:
@@ -187,6 +204,7 @@ def main():
             print(f"  {TARGETS[c][0]:<12} n={s['n']:<3} agree {s['agree']:.0%}  overlap {s['iou']:.0%}  size {s['size']:.2f}×  {s['km']:.0f} km")
     print(" ", findings(st))
     png(countries, st, title)
+    png_bare(countries, st)
 
     # ---------------- interactive page (lon/lat in thousandths of a degree; see Day 13 for why) ----------------
     milli = lambda g: shapely.transform(g, lambda xy: np.round(xy * 1000))

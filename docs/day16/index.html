@@ -155,7 +155,7 @@ body { margin: 0; background: var(--bg); color: var(--ink);
 
   .page { max-width: 1600px; }
   .page h1 { max-width: 1000px; margin-left: auto; margin-right: auto; }   /* keep a one-line title clear of the "All maps" link */
-  .stage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; position: relative; }
+  .stage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; position: relative; padding: 0 24px; }   /* room for edge labels */
   .stage .map-wrap { flex: 1 1 auto; min-width: 0; }
   .truth.on { stroke-width: 2.2; }
   /* direct annotations: HTML labels (so text stays 14px+) placed over the map, leader lines in the SVG */
@@ -179,6 +179,7 @@ body { margin: 0; background: var(--bg); color: var(--ink);
   .reset.on { visibility: visible; }
   /* phones: labels would cover the small map, so the notes become a short list under it */
   @media (max-width: 640px) {
+    .stage { padding: 0; }
     .notes, .leads { display: none; }
     .note-list { display: block; }
   }
@@ -374,13 +375,17 @@ root.append("path").attr("class", "grat").attr("d", path(d3.geoGraticule10()));
 root.append("path").attr("class", "land").attr("d", path(D.land.features[0]));
 svg.append("clipPath").attr("id", "globe").append("path").attr("d", path({ type: "Sphere" }));
 const marks = root.append("g").attr("clip-path", "url(#globe)");
-const bandLayer = marks.append("g"), truthLayer = root.append("g");
+const bandLayer = marks.append("g").attr("filter", "url(#soft)"), truthLayer = root.append("g");
+// soften the heat map's band edges; blur is in map units, so it's rescaled on zoom to stay the same on screen
+const BLUR = 2.2;
+const softBlur = svg.append("filter").attr("id", "soft").attr("x", "-5%").attr("y", "-5%").attr("width", "110%").attr("height", "110%")
+  .append("feGaussianBlur").attr("stdDeviation", BLUR);
 truthLayer.selectAll("path").data(CODES).join("path").attr("class", "truth").attr("d", c => path(byCode.get(c)));
 const leadLayer = svg.append("g").attr("class", "leads");   // outside the zoom group: notes show only at full-world view
 
 let tf = d3.zoomIdentity;
 const zoom = d3.zoom().scaleExtent([1, 30]).translateExtent([[0, 0], [W, H]])
-  .on("zoom", ev => { tf = ev.transform; root.attr("transform", tf); d3.select("#reset").classed("on", tf.k > 1.01); d3.select("#map").classed("zoomed", tf.k > 1.01); });
+  .on("zoom", ev => { tf = ev.transform; root.attr("transform", tf); softBlur.attr("stdDeviation", BLUR / tf.k); d3.select("#reset").classed("on", tf.k > 1.01); d3.select("#map").classed("zoomed", tf.k > 1.01); });
 svg.call(zoom);
 d3.select("#reset").on("click", () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity));
 const union = (a, b) => [[Math.min(a[0][0], b[0][0]), Math.min(a[0][1], b[0][1])], [Math.max(a[1][0], b[1][0]), Math.max(a[1][1], b[1][1])]];
@@ -515,11 +520,20 @@ function placeNotes() {
     const spot = NOTE_AT[o.c] || { at: [d3.geoCentroid(f)[0], d3.geoCentroid(f)[1] + 18], side: "bottom" };
     return { ...o, ...spot, from, to: proj(spot.at) };
   });
-  leadLayer.selectAll("path").data(pts).join("path").attr("class", "lead").attr("d", p => p.side === "left" || p.side === "right"
-    ? `M${p.to}H${p.from[0]}V${p.from[1]}` : `M${p.to}V${p.from[1]}H${p.from[0]}`);
-  d3.select("#notes").selectAll(".note").data(pts).join("div").attr("class", p => `note ${p.side}`)
+  const notes = d3.select("#notes").selectAll(".note").data(pts).join("div").attr("class", p => `note ${p.side}`)
     .style("left", p => `${ox + p.to[0] * k}px`).style("top", p => `${oy + p.to[1] * k}px`)
     .html(p => `<b>${esc(p.t)}</b><span>${esc(p.d)}</span>`);
+  // keep every label on the page: slide it sideways if it pokes past the edge, and start its leader line there instead
+  const PAD = 12;
+  notes.each(function (p) {
+    const r = this.getBoundingClientRect();
+    const dx = Math.max(0, PAD - r.left) - Math.max(0, r.right - (document.documentElement.clientWidth - PAD));
+    if (!dx) return;
+    this.style.left = `${parseFloat(this.style.left) + dx}px`;
+    p.to = [p.to[0] + dx / k, p.to[1]];
+  });
+  leadLayer.selectAll("path").data(pts).join("path").attr("class", "lead").attr("d", p => p.side === "left" || p.side === "right"
+    ? `M${p.to}H${p.from[0]}V${p.from[1]}` : `M${p.to}V${p.from[1]}H${p.from[0]}`);
 }
 new ResizeObserver(placeNotes).observe(d3.select("#map").node());
 
