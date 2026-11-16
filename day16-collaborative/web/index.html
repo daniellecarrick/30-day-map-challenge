@@ -14,37 +14,35 @@
   .land { fill: color-mix(in srgb, var(--ink) 11%, var(--bg)); stroke: color-mix(in srgb, var(--ink) 40%, transparent); stroke-width: .6; vector-effect: non-scaling-stroke; }
   .band { stroke: none; pointer-events: none; }
   .truth { fill: none; stroke: var(--ink); stroke-width: 1.2; vector-effect: non-scaling-stroke; pointer-events: none; }
-  .truth.on { stroke-width: 2.6; }
-  .dim .band:not(.on) { opacity: .25; }
 
-  .stage { flex: 1 1 auto; min-height: 0; display: flex; gap: 18px; }
+  .page { max-width: 1600px; }
+  .page h1 { max-width: 1000px; margin-left: auto; margin-right: auto; }   /* keep a one-line title clear of the "All maps" link */
+  .stage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; position: relative; }
   .stage .map-wrap { flex: 1 1 auto; min-width: 0; }
-  .panel { flex: 0 0 310px; overflow-y: auto; padding: 0 0 4px 18px; border-left: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); }
-  .panel h2 { font: 700 18px/1.25 var(--font-head); margin: 0 0 6px; }
-  .live { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
-  .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
-  .live.on i { background: var(--cat-3); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat-3) 25%, transparent); }
-  .finds { margin: 0 0 16px; padding: 0; list-style: none; }
-  .finds li { margin: 0 0 10px; }
-  .finds b { font-weight: 700; }
-  .cta { margin: 0 0 16px; }
-  .cta a { font-weight: 700; color: inherit; }
+  .truth.on { stroke-width: 2.2; }
+  /* direct annotations: HTML labels (so text stays 14px+) placed over the map, leader lines in the SVG */
+  .notes { position: absolute; inset: 0; pointer-events: none; }
+  .note { position: absolute; width: max-content; max-width: 210px; line-height: 1.3;
+          text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 6px var(--bg); }
+  .note b { display: block; font-weight: 700; }
+  .note span { color: var(--muted); }
+  .note.right  { transform: translate(calc(-100% - 6px), -50%); text-align: right; }
+  .note.left   { transform: translate(6px, -50%); }
+  .note.bottom { transform: translate(-50%, calc(-100% - 4px)); text-align: center; }
+  .lead { fill: none; stroke: var(--ink); stroke-width: .8; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .zoomed .notes, .zoomed .leads { display: none; }
+  .note-list { display: none; margin: 10px 0 0; padding: 0; list-style: none; }
+  .note-list li { margin: 0 0 8px; } .note-list b { font-weight: 700; }
   .lede a { color: inherit; }
-  table.rank { width: 100%; border-collapse: collapse; }
-  .rank th { text-align: left; color: var(--muted); font-weight: 600; padding: 0 0 4px; }
-  .rank th.n, .rank td.n { text-align: right; white-space: nowrap; }
-  .rank td { padding: 4px 0; border-top: 1px solid color-mix(in srgb, var(--ink) 10%, transparent); cursor: pointer; }
-  .rank tr:hover td, .rank tr.on td { background: color-mix(in srgb, var(--ink) 5%, transparent); }
-  .rank .bar { display: block; height: 6px; margin-top: 3px; background: var(--seq-4); border-radius: 3px; }
-  .rank .m { color: var(--muted); }
   .tip .m { color: var(--muted); }
   .tip table { border-collapse: collapse; margin-top: 4px; }
   .tip td { padding: 1px 0; } .tip td + td { padding-left: 10px; text-align: right; }
-  .reset { position: absolute; top: 8px; right: 8px; z-index: 3; padding: 8px 12px; box-shadow: 0 1px 3px rgba(0,0,0,.18); visibility: hidden; }
+  .reset { position: absolute; top: 8px; left: 8px; z-index: 3; padding: 8px 12px; box-shadow: 0 1px 3px rgba(0,0,0,.18); visibility: hidden; }
   .reset.on { visibility: visible; }
+  /* phones: labels would cover the small map, so the notes become a short list under it */
   @media (max-width: 640px) {
-    .stage { flex-direction: column; }
-    .panel { flex: none; border-left: 0; padding: 12px 0 0; }
+    .notes, .leads { display: none; }
+    .note-list { display: block; }
   }
 </style>
 </head>
@@ -60,14 +58,9 @@
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Whole world
       </button>
+      <div class="notes" id="notes"></div>
     </div>
-    <aside class="panel" id="panel">
-      <div class="live" id="live"><i></i><span id="liveText">Loading the latest drawings…</span></div>
-      <h2>What the crowd got right and wrong</h2>
-      <ul class="finds" id="finds"></ul>
-      <p class="cta">This map grows as people play. <a id="d13b">Draw five countries</a> and yours join it.</p>
-      <table class="rank" id="rank"></table>
-    </aside>
+    <ul class="note-list" id="noteList"></ul>
   </div>
   <footer>Overlap = shared area ÷ combined area, measured on an equal-area map · Data: drawings by visitors to <a id="d13c">Day 13</a>, updated live · Map: <a href="https://www.naturalearthdata.com/">Natural Earth</a> · #30DayMapChallenge <span id="day"></span></footer>
 </div>
@@ -95,7 +88,7 @@ const CODES = D.targets.map(t => t.code);
 
 d3.select("#title").text(D.title);
 d3.select("#day").text(D.day);
-d3.selectAll("#d13, #d13b, #d13c").attr("href", D.day13);
+d3.selectAll("#d13, #d13c").attr("href", D.day13);
 
 // ---------- map ----------
 const proj = d3.geoEqualEarth().fitExtent([[6, 6], [W - 6, H - 6]], { type: "Sphere" });
@@ -110,19 +103,14 @@ svg.append("clipPath").attr("id", "globe").append("path").attr("d", path({ type:
 const marks = root.append("g").attr("clip-path", "url(#globe)");
 const bandLayer = marks.append("g"), truthLayer = root.append("g");
 truthLayer.selectAll("path").data(CODES).join("path").attr("class", "truth").attr("d", c => path(byCode.get(c)));
+const leadLayer = svg.append("g").attr("class", "leads");   // outside the zoom group: notes show only at full-world view
 
 let tf = d3.zoomIdentity;
 const zoom = d3.zoom().scaleExtent([1, 30]).translateExtent([[0, 0], [W, H]])
-  .on("zoom", ev => { tf = ev.transform; root.attr("transform", tf); d3.select("#reset").classed("on", tf.k > 1.01); });
+  .on("zoom", ev => { tf = ev.transform; root.attr("transform", tf); d3.select("#reset").classed("on", tf.k > 1.01); d3.select("#map").classed("zoomed", tf.k > 1.01); });
 svg.call(zoom);
 d3.select("#reset").on("click", () => svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity));
-const fitTo = ([[x0, y0], [x1, y1]]) => {
-  const k = Math.max(1, Math.min(30, 0.6 * Math.min(W / Math.max(x1 - x0, 1), H / Math.max(y1 - y0, 1))));
-  svg.transition().duration(700).call(zoom.transform, d3.zoomIdentity.translate(W / 2 - k * (x0 + x1) / 2, H / 2 - k * (y0 + y1) / 2).scale(k));
-};
 const union = (a, b) => [[Math.min(a[0][0], b[0][0]), Math.min(a[0][1], b[0][1])], [Math.max(a[1][0], b[1][0]), Math.max(a[1][1], b[1][1])]];
-const mainBounds = f => f.geometry.type !== "MultiPolygon" ? path.bounds(f)
-  : path.bounds({ type: "Polygon", coordinates: d3.greatest(f.geometry.coordinates, c => d3.geoArea({ type: "Polygon", coordinates: c })) });
 
 
 MapKit.legend(svg, {
@@ -214,54 +202,59 @@ function render(st) {
     .attr("d", d => toMap(st[d.c].grid)(d.g)).attr("fill", d => css(`--seq-${d.i + 1}`));
 }
 
-// ---------- panel ----------
+// ---------- direct annotations ----------
+// Where each country's label sits (lon/lat of the line's label end) and which side of the label the line meets.
+// Picked to land in open ocean or on land nobody drew; any country not listed gets a label just above it.
+const NOTE_AT = {
+  CAN: { at: [-150, 42], side: "right" },
+  BRA: { at: [-8, -22], side: "left" },
+  NER: { at: [-24, 25], side: "right" },
+  LAO: { at: [132, 12], side: "left" },
+  SYR: { at: [10, 42], side: "bottom" },
+  PRY: { at: [-95, -28], side: "right" },
+  UKR: { at: [5, 58], side: "right" },
+};
+let NOTES = [];
 function findings(st) {
   const ok = CODES.map(c => st[c]).filter(s => s.grid), out = [];
   if (ok.length) {
     const b = d3.greatest(ok, s => s.iou);
-    out.push(`<b>${esc(b.name)} is drawn best.</b> The typical drawing overlaps the real border by ${pct(b.iou)}.`);
-  }
-  if (ok.length >= 6) {
-    const by = ok.slice().sort((a, b) => a.area - b.area);
-    const med = g => d3.median(g.flatMap(s => s.scores.map(d => d.size)));
-    out.push(`<b>Small countries come out big.</b> The five smallest (${by.slice(0, 5).map(s => esc(s.name)).join(", ")}) were drawn a median ${med(by.slice(0, 5)).toFixed(1)}× their real size. The five biggest: ${med(by.slice(-5)).toFixed(1)}×.`);
+    out.push({ c: b.code, t: `${b.name}: drawn best`, d: `The typical drawing overlaps the real border by ${pct(b.iou)}.` });
   }
   const ner = st.NER, nga = byCode.get("NGA");
   if (ner && ner.grid) {
     const k = ner.polys.filter((p, i) => score(p, nga).both > ner.scores[i].both).length;
-    out.push(`<b>Niger or Nigeria?</b> ${k} of ${ner.n} drawings of Niger cover more of Nigeria than of Niger.`);
+    out.push({ c: "NER", t: "Niger or Nigeria?", d: `${k} of ${ner.n} Niger drawings cover more of Nigeria than of Niger.` });
   }
-  const noMaj = ok.filter(s => s.agree < MAJ - 1e-6).sort((a, b) => a.agree - b.agree);
-  if (noMaj.length) {
-    const w = noMaj[0];
-    out.push(`<b>No agreement on ${noMaj.length === 1 ? esc(w.name) : `${noMaj.length} countries`}.</b> ${noMaj.length === 1 ? "No" : `For ${noMaj.map(s => esc(s.name)).join(", ")}, no`} spot is inside half the drawings. ${esc(w.name)} is the most scattered: no spot is in more than ${w.agreeK} of ${w.n}.`);
-  }
-  d3.select("#finds").html(out.map(s => `<li>${s}</li>`).join(""));
+  const w = d3.least(ok, s => s.agree);
+  if (w && w.agree < MAJ - 1e-6 && !out.some(o => o.c === w.code))
+    out.push({ c: w.code, t: `${w.name}: no agreement`, d: `No spot is in more than ${w.agreeK} of ${w.n} drawings.` });
+  NOTES = out;
+  truthLayer.selectAll("path").classed("on", c => out.some(o => o.c === c));
+  d3.select("#noteList").html(out.map(o => `<li><b>${esc(o.t)}${/[?.]$/.test(o.t) ? "" : "."}</b> ${esc(o.d)}</li>`).join(""));
+  placeNotes();
 }
+function placeNotes() {
+  const box = d3.select("#map").node().getBoundingClientRect();
+  const k = Math.min(box.width / W, box.height / H), ox = (box.width - W * k) / 2, oy = (box.height - H * k) / 2;
+  const pts = NOTES.map(o => {
+    const f = byCode.get(o.c), from = path.centroid(f);
+    const spot = NOTE_AT[o.c] || { at: [d3.geoCentroid(f)[0], d3.geoCentroid(f)[1] + 18], side: "bottom" };
+    return { ...o, ...spot, from, to: proj(spot.at) };
+  });
+  leadLayer.selectAll("path").data(pts).join("path").attr("class", "lead").attr("d", p => p.side === "left" || p.side === "right"
+    ? `M${p.to}H${p.from[0]}V${p.from[1]}` : `M${p.to}V${p.from[1]}H${p.from[0]}`);
+  d3.select("#notes").selectAll(".note").data(pts).join("div").attr("class", p => `note ${p.side}`)
+    .style("left", p => `${ox + p.to[0] * k}px`).style("top", p => `${oy + p.to[1] * k}px`)
+    .html(p => `<b>${esc(p.t)}</b><span>${esc(p.d)}</span>`);
+}
+new ResizeObserver(placeNotes).observe(d3.select("#map").node());
+
 function headline(st) {
   const ok = CODES.map(c => st[c]).filter(s => s.grid);
   if (!ok.length) return D.title;
   const b = d3.greatest(ok, s => s.iou), w = d3.least(ok, s => s.agree);
   return `The typical drawing of ${b.name} overlaps the real one by ${pct(b.iou)}. For ${w.name}, no spot is in more than ${w.agreeK} of ${w.n} drawings`;
-}
-let current = null;
-function table(st) {
-  const rows = CODES.map(c => st[c]).sort((a, b) => (b.agree ?? -1) - (a.agree ?? -1));
-  const t = d3.select("#rank");
-  t.html(`<thead><tr><th>Country</th><th class="n">Most agree on one spot</th></tr></thead><tbody></tbody>`);
-  t.select("tbody").selectAll("tr").data(rows).join("tr")
-    .html(s => s.grid
-      ? `<td>${esc(s.name)} <span class="m">· ${s.n}</span><span class="bar" style="width:${pct(s.agree)}"></span></td><td class="n">${s.agreeK} of ${s.n}</td>`
-      : `<td>${esc(s.name)} <span class="m">· ${s.n}</span></td><td class="n m">needs ${D.min_drawings}</td>`)
-    .on("mouseenter", (_, s) => highlight(s.code)).on("mouseleave", () => highlight(null))
-    .on("click", (_, s) => { const f = byCode.get(s.code); fitTo(s.grid ? union(mainBounds(f), gridBox(s.polys)) : mainBounds(f)); });
-}
-function highlight(c) {
-  current = c;
-  marks.classed("dim", !!c);
-  bandLayer.selectAll("path").classed("on", d => d.c === c);
-  truthLayer.selectAll("path").classed("on", d => d === c);
-  d3.select("#rank").selectAll("tbody tr").classed("on", s => s.code === c);
 }
 
 // ---------- hover: what's here, and whose drawings cover it ----------
@@ -276,11 +269,10 @@ svg.on("pointermove", ev => {
     if (gx >= 0 && gy >= 0 && gx < g.w && gy < g.h && g.v[gy * g.w + gx] > 0) hits.push([ST[c], g.v[gy * g.w + gx]]);
   }
   hits.sort((a, b) => b[1] - a[1]);
-  if (!f && !hits.length) return tip.hide();
+  if (!hits.length) return tip.hide();   // grey land and ocean nobody drew: no tooltip
   const real = f ? f.properties.name : "Ocean", tgt = f && ST[f.properties.code];
   tip.show(ev, `<b>${esc(real)}</b>${tgt && tgt.grid ? `<div class="m">${tgt.n} drawings · median overlap ${pct(tgt.iou)} · ${times(tgt.size)} · ${km(tgt.km)} off center</div>` : ""}
-    ${hits.length ? `<table>${hits.slice(0, 4).map(([s, v]) => `<tr><td>Inside ${esc(s.name)} drawings</td><td>${Math.round(v * s.n)} of ${s.n}</td></tr>`).join("")}</table>`
-                  : `<div class="m">No one's drawing covers this spot</div>`}`);
+    <table>${hits.slice(0, 4).map(([s, v]) => `<tr><td>Inside ${esc(s.name)} drawings</td><td>${Math.round(v * s.n)} of ${s.n}</td></tr>`).join("")}</table>`);
 });
 svg.on("pointerleave", () => tip.hide());
 
@@ -288,17 +280,9 @@ svg.on("pointerleave", () => tip.hide());
 const snap = Object.fromEntries(Object.entries(D.snapshot).map(([c, rs]) => [c, rs.map(r => r.map(([x, y]) => [x / 100, y / 100]))]));
 function update(rings, liveAt) {
   ST = analyse(rings);
-  render(ST); findings(ST); table(ST); highlight(current);
+  render(ST); findings(ST);
   d3.select("#title").text(headline(ST));
-  label(liveAt);
-}
-let lastLive = null;
-function label(liveAt) {
-  const n = d3.sum(CODES, c => ST[c].n);
-  d3.select("#live").classed("on", !!liveAt);
-  d3.select("#liveText").text(liveAt ? `Live · ${n.toLocaleString()} drawings · updated ${liveAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
-    : lastLive ? `${n.toLocaleString()} drawings as of ${lastLive.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} (couldn't refresh)`
-    : `${n.toLocaleString()} drawings as of ${D.snapshot_date} (couldn't reach the live data)`);
+  if (liveAt) document.body.dataset.live = liveAt.toISOString();   // no on-page label; lets tests see the live fetch landed
 }
 async function fetchLive() {
   const res = await Promise.all(CODES.map(c => fetch(`${WORKER}/drawings?country=${c}`).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })));
@@ -306,11 +290,10 @@ async function fetchLive() {
 }
 async function refresh() {
   if (!WORKER) return;
-  try { const r = await fetchLive(); lastLive = new Date(); update(r, lastLive); }
-  catch { label(null); }
+  try { update(await fetchLive(), new Date()); }
+  catch { /* keep showing the last data we have */ }
 }
 update(snap, null);
-if (WORKER) d3.select("#liveText").text("Loading the latest drawings…");
 refresh();
 setInterval(() => { if (document.visibilityState === "visible") refresh(); }, REFRESH_MS);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
