@@ -1,8 +1,7 @@
 """Day 16 · Collaborative map: the world as everyone drew it.
 
 Every outline visitors drew in Day 13's "Can you draw these countries?" game, layered on one world map.
-For each country: a heat map of how many drawings covered each spot, and the crowd's outline (the area
-inside at least half of the drawings), next to the real border.
+For each country: a heat map of how many drawings covered each spot, next to the real border.
 
 The page fetches the drawings live from the Day 13 Worker every time it opens, so it keeps growing as
 people play Day 13. This script embeds a snapshot (shown first, and if the Worker can't be reached) and
@@ -84,12 +83,6 @@ def analyse(countries, drawings):
             xs, ys, share = D13.coverage(polys, b, n=GRID)
             st.update(xs=xs, ys=ys, share=share, agree=float(share.max()))
             st["agree_k"] = round(st["agree"] * len(polys))
-            cell = (xs[1] - xs[0]) * (ys[1] - ys[0])
-            X, Y = np.meshgrid(xs, ys)
-            inside = shapely.contains_xy(truth[code], X, Y)
-            maj = share >= MAJORITY
-            st["maj_iou"] = (maj & inside).sum() / max((maj | inside).sum(), 1) if maj.any() else None
-            st["maj_size"] = maj.sum() * cell / truth[code].area
         out[code] = st
     return out
 
@@ -111,14 +104,13 @@ def findings(st):
 
 def headline(st):
     ok = {c: s for c, s in st.items() if s["n"] >= MIN}
-    withmaj = {c: s for c, s in ok.items() if s.get("maj_iou")}
-    if not withmaj:
+    if not ok:
         return "The world, as everyone drew it"
-    best = max(withmaj, key=lambda c: withmaj[c]["maj_iou"])
+    best = max(ok, key=lambda c: ok[c]["iou"])
     worst = min(ok, key=lambda c: ok[c]["agree"])
     w = ok[worst]
-    return (f"The crowd's {TARGETS[best][0]} overlaps the real one by {withmaj[best]['maj_iou']:.0%}. "
-            f"Its {TARGETS[worst][0]}: no spot is in more than {w['agree_k']} of {w['n']} drawings")
+    return (f"The typical drawing of {TARGETS[best][0]} overlaps the real one by {ok[best]['iou']:.0%}. "
+            f"For {TARGETS[worst][0]}, no spot is in more than {w['agree_k']} of {w['n']} drawings")
 
 
 def png(countries, st, title):
@@ -134,23 +126,17 @@ def png(countries, st, title):
             s = st[c]
             ax.contourf(s["xs"], s["ys"], s["share"], levels=[LEVELS[i], LEVELS[-1]],
                         colors=[S.SEQUENTIAL_BLUE[i]], zorder=2)
-    for c in ok:
-        s = st[c]
-        if s.get("maj_iou") is not None:
-            ax.contour(s["xs"], s["ys"], s["share"], levels=[MAJORITY], colors=[S.SEQUENTIAL_BLUE[-1]],
-                       linewidths=1.3, linestyles="--", zorder=4)
     gpd.GeoSeries([st[c]["truth"] for c in TARGETS]).boundary.plot(ax=ax, color=S.INK, linewidth=0.7, zorder=3)
     x0, y0, x1, y1 = land.total_bounds
     ax.set_xlim(x0, x1); ax.set_ylim(y0, y1)
     ax.set_aspect("equal"); ax.set_axis_off()
 
     # call out the extremes
-    withmaj = [c for c in ok if st[c].get("maj_iou")]
-    if withmaj:
-        best = max(withmaj, key=lambda c: st[c]["maj_iou"])
+    if ok:
+        best = max(ok, key=lambda c: st[c]["iou"])
         b = st[best]
-        S.callout(ax, (b["truth"].centroid.x, b["truth"].centroid.y), (0.2, 0.2), f"{TARGETS[best][0]}: best crowd outline",
-                  f"{b['maj_iou']:.0%} overlap with the real border", ha="right")
+        S.callout(ax, (b["truth"].centroid.x, b["truth"].centroid.y), (0.17, 0.66), f"{TARGETS[best][0]}: drawn best",
+                  f"typical drawing overlaps\nthe real border by {b['iou']:.0%}", ha="right")
     if ok:
         worst = min(ok, key=lambda c: st[c]["agree"])
         w = st[worst]
@@ -179,8 +165,7 @@ def png(countries, st, title):
     for sp in lax.spines.values():
         sp.set_visible(False)
     lax.set_title("Share of a country's drawings\ncovering this spot", fontsize=S.SIZE["legend"], fontweight="semibold", pad=4, loc="left")
-    fig.text(0.03, 0.165, "- - -  The crowd's outline: inside at least half the drawings\n"
-                          "——  The real border", fontsize=S.SIZE["legend"], color=S.INK, va="top")
+    fig.text(0.03, 0.165, "——  The real border", fontsize=S.SIZE["legend"], color=S.INK, va="top")
 
     n = sum(st[c]["n"] for c in TARGETS)
     S.title(fig, title)
@@ -199,8 +184,7 @@ def main():
     print(title)
     for c, s in sorted(st.items(), key=lambda kv: -kv[1].get("agree", 0)):
         if s["n"] >= MIN:
-            mi = f"{s['maj_iou']:.0%}" if s.get("maj_iou") is not None else "none"
-            print(f"  {TARGETS[c][0]:<12} n={s['n']:<3} agree {s['agree']:.0%}  crowd outline overlap {mi:<5} size {s['size']:.2f}×  {s['km']:.0f} km")
+            print(f"  {TARGETS[c][0]:<12} n={s['n']:<3} agree {s['agree']:.0%}  overlap {s['iou']:.0%}  size {s['size']:.2f}×  {s['km']:.0f} km")
     print(" ", findings(st))
     png(countries, st, title)
 

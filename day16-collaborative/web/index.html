@@ -13,11 +13,9 @@
   .grat { fill: none; stroke: color-mix(in srgb, var(--ink) 9%, transparent); stroke-width: .6; vector-effect: non-scaling-stroke; }
   .land { fill: color-mix(in srgb, var(--ink) 11%, var(--bg)); stroke: color-mix(in srgb, var(--ink) 40%, transparent); stroke-width: .6; vector-effect: non-scaling-stroke; }
   .band { stroke: none; pointer-events: none; }
-  .crowd { fill: color-mix(in srgb, var(--seq-4) 30%, transparent); stroke: var(--seq-6); stroke-width: 1.8; stroke-dasharray: 5 3; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }
-  .heat .crowd { fill: none; }
   .truth { fill: none; stroke: var(--ink); stroke-width: 1.2; vector-effect: non-scaling-stroke; pointer-events: none; }
-  .truth.on, .crowd.on { stroke-width: 2.6; }
-  .dim .band:not(.on), .dim .crowd:not(.on) { opacity: .25; }
+  .truth.on { stroke-width: 2.6; }
+  .dim .band:not(.on) { opacity: .25; }
 
   .stage { flex: 1 1 auto; min-height: 0; display: flex; gap: 18px; }
   .stage .map-wrap { flex: 1 1 auto; min-width: 0; }
@@ -54,8 +52,7 @@
 <div class="page">
   <header>
     <h1 id="title"></h1>
-    <p class="lede">Every outline from <a id="d13">Day 13's game</a>, layered into one map. The dashed line is the crowd's version of each country: the area inside at least half its drawings.</p>
-    <div class="controls"><div id="view"></div></div>
+    <p class="lede">Every outline from <a id="d13">Day 13's game</a>, layered into one map: the darker the blue, the more people drew that country there. The ink line is the real border.</p>
   </header>
   <div class="stage">
     <div class="map-wrap" id="map">
@@ -111,7 +108,7 @@ root.append("path").attr("class", "grat").attr("d", path(d3.geoGraticule10()));
 root.append("path").attr("class", "land").attr("d", path(D.land.features[0]));
 svg.append("clipPath").attr("id", "globe").append("path").attr("d", path({ type: "Sphere" }));
 const marks = root.append("g").attr("clip-path", "url(#globe)");
-const bandLayer = marks.append("g"), crowdLayer = marks.append("g"), truthLayer = root.append("g");
+const bandLayer = marks.append("g"), truthLayer = root.append("g");
 truthLayer.selectAll("path").data(CODES).join("path").attr("class", "truth").attr("d", c => path(byCode.get(c)));
 
 let tf = d3.zoomIdentity;
@@ -127,19 +124,13 @@ const union = (a, b) => [[Math.min(a[0][0], b[0][0]), Math.min(a[0][1], b[0][1])
 const mainBounds = f => f.geometry.type !== "MultiPolygon" ? path.bounds(f)
   : path.bounds({ type: "Polygon", coordinates: d3.greatest(f.geometry.coordinates, c => d3.geoArea({ type: "Polygon", coordinates: c })) });
 
-let view = "heat";
-MapKit.segmented("#view", [{ value: "heat", label: "Everyone's drawings" }, { value: "crowd", label: "The crowd's outlines" }], v => {
-  view = v; d3.select("#map").classed("heat", v === "heat"); bandLayer.style("display", v === "heat" ? null : "none");
-}, "heat");
-d3.select("#map").classed("heat", true);
 
 MapKit.legend(svg, {
   x: 4, y: H - 4, anchor: "bottom", width: 180,   // South Pacific corner, left of South America
   title: "Share of drawings\ncovering this spot",
   stops: [[0.1, css("--seq-1")], [0.4, css("--seq-3")], [0.7, css("--seq-5")], [1, css("--seq-7")]],
   ticks: [[0.1, "10%"], [0.5, "50%"], [1, "100%"]],
-  keys: [{ draw: g => g.append("path").attr("d", "M-7 0H7").attr("class", "crowd").style("vector-effect", "none").style("fill", "none"), label: "Crowd's outline" },
-         { draw: g => g.append("path").attr("d", "M-7 0H7").attr("class", "truth").style("vector-effect", "none"), label: "Real border" }],
+  keys: [{ draw: g => g.append("path").attr("d", "M-7 0H7").attr("class", "truth").style("vector-effect", "none"), label: "Real border" }],
 });
 
 // ---------- analysis: rasterize on the equal-area map, so cell counts compare areas fairly ----------
@@ -208,10 +199,6 @@ function analyse(rings) {
     s.iou = d3.median(s.scores, d => d.iou); s.size = d3.median(s.scores, d => d.size); s.km = d3.median(s.scores, d => d.km);
     const g = s.grid = coverage(polys, gridBox(polys));
     s.agree = d3.max(g.v); s.agreeK = Math.round(s.agree * s.n);
-    const T = featureMask(g, f);
-    let both = 0, either = 0, m = 0;
-    for (let i = 0; i < g.v.length; i++) { const a = g.v[i] >= MAJ - 1e-6; m += a; both += a & T[i]; either += a | T[i]; }
-    s.majIou = m ? both / either : null;
   }
   return st;
 }
@@ -225,17 +212,14 @@ function render(st) {
   LEVELS.forEach((L, i) => ok.forEach(c => bands.push({ c, i, g: d3.contours().size([st[c].grid.w, st[c].grid.h]).contour(st[c].grid.v, L) })));
   bandLayer.selectAll("path").data(bands).join("path").attr("class", "band")
     .attr("d", d => toMap(st[d.c].grid)(d.g)).attr("fill", d => css(`--seq-${d.i + 1}`));
-  const crowd = ok.filter(c => st[c].majIou != null).map(c => ({ c, g: d3.contours().size([st[c].grid.w, st[c].grid.h]).contour(st[c].grid.v, MAJ - 1e-6) }));
-  crowdLayer.selectAll("path").data(crowd).join("path").attr("class", "crowd").attr("d", d => toMap(st[d.c].grid)(d.g));
 }
 
 // ---------- panel ----------
 function findings(st) {
   const ok = CODES.map(c => st[c]).filter(s => s.grid), out = [];
-  const withMaj = ok.filter(s => s.majIou);
-  if (withMaj.length) {
-    const b = d3.greatest(withMaj, s => s.majIou);
-    out.push(`<b>${esc(b.name)} is the crowd's best.</b> Its outline overlaps the real border by ${pct(b.majIou)}.`);
+  if (ok.length) {
+    const b = d3.greatest(ok, s => s.iou);
+    out.push(`<b>${esc(b.name)} is drawn best.</b> The typical drawing overlaps the real border by ${pct(b.iou)}.`);
   }
   if (ok.length >= 6) {
     const by = ok.slice().sort((a, b) => a.area - b.area);
@@ -247,7 +231,7 @@ function findings(st) {
     const k = ner.polys.filter((p, i) => score(p, nga).both > ner.scores[i].both).length;
     out.push(`<b>Niger or Nigeria?</b> ${k} of ${ner.n} drawings of Niger cover more of Nigeria than of Niger.`);
   }
-  const noMaj = ok.filter(s => s.majIou == null).sort((a, b) => a.agree - b.agree);
+  const noMaj = ok.filter(s => s.agree < MAJ - 1e-6).sort((a, b) => a.agree - b.agree);
   if (noMaj.length) {
     const w = noMaj[0];
     out.push(`<b>No agreement on ${noMaj.length === 1 ? esc(w.name) : `${noMaj.length} countries`}.</b> ${noMaj.length === 1 ? "No" : `For ${noMaj.map(s => esc(s.name)).join(", ")}, no`} spot is inside half the drawings. ${esc(w.name)} is the most scattered: no spot is in more than ${w.agreeK} of ${w.n}.`);
@@ -255,10 +239,10 @@ function findings(st) {
   d3.select("#finds").html(out.map(s => `<li>${s}</li>`).join(""));
 }
 function headline(st) {
-  const ok = CODES.map(c => st[c]).filter(s => s.grid), withMaj = ok.filter(s => s.majIou);
-  if (!withMaj.length) return D.title;
-  const b = d3.greatest(withMaj, s => s.majIou), w = d3.least(ok, s => s.agree);
-  return `The crowd's ${b.name} overlaps the real one by ${pct(b.majIou)}. Its ${w.name}: no spot is in more than ${w.agreeK} of ${w.n} drawings`;
+  const ok = CODES.map(c => st[c]).filter(s => s.grid);
+  if (!ok.length) return D.title;
+  const b = d3.greatest(ok, s => s.iou), w = d3.least(ok, s => s.agree);
+  return `The typical drawing of ${b.name} overlaps the real one by ${pct(b.iou)}. For ${w.name}, no spot is in more than ${w.agreeK} of ${w.n} drawings`;
 }
 let current = null;
 function table(st) {
@@ -276,7 +260,6 @@ function highlight(c) {
   current = c;
   marks.classed("dim", !!c);
   bandLayer.selectAll("path").classed("on", d => d.c === c);
-  crowdLayer.selectAll("path").classed("on", d => d.c === c);
   truthLayer.selectAll("path").classed("on", d => d === c);
   d3.select("#rank").selectAll("tbody tr").classed("on", s => s.code === c);
 }
