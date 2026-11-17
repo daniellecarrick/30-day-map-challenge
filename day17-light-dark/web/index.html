@@ -1,0 +1,272 @@
+<!doctype html>
+<!-- Always dark: the subject is lights at night, and blinking lights read only on a dark ground. -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lighthouses in the Dark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/map.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .map-wrap canvas { position: absolute; pointer-events: none; }
+  .map-wrap > svg { position: relative; cursor: grab; touch-action: pan-y; }   /* page scrolls; pinch goes to the map */
+  .map-wrap > svg:active { cursor: grabbing; }
+  /* zoom buttons, bottom-right over the empty Atlantic */
+  .zoom { position: absolute; right: 8px; bottom: 8px; z-index: 3; display: flex; flex-direction: column; gap: 6px; }
+  .zoom button { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; border-radius: 8px;
+                 box-shadow: 0 1px 3px rgba(0,0,0,.18); font-size: 20px; font-weight: 600; line-height: 1;
+                 border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); }
+  .zoom button:disabled { opacity: .4; cursor: default; }
+  .hl { fill: none; stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .tip .ring { display: block; margin: 6px 0 4px; }
+  /* about / method popover (same as Days 10 and 11), top-right over the empty map corner */
+  .info { position: absolute; top: 8px; right: 8px; z-index: 3; width: 38px; height: 38px; padding: 0; display: grid; place-items: center;
+          border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  #notes { position: absolute; top: 54px; right: 8px; z-index: 4; width: min(400px, calc(100% - 16px)); background: var(--bg); color: var(--ink);
+           border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent); border-radius: 8px; padding: 12px 14px 4px;
+           box-shadow: 0 2px 10px rgba(0,0,0,.14); font-size: 14px;
+           max-height: max(240px, calc(100% - 62px)); overflow-y: auto; }
+  #notes p { margin: 0 0 8px; }
+  #notes b { font-weight: 600; }
+  #notes a { color: inherit; }
+  #notes dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0 0 8px; }
+  #notes dt { font-weight: 600; }
+  #notes dd { margin: 0; color: var(--muted); }
+  .tip .row { display: flex; gap: 10px; align-items: center; }
+  .hint { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">Every lighthouse has an official signal, its own rhythm of flashes, so a sailor can tell which one they are looking at. Here each lighthouse blinks its signal in real time. Hover one to see its pattern; pinch or scroll to zoom.</p>
+    <div class="controls">
+      <button class="play" id="play" aria-pressed="true"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path id="playIcon" d=""/></svg><span id="playLabel"></span></button>
+    </div>
+  </header>
+  <div class="map-wrap" id="map">
+    <button class="play info" id="info" type="button" aria-label="About this map: method and data" aria-expanded="false" aria-controls="notes">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 8v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="5.3" r="1.1" fill="currentColor"/></svg>
+    </button>
+    <div class="zoom" role="group" aria-label="Zoom the map">
+      <button class="play" id="zoomIn" type="button" aria-label="Zoom in">+</button>
+      <button class="play" id="zoomOut" type="button" aria-label="Zoom out">−</button>
+      <button class="play" id="zoomReset" type="button" aria-label="Reset zoom"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.5-3.5M3 2.5V5h2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <div id="notes" role="note" hidden>
+      <p><b>What's on the map.</b> <span id="nLh"></span> named, working lighthouses in the waters of the 50 states, each blinking
+        the signal printed on NOAA's nautical charts, at real speed. Each starts at a random point in its cycle, since real
+        lighthouses aren't in sync.</p>
+      <p><b>Where the data comes from.</b> Lights and their signals: <a id="src2"></a>, every light on the general, coastal and
+        harbor charts. Lighthouse names: <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> lighthouses
+        and NOAA's charted landmarks.</p>
+      <p><b>How they're matched.</b> A named lighthouse gets the light that is seen farthest out to sea within 300 m of it.
+        A light drawn on several charts counts once.</p>
+      <p><b>Left out.</b> Airport beacons and obstruction lights; front/rear range lights, numbered pier and channel lights,
+        and buoys; ruins and retired towers with no working light; lights in other countries' waters; Puerto Rico and
+        Pacific territories, which this map projection doesn't show. NOAA's approach-scale charts wouldn't download,
+        so a few lighthouses only charted there may be missing.</p>
+      <p><b>Reading a signal</b></p>
+      <dl>
+        <dt>Fl</dt><dd>flashing: short flashes, longer dark</dd>
+        <dt>Oc</dt><dd>occulting: mostly on, briefly dark</dd>
+        <dt>Iso</dt><dd>isophase: equal light and dark</dd>
+        <dt>F</dt><dd>fixed: steady, never blinks</dd>
+        <dt>Q</dt><dd>quick: about one flash a second</dd>
+        <dt>Mo(U)</dt><dd>Morse code, here the letter U (· · –)</dd>
+        <dt>(2)</dt><dd>flashes come in groups of two</dd>
+        <dt>W R G Y</dt><dd>white, red, green, yellow</dd>
+        <dt>10s</dt><dd>the pattern repeats every 10 seconds</dd>
+      </dl>
+      <p>#30DayMapChallenge <span id="day2"></span></p>
+    </div>
+  </div>
+  <footer>Each named lighthouse shows the charted light within 300 m of it, blinking at real speed (method under ⓘ). Names: © OpenStreetMap contributors and NOAA. Data: <a id="source"></a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const W = 975, H = 610;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const proj = d3.geoAlbersUsa().fitExtent([[10, 10], [W - 10, H - 10]], D.land);
+const tip = MapKit.tooltip();
+const pct = v => Math.round(v * 100) + "%";
+
+d3.select("#title").text(D.title);
+d3.select("#source").text(D.source).attr("href", D.sourceUrl);
+d3.select("#day").text(D.day);
+d3.select("#day2").text(D.day);
+d3.select("#nLh").text(D.stats.n.toLocaleString());
+d3.select("#src2").text("NOAA Electronic Navigational Charts").attr("href", D.sourceUrl);
+
+// about / method popover
+const infoBtn = document.getElementById("info"), notes = document.getElementById("notes");
+const toggleNotes = open => { notes.hidden = !open; infoBtn.setAttribute("aria-expanded", open); };
+infoBtn.addEventListener("click", ev => { ev.stopPropagation(); toggleNotes(notes.hidden); });
+document.addEventListener("click", ev => { if (!notes.hidden && !notes.contains(ev.target)) toggleNotes(false); });
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !notes.hidden) { toggleNotes(false); infoBtn.focus(); } });
+
+// ---- lights: projected, with cumulative rhythm for fast lookup ----
+const all = [];
+D.lights.forEach((d, i) => {
+  const p = proj([d.x, d.y]) || [NaN, NaN];
+  const ends = []; let t = 0;
+  for (const s of d.s) { t += Math.abs(s); ends.push(t); }
+  all.push(Object.assign(d, {
+    px: p[0], py: p[1], ends,
+    phase: ((i * 0.6180339887) % 1) * d.p,                 // lights aren't synchronised
+    rad: 5 + Math.sqrt(d.r || 4) * 2,                       // glow size grows with charted range
+  }));
+});
+const isOn = (d, t) => {
+  const tt = (t + d.phase) % d.p;
+  for (let k = 0; k < d.ends.length; k++) if (tt < d.ends[k]) return d.s[k] > 0;
+  return false;
+};
+const shown = all.filter(d => !isNaN(d.px));   // all 153 project; guard anyway
+
+// ---- layers: canvas (land + lights) under an svg that takes zoom + hover ----
+const wrap = d3.select("#map");
+const svg = wrap.append("svg").attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio", "xMidYMid meet")
+  .attr("role", "img").attr("aria-label", D.title);
+svg.append("rect").attr("x", -W).attr("y", -H).attr("width", 3 * W).attr("height", 3 * H).attr("fill", "transparent");
+const gZoom = svg.append("g");
+const hl = gZoom.append("circle").attr("class", "hl").attr("r", 0);
+const canvas = wrap.insert("canvas", () => svg.node()).node(), ctx = canvas.getContext("2d");
+const landCanvas = document.createElement("canvas"), lctx = landCanvas.getContext("2d");
+let s = 1, ox = 0, oy = 0, dpr = 1, zt = d3.zoomIdentity, cw = 0, ch = 0;
+const sx = x => ox + s * (zt.k * x + zt.x), sy = y => oy + s * (zt.k * y + zt.y);
+
+function sizeCanvas() {
+  const r = svg.node().getBoundingClientRect(), h = wrap.node().getBoundingClientRect();
+  dpr = window.devicePixelRatio || 1; cw = r.width; ch = r.height;
+  Object.assign(canvas.style, { left: r.left - h.left + "px", top: r.top - h.top + "px", width: cw + "px", height: ch + "px" });
+  for (const c of [canvas, landCanvas]) { c.width = Math.round(cw * dpr); c.height = Math.round(ch * dpr); }
+  s = Math.min(cw / W, ch / H); ox = (cw - W * s) / 2; oy = (ch - H * s) / 2;
+  drawLand();
+}
+function drawLand() {
+  lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  lctx.clearRect(0, 0, cw, ch);
+  lctx.save();
+  lctx.translate(ox + s * zt.x, oy + s * zt.y); lctx.scale(s * zt.k, s * zt.k);
+  const path = d3.geoPath(proj, lctx);
+  lctx.fillStyle = css("--ctl"); lctx.strokeStyle = css("--bg"); lctx.lineWidth = 0.6 / (s * zt.k);
+  lctx.beginPath(); path(D.land); lctx.fill(); lctx.stroke();
+  lctx.restore();
+  frame();
+}
+
+// a soft glow per colour, drawn once and stamped for each lit light
+const sprite = {};
+for (const [k, c] of Object.entries(D.colors)) {
+  const n = 64, cv = document.createElement("canvas"); cv.width = cv.height = n;
+  const g = cv.getContext("2d"), gr = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+  const rgb = d3.rgb(c);
+  gr.addColorStop(0, "rgba(255,255,255,1)");
+  gr.addColorStop(0.12, `rgba(${rgb.r},${rgb.g},${rgb.b},1)`);
+  gr.addColorStop(0.35, `rgba(${rgb.r},${rgb.g},${rgb.b},0.35)`);
+  gr.addColorStop(1, `rgba(${rgb.r},${rgb.g},${rgb.b},0)`);
+  g.fillStyle = gr; g.fillRect(0, 0, n, n);
+  sprite[k] = cv;
+}
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let playing = !reduce, t0 = performance.now(), tPaused = 0;
+function frame() {
+  const t = playing ? (performance.now() - t0) / 1000 : tPaused;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.drawImage(landCanvas, 0, 0, cw, ch);
+  // unlit lamps: a faint dot so you can see where every light is
+  ctx.globalAlpha = 0.45;
+  for (const d of shown) { ctx.fillStyle = D.colors[d.c]; ctx.beginPath(); ctx.arc(sx(d.px), sy(d.py), 1.5, 0, 2 * Math.PI); ctx.fill(); }
+  ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 1;
+  for (const d of shown) {
+    if (!isOn(d, t)) continue;
+    const R = d.rad * Math.max(0.4, Math.min(1.1, s)) * Math.min(2, Math.sqrt(zt.k));   // shrink with small maps
+    ctx.drawImage(sprite[d.c], sx(d.px) - R, sy(d.py) - R, 2 * R, 2 * R);
+  }
+  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+  cancelAnimationFrame(raf);
+  if (playing) raf = requestAnimationFrame(frame);
+}
+let raf = 0;
+
+// ---- controls ----
+function setPlay(p) {
+  if (p && !playing) t0 = performance.now() - tPaused * 1000;
+  if (!p && playing) tPaused = (performance.now() - t0) / 1000;
+  playing = p;
+  d3.select("#play").attr("aria-pressed", p);
+  d3.select("#playIcon").attr("d", p ? "M2 1h3v10H2zM7 1h3v10H7z" : "M2 1l9 5-9 5z");
+  d3.select("#playLabel").text(p ? "Pause" : "Blink");
+  frame();   // draw now (a background tab may not run animation frames yet)
+}
+d3.select("#play").on("click", () => setPlay(!playing));
+
+// ---- zoom ----
+// Pinch (touch or trackpad), scroll wheel and drag. On touch screens one finger scrolls the page
+// and two fingers pinch/pan the map, so the map never traps the page.
+const zoom = d3.zoom().scaleExtent([1, 12]).translateExtent([[0, 0], [W, H]])
+  .filter(ev => (ev.type === "touchstart" ? ev.touches.length > 1 : !ev.button))
+  .wheelDelta(ev => -ev.deltaY * (ev.deltaMode === 1 ? 0.05 : ev.deltaMode ? 1 : 0.002) * (ev.ctrlKey ? 4 : 1))
+  .on("zoom", ev => {
+    zt = ev.transform; gZoom.attr("transform", zt); drawLand();
+    d3.select("#zoomReset").property("disabled", zt.k === 1 && !zt.x && !zt.y);
+  });
+svg.call(zoom);
+d3.select("#zoomIn").on("click", () => svg.transition().duration(300).call(zoom.scaleBy, 1.8));
+d3.select("#zoomOut").on("click", () => svg.transition().duration(300).call(zoom.scaleBy, 1 / 1.8));
+d3.select("#zoomReset").property("disabled", true)
+  .on("click", () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity));
+
+// ---- hover: nearest light within ~15 px ----
+function ringSvg(d, size = 64) {
+  const R = size / 2 - 2, r0 = R * 0.62, WIN = 30, arc = d3.arc();
+  let t = 0, k = 0, out = "";
+  while (t < WIN) {
+    const v = d.s[k % d.s.length], len = Math.abs(v);
+    if (v > 0) {
+      const a0 = (t / WIN) * 2 * Math.PI, a1 = (Math.min(t + Math.max(len, 0.08), WIN) / WIN) * 2 * Math.PI;
+      out += `<path d="${arc({ innerRadius: r0, outerRadius: R, startAngle: a0, endAngle: a1 })}" fill="${D.colors[d.c]}"/>`;
+    }
+    t += len; k++;
+  }
+  return `<svg class="ring" width="${size}" height="${size}" viewBox="${-size / 2} ${-size / 2} ${size} ${size}" role="img" aria-label="30 seconds of this light's signal">` +
+    `<path d="${arc({ innerRadius: r0, outerRadius: R, startAngle: 0, endAngle: 2 * Math.PI })}" fill="${css("--ctl")}"/>${out}` +
+    `</svg>`;
+}
+// in plain words: "2 white flashes every 6 s"
+function describe(d) {
+  const flashes = d.s.filter(v => v > 0).length, colours = d.cs.split("").map(c => D.colorNames[c].toLowerCase()).join(" and ");
+  const per = +d.p.toFixed(1);
+  if (/^F( |$)/.test(d.l)) return `steady ${colours} light, never blinks`;
+  if (d.l.startsWith("Oc")) return `${colours}, goes dark ${flashes === 1 ? "once" : flashes + " times"} every ${per} s`;
+  if (d.l.startsWith("Iso")) return `${colours}, equal light and dark, every ${per} s`;
+  return `${flashes} ${colours} flash${flashes > 1 ? "es" : ""} every ${per} s`;
+}
+MapKit.nearestHover(svg, shown, {
+  x: d => d.px, y: d => d.py, radius: 15, transform: () => zt,
+  onEnter(ev, d) {
+    hl.attr("cx", d.px).attr("cy", d.py).attr("r", 7 / zt.k);
+    tip.show(ev, `<b>${d.n}</b><span class="m">${d.l}</span>` +
+      `<div class="row">${ringSvg(d)}<div>${describe(d)}</div></div>` +
+      (d.r ? `<span class="m">Seen up to ${d.r} nautical miles out</span>` : ""));
+  },
+  onLeave() { hl.attr("r", 0); tip.hide(); },
+});
+
+new ResizeObserver(sizeCanvas).observe(svg.node());
+sizeCanvas();
+setPlay(playing);
+</script>
+</body>
+</html>

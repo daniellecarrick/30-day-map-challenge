@@ -81,8 +81,11 @@ def publish_day(folder: Path) -> dict:
 
     png = folder / m["png"]
     shutil.copyfile(png, out / "map.png")
-    social_image(png, out / "preview.png")
-    thumbnail(png, out / "thumb.png")
+    # optional "preview" in meta.json: a separate image for the link card and gallery thumbnail,
+    # for days whose PNG doesn't shrink well (e.g. a very tall poster)
+    card_src = folder / m.get("preview", m["png"])
+    social_image(card_src, out / "preview.png")
+    thumbnail(card_src, out / "thumb.png")
     print(f"published {slug}: {url}")
     return {**m, "slug": slug}
 

@@ -31,3 +31,6 @@ day13-interactions/data/drawings/
 
 # Day 15: ETOPO1 grid (117 MB, over GitHub's limit); URL in day15-inside-out/build.py
 day15-inside-out/data/
+
+# Day 17: NOAA/OSM downloads and test imagery (~80 MB); re-download with day17-light-dark/fetch.py
+day17-light-dark/data/

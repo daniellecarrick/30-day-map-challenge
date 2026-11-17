@@ -1,0 +1,10 @@
+{
+  "day": 17,
+  "theme": "Light & dark",
+  "title": "515 lighthouses, 112 ways to blink",
+  "description": "Every lighthouse has an official signal, its own rhythm of flashes, so sailors can tell which one they're looking at. Here, 515 named US lighthouses each blink the signal on NOAA's nautical charts, in real time: single flashes, groups of two to six, lights that stay on and blink off, steady lights that never blink, and one that flashes the letter U in Morse code. Data: NOAA Electronic Navigational Charts; names from OpenStreetMap and NOAA.",
+  "html": "out/map.html",
+  "png": "out/map.png",
+  "published": "2026-11-17",
+  "preview": "out/preview_card.png"
+}
