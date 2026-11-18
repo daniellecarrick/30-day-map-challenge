@@ -29,6 +29,10 @@
   --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100; --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #6250d6; --cat-8: #e34948;
   /* sequential (tokens.json scales.sequential_blue): light -> dark, for magnitude; same in light and dark */
   --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #6da7ec; --seq-4: #3987e5; --seq-5: #256abf; --seq-6: #184f95; --seq-7: #0d366b;
+  /* sequential purple (tokens.json scales.sequential_purple): lilac, light -> dark; same in light and dark */
+  --seqp-1: #e9e4fa; --seqp-2: #cdc2f3; --seqp-3: #ae9fea; --seqp-4: #8f7cdf; --seqp-5: #7059cf; --seqp-6: #5240aa; --seqp-7: #35287a;
+  /* diverging (tokens.json scales.diverging): low = blue, center = neutral, high = amber -> brown */
+  --div-1: #104281; --div-2: #6da7ec; --div-3: #f0efec; --div-4: #d98a00; --div-5: #5a3300;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -156,8 +160,12 @@ body { margin: 0; background: var(--bg); color: var(--ink);
   .controls { gap: 8px 10px; margin-bottom: 10px; }
   .dd select, .play { background: color-mix(in srgb, var(--land) 70%, transparent); }
   .play[hidden] { display: none; }
-  .map-wrap canvas { position: absolute; display: block; }
-  .map-wrap > svg { position: absolute; inset: 0; }
+  .map-wrap { overflow: hidden; }
+  .map-wrap canvas { position: absolute; inset: 0; display: block; }
+  /* pinch always zooms the map; one finger scrolls the page until you zoom in, then pans the map */
+  .map-wrap > svg { position: absolute; inset: 0; cursor: grab; touch-action: pan-y; }
+  .map-wrap > svg.zoomed { touch-action: none; }
+  .map-wrap > svg:active { cursor: grabbing; }
   .hit { fill: transparent; stroke: none; cursor: pointer; }
   .hit:hover { stroke: var(--ink); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
   .counties .hit { cursor: default; }
@@ -189,6 +197,7 @@ body { margin: 0; background: var(--bg); color: var(--ink);
     <div class="controls">
       <button class="play" id="back" type="button" hidden>&larr; United States</button>
       <div id="pick"></div>
+      <button class="play" id="reset" type="button" hidden>Reset zoom</button>
     </div>
   </header>
   <div class="map-wrap fade" id="map"></div>
@@ -364,35 +373,40 @@ function sheet(key, v) {
 }
 function rgb(hex) { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
 
-// ---- draw the sheet on the table with its shadow and cut edge
+// ---- draw the sheet on the table with its shadow and cut edge, at the current zoom
+let zt = d3.zoomIdentity;   // zoom transform, in the view's pixel (viewBox) units
 function draw() {
   if (!current) return;
   const { v, s } = current;
   const box = wrap.node().getBoundingClientRect();
-  const k = Math.min(box.width / v.w, box.height / v.h), dw = v.w * k, dh = v.h * k;
   const dpr = Math.min(devicePixelRatio || 1, 2);
-  Object.assign(canvas.style, { width: dw + "px", height: dh + "px",
-    left: (box.width - dw) / 2 + "px", top: (box.height - dh) / 2 + "px" });
-  canvas.width = Math.round(dw * dpr); canvas.height = Math.round(dh * dpr);
-  const W = canvas.width, H = canvas.height, u = dpr;           // u: one CSS pixel
+  const W = Math.round(box.width * dpr), H = Math.round(box.height * dpr);
+  if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+  canvas.style.width = box.width + "px"; canvas.style.height = box.height + "px";
+  // same mapping as the SVG (viewBox, "meet") plus the zoom: device px per view px, and offsets
+  const k = Math.min(box.width / v.w, box.height / v.h);
+  const ox = (box.width - v.w * k) / 2, oy = (box.height - v.h * k) / 2;
+  const a = dpr * k * zt.k, ex = dpr * (ox + k * zt.x), ey = dpr * (oy + k * zt.y);
+  const u = dpr;                                    // one CSS pixel, in device px
   const [r, g, b] = rgb(C.shadow);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, W, H);
   // pencil outlines on the table (states, or counties in a state view): seen only through the holes
-  ctx.save();
-  ctx.scale(W / v.w, H / v.h);
+  ctx.setTransform(a, 0, 0, a, ex, ey);
   ctx.strokeStyle = `rgba(${r},${g},${b},0.45)`;
-  ctx.lineWidth = 0.8 * u * v.w / W;
+  ctx.lineWidth = 0.8 * u / a;
   ctx.lineJoin = "round";
   for (const p of current.lines) ctx.stroke(p);
-  ctx.restore();
+  ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  const pass = (img, dy, blur, ox, oy, alpha) => {
+  // shadow sizes are in device px (canvas ignores the transform for them): constant on screen
+  const pass = (img, dy, blur, sx, sy, alpha) => {
     ctx.save();
     if (blur != null) {
       ctx.shadowColor = `rgba(${r},${g},${b},${alpha})`;
-      ctx.shadowBlur = blur * u; ctx.shadowOffsetX = ox * u; ctx.shadowOffsetY = oy * u;
+      ctx.shadowBlur = blur * u; ctx.shadowOffsetX = sx * u; ctx.shadowOffsetY = sy * u;
     }
-    ctx.drawImage(img, 0, dy * u, W, H);
+    ctx.drawImage(img, 0, dy * u / a, v.w, v.h);
     ctx.restore();
   };
   pass(s.wall, 1.5, 9, 3.5, 5, 0.32);    // soft cast shadow (light from upper left)
@@ -400,7 +414,22 @@ function draw() {
   pass(s.wall, 1.5);                     // the cut edge: paper thickness, seen from the south
   pass(s.paper, 0);                      // the sheet
 }
-new ResizeObserver(() => draw()).observe(wrap.node());
+let queued = false;
+const redraw = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; draw(); }); } };
+new ResizeObserver(redraw).observe(wrap.node());
+
+// ---- pinch / wheel / drag zoom (double-click zooms in; the button resets)
+const zoom = d3.zoom().scaleExtent([1, 4])  // past ~4x the masks show their pixels
+  .on("zoom", ev => {
+    zt = ev.transform;
+    hits.attr("transform", zt);
+    d3.select("#reset").attr("hidden", zt.k > 1.01 ? null : true);
+    svg.classed("zoomed", zt.k > 1.01);
+    tip.hide();
+    redraw();
+  });
+svg.call(zoom);
+d3.select("#reset").on("click", () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity));
 
 // ---- views
 async function show(key) {
@@ -413,6 +442,8 @@ async function show(key) {
   current = { v, s, key, lines };
   // phones: the map takes its natural height
   wrap.style("--ar", `${v.w} / ${v.h}`);
+  zoom.extent([[0, 0], [v.w, v.h]]).translateExtent([[0, 0], [v.w, v.h]]);
+  svg.call(zoom.transform, d3.zoomIdentity);
   svg.attr("viewBox", `0 0 ${v.w} ${v.h}`)
     .attr("aria-label", national ? D.title : `${st.name}: blocks with no residents cut out`);
   hits.attr("class", national ? "states" : "counties");
@@ -420,16 +451,16 @@ async function show(key) {
   hits.selectAll("path").data(marks, d => d.d).join("path").attr("class", "hit").attr("d", d => d.d)
     .on("mousemove", (ev, d) => tip.show(ev, national ? stateTip(d) : countyTip(d)))
     .on("mouseleave", tip.hide)
-    .on("click", (ev, d) => { if (national) { tip.hide(); pick.select(d.fips); } });
+    .on("click", (ev, d) => { if (national && !ev.defaultPrevented) { tip.hide(); pick.select(d.fips); } });
 
   if (national) {
     d3.select("#title").text(D.title);
     d3.select("#lede").text(`Every hole is a 2020 Census block where nobody lives: ${fmt(D.emptyBlocks)} of the ` +
-      `${fmt(D.blocks)} blocks with any land, covering ${sqmi(D.emptySqmi)}. Pick a state to see it up close.`);
+      `${fmt(D.blocks)} blocks with any land, covering ${sqmi(D.emptySqmi)}. Zoom in, or pick a state to see it up close.`);
   } else {
     d3.select("#title").text(`${pct(st.share)} of ${st.name}'s land is home to no one`);
     d3.select("#lede").text(`Every hole is a 2020 Census block where nobody lives: ${fmt(st.empty)} of ` +
-      `${fmt(st.blocks)} blocks, covering ${sqmi(st.emptySqmi)}. Hover a county for its share.`);
+      `${fmt(st.blocks)} blocks, covering ${sqmi(st.emptySqmi)}. Zoom in, or hover a county for its share.`);
   }
   d3.select("#back").attr("hidden", national ? true : null);
   if (location.hash.slice(1) !== (national ? "" : st.abbr)) history.replaceState(null, "", national ? location.pathname + location.search : "#" + st.abbr);
