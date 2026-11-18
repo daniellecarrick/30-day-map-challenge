@@ -1,0 +1,9 @@
+{
+  "day": 18,
+  "theme": "Null",
+  "title": "41% of America's land is home to no one",
+  "description": "A paper map of the US with every 2020 Census block that has zero residents cut out of it: 2.1 million of the 7.9 million blocks with any land. The East stays mostly solid; the West is more hole than paper. Nevada is the emptiest state (77% of its land), Connecticut the fullest (5%). Pick any state to see its holes up close, county by county. Data: US Census Bureau, 2020 Census blocks (TIGER/Line).",
+  "html": "out/map.html",
+  "png": "out/map.png",
+  "published": "2026-11-18"
+}

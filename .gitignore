@@ -34,3 +34,6 @@ day15-inside-out/data/
 
 # Day 17: NOAA/OSM downloads and test imagery (~80 MB); re-download with day17-light-dark/fetch.py
 day17-light-dark/data/
+
+# Day 18: 2020 Census block shapefiles (~10 GB) and processed caches; URLs in day18-null/build.py
+day18-null/data/

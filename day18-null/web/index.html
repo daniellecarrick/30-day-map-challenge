@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en" data-palette="vintage" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home to No One</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/map.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  /* the page is the table the paper sheet lies on (colors come from build.py, mixed from tokens) */
+  body { background: var(--table); }
+  .page { max-width: 1280px; }
+  .lede { color: var(--ink); margin-bottom: 14px; }
+  .page > footer { color: var(--ink); margin-top: 10px; }
+  .controls { gap: 8px 10px; margin-bottom: 10px; }
+  .dd select, .play { background: color-mix(in srgb, var(--land) 70%, transparent); }
+  .play[hidden] { display: none; }
+  .map-wrap canvas { position: absolute; display: block; }
+  .map-wrap > svg { position: absolute; inset: 0; }
+  .hit { fill: transparent; stroke: none; cursor: pointer; }
+  .hit:hover { stroke: var(--ink); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+  .counties .hit { cursor: default; }
+  .tip .big { font: 700 20px/1.1 var(--font-head); display: block; margin: 2px 0 4px; }
+  .fade { transition: opacity .25s; }
+  @media (max-width: 640px), (max-height: 520px) {
+    .map-wrap { flex: none; aspect-ratio: var(--ar); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <button class="play" id="back" type="button" hidden>&larr; United States</button>
+      <div id="pick"></div>
+    </div>
+  </header>
+  <div class="map-wrap fade" id="map"></div>
+  <footer>Share of land area in 2020 Census blocks with 0 residents; lakes and other water don't count.
+    <a id="source"></a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA, C = D.colors;
+document.documentElement.style.setProperty("--table", C.table);
+d3.select("#source").attr("href", D.sourceUrl).text(D.source);
+d3.select("#day").text(D.day);
+
+const fmt = d3.format(","), pct = v => (v < 0.01 && v > 0 ? "<1%" : d3.format(".0%")(v));
+const sqmi = v => fmt(Math.round(v)) + " sq mi";
+const byFips = new Map(D.national.states.map(s => [s.fips, s]));
+const tip = MapKit.tooltip();
+const wrap = d3.select("#map");
+const canvas = wrap.append("canvas").node();
+const ctx = canvas.getContext("2d");
+const svg = wrap.append("svg").attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img");
+const hits = svg.append("g");
+let current = null;
+
+// ---- paper sheets: turn a 1-bit mask into a paper-colored sheet and a wall-colored copy (cached per view)
+const sheets = new Map();
+function sheet(key, v) {
+  if (sheets.has(key)) return Promise.resolve(sheets.get(key));
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const make = color => {
+        const c = document.createElement("canvas");
+        c.width = v.w; c.height = v.h;
+        const x = c.getContext("2d");
+        x.drawImage(img, 0, 0);
+        const px = x.getImageData(0, 0, v.w, v.h), d = px.data, [r, g, b] = rgb(color);
+        for (let i = 0; i < d.length; i += 4) { const a = d[i]; d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = a; }
+        x.putImageData(px, 0, 0);
+        return c;
+      };
+      const s = { paper: make(C.paper), wall: make(C.wall) };
+      sheets.set(key, s);
+      resolve(s);
+    };
+    img.src = v.mask;
+  });
+}
+function rgb(hex) { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+
+// ---- draw the sheet on the table with its shadow and cut edge
+function draw() {
+  if (!current) return;
+  const { v, s } = current;
+  const box = wrap.node().getBoundingClientRect();
+  const k = Math.min(box.width / v.w, box.height / v.h), dw = v.w * k, dh = v.h * k;
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  Object.assign(canvas.style, { width: dw + "px", height: dh + "px",
+    left: (box.width - dw) / 2 + "px", top: (box.height - dh) / 2 + "px" });
+  canvas.width = Math.round(dw * dpr); canvas.height = Math.round(dh * dpr);
+  const W = canvas.width, H = canvas.height, u = dpr;           // u: one CSS pixel
+  const [r, g, b] = rgb(C.shadow);
+  ctx.clearRect(0, 0, W, H);
+  // pencil outlines on the table (states, or counties in a state view): seen only through the holes
+  ctx.save();
+  ctx.scale(W / v.w, H / v.h);
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.45)`;
+  ctx.lineWidth = 0.8 * u * v.w / W;
+  ctx.lineJoin = "round";
+  for (const p of current.lines) ctx.stroke(p);
+  ctx.restore();
+  ctx.imageSmoothingQuality = "high";
+  const pass = (img, dy, blur, ox, oy, alpha) => {
+    ctx.save();
+    if (blur != null) {
+      ctx.shadowColor = `rgba(${r},${g},${b},${alpha})`;
+      ctx.shadowBlur = blur * u; ctx.shadowOffsetX = ox * u; ctx.shadowOffsetY = oy * u;
+    }
+    ctx.drawImage(img, 0, dy * u, W, H);
+    ctx.restore();
+  };
+  pass(s.wall, 1.5, 9, 3.5, 5, 0.32);    // soft cast shadow (light from upper left)
+  pass(s.wall, 1.5, 2.5, 1, 1.5, 0.30);  // contact shadow right under the cut
+  pass(s.wall, 1.5);                     // the cut edge: paper thickness, seen from the south
+  pass(s.paper, 0);                      // the sheet
+}
+new ResizeObserver(() => draw()).observe(wrap.node());
+
+// ---- views
+async function show(key) {
+  const national = key === "US";
+  const v = national ? D.national : D.views[key];
+  const st = byFips.get(key);
+  wrap.style("opacity", 0.35);
+  const s = await sheet(key, v);
+  const lines = (national ? v.states.map(d => d.d) : [...v.counties.map(d => d.d), v.outline]).map(d => new Path2D(d));
+  current = { v, s, key, lines };
+  // phones: the map takes its natural height
+  wrap.style("--ar", `${v.w} / ${v.h}`);
+  svg.attr("viewBox", `0 0 ${v.w} ${v.h}`)
+    .attr("aria-label", national ? D.title : `${st.name}: blocks with no residents cut out`);
+  hits.attr("class", national ? "states" : "counties");
+  const marks = national ? v.states : v.counties;
+  hits.selectAll("path").data(marks, d => d.d).join("path").attr("class", "hit").attr("d", d => d.d)
+    .on("mousemove", (ev, d) => tip.show(ev, national ? stateTip(d) : countyTip(d)))
+    .on("mouseleave", tip.hide)
+    .on("click", (ev, d) => { if (national) { tip.hide(); pick.select(d.fips); } });
+
+  if (national) {
+    d3.select("#title").text(D.title);
+    d3.select("#lede").text(`Every hole is a 2020 Census block where nobody lives: ${fmt(D.emptyBlocks)} of the ` +
+      `${fmt(D.blocks)} blocks with any land, covering ${sqmi(D.emptySqmi)}. Pick a state to see it up close.`);
+  } else {
+    d3.select("#title").text(`${pct(st.share)} of ${st.name}'s land is home to no one`);
+    d3.select("#lede").text(`Every hole is a 2020 Census block where nobody lives: ${fmt(st.empty)} of ` +
+      `${fmt(st.blocks)} blocks, covering ${sqmi(st.emptySqmi)}. Hover a county for its share.`);
+  }
+  d3.select("#back").attr("hidden", national ? true : null);
+  if (location.hash.slice(1) !== (national ? "" : st.abbr)) history.replaceState(null, "", national ? location.pathname + location.search : "#" + st.abbr);
+
+  draw();
+  wrap.style("opacity", 1);
+}
+
+function stateTip(d) {
+  return `<b>${d.name}</b><span class="big">${pct(d.share)}</span>of its land has no residents` +
+    `<br><span class="m">${fmt(d.empty)} of ${fmt(d.blocks)} blocks · ${sqmi(d.emptySqmi)}<br>Click to see the state</span>`;
+}
+function countyTip(d) {
+  return `<b>${d.name}</b><span class="big">${pct(d.share)}</span>of its land has no residents` +
+    `<br><span class="m">${fmt(d.empty)} of ${fmt(d.blocks)} blocks empty · ${fmt(d.pop)} people</span>`;
+}
+
+const options = [{ value: "US", label: "United States" },
+  ...D.national.states.filter(s => D.views[s.fips]).slice().sort((a, b) => d3.ascending(a.name, b.name))
+    .map(s => ({ value: s.fips, label: s.name, group: "States" }))];
+const fromHash = D.national.states.find(s => s.abbr === location.hash.slice(1).toUpperCase());
+const pick = MapKit.dropdown("#pick", options, show, fromHash ? fromHash.fips : "US", "Map view");
+d3.select("#back").on("click", () => pick.select("US"));
+</script>
+</body>
+</html>
