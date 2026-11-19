@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Lilac Wave</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/map.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .page { max-width: 1240px; }
+  .readout { min-width: 76px; text-align: left; font-variant-numeric: tabular-nums lining-nums; }
+  .play[hidden], .readout[hidden], .timeline[hidden] { display: none; }
+
+  /* timeline: share of lilac country in bloom each day; click/drag to scrub */
+  .timeline { width: 100%; max-width: 760px; margin: 4px auto 2px; cursor: pointer; touch-action: none; }
+  .timeline:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .timeline svg { display: block; width: 100%; overflow: visible; }
+  .timeline .tick { fill: var(--muted); font-size: 14px; }
+  .timeline .cap { fill: var(--muted); font-size: 14px; }
+  .timeline .area { fill: var(--seqp-5); }
+  .timeline .base { stroke: var(--muted); stroke-width: 1; }
+  .timeline .now { stroke: var(--ink); stroke-width: 1.5; }
+  .timeline .now-lbl { fill: var(--ink); font-size: 14px; font-weight: 600; }
+
+  /* map: canvas (bloom grid) under an SVG (state lines, lilac sites), letterboxed together */
+  .map-wrap { container-type: size; display: grid; place-items: center; }
+  .stage { position: relative; aspect-ratio: var(--ar); width: min(100cqw, calc(100cqh * var(--ar))); }
+  .stage canvas, .stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .st-line { fill: none; stroke: var(--edge); stroke-width: 0.7; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .nation { fill: none; stroke: var(--ink); stroke-width: 0.6; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .hover-st { fill: none; stroke: var(--ink); stroke-width: 1.6; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .site { stroke: var(--ink); stroke-width: 0.9; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .site.on { stroke-width: 2; }
+  .tip .big { font: 700 20px/1.1 var(--font-head); display: block; margin: 2px 0 4px; }
+  @media (max-width: 640px), (max-height: 520px) {
+    .map-wrap { container-type: normal; display: block; }
+    .stage { width: 100%; aspect-ratio: auto; }
+    .stage > svg { position: relative; height: auto; }
+    .stage canvas { height: auto; aspect-ratio: var(--ar); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <button class="play" id="play" type="button"></button>
+      <span class="readout" id="readout" aria-live="polite"></span>
+    </div>
+    <div class="timeline" id="timeline" tabindex="0" role="slider" aria-label="Date"></div>
+  </header>
+  <div class="map-wrap" id="map"><div class="stage" id="stage"></div></div>
+  <footer>Modeled first open flowers of a cloned lilac from daily temperatures (4 km), averaged 1991–2020; in bloom = the 2 weeks after.
+    Grey: typical bloom before mid-March, mostly too warm for lilacs. Dots: median first bloom of lilacs watched 2009–25.
+    <a id="source"></a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA, G = D.grid, W = G.w, H = G.h, N = W * H;
+const BLOOM_DAYS = 14;
+d3.select("#title").text(D.title);
+d3.select("#lede").text(D.lede);
+d3.select("#source").attr("href", D.sourceUrl).text(D.source);
+d3.select("#day").text(D.day);
+
+const bytes = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const NORMAL = bytes(G.normal), STATE = bytes(G.state);
+const isWarm = i => NORMAL[i] > 0 && NORMAL[i] < D.warm;
+const date = doy => { const t = new Date(Date.UTC(2021, 0, doy)); return t.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }); };
+const days = v => `${Math.abs(v)} day${Math.abs(v) === 1 ? "" : "s"}`;
+
+// ---- colors (read from theme.css so dark mode follows) ----
+let C;
+function readColors() {
+  const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
+  const season = d3.scaleLinear().domain(D.seasonStops.map(s => s[0])).range(D.seasonStops.map(s => s[1]))
+    .interpolate(d3.interpolateRgb).clamp(true);
+  const rgb = c => { const o = d3.rgb(c); return [o.r, o.g, o.b]; };
+  const ink = v("--ink"), ctl = v("--ctl"), warm = d3.interpolateRgb(v("--closed"), v("--bg"))(0.5);
+  C = { season, ink, ctl, warm, lut: d3.range(256).map(d => rgb(season(d))),
+        inkRGB: rgb(ink), ctlRGB: rgb(ctl), warmRGB: rgb(warm) };
+}
+readColors();
+
+// ---- stage: canvas + svg ----
+const stage = d3.select("#stage").style("--ar", W / H);
+const canvas = stage.append("canvas").node(), ctx = canvas.getContext("2d");
+const off = document.createElement("canvas"); off.width = W; off.height = H;
+const offCtx = off.getContext("2d"), px = offCtx.createImageData(W, H);
+const svg = stage.append("svg").attr("viewBox", `0 0 ${W} ${H}`).attr("preserveAspectRatio", "xMidYMid meet")
+  .attr("role", "img").attr("aria-label", "Map of the typical date lilacs first bloom across the lower 48 states");
+const proj = d3.geoIdentity().reflectY(true).scale(1 / G.res).translate([-G.x0 / G.res, G.y1 / G.res]);
+const path = d3.geoPath(proj);
+svg.append("g").selectAll("path").data(D.states.features).join("path").attr("class", "st-line").attr("d", path);
+svg.append("path").attr("class", "nation").attr("d", path(D.nation));
+const hoverSt = svg.append("path").attr("class", "hover-st");
+const sites = svg.append("g").selectAll("circle").data(D.sites).join("circle").attr("class", "site")
+  .attr("cx", d => d.x).attr("cy", d => d.y).attr("r", 3.2);
+
+// ---- render: the animation builds up the still map. Opened cells keep their date color (the same
+// colors as the whole-season map); not-yet cells are pale; the 2-week "in bloom now" band gets ink edges.
+let day = null;   // null: the whole season at once
+const blooming = i => { const v = NORMAL[i]; return v && !isWarm(i) && v <= day && day - v < BLOOM_DAYS; };
+function render() {
+  const d = px.data;
+  for (let i = 0; i < N; i++) {
+    const k = i * 4, v = NORMAL[i];
+    if (!v) { d[k + 3] = 0; continue; }
+    let c;
+    if (isWarm(i)) c = C.warmRGB;
+    else if (day === null || v <= day) c = C.lut[v];
+    else c = C.ctlRGB;
+    if (day !== null && blooming(i)) {
+      const x = i % W;   // edge of the band: a land neighbor that isn't blooming
+      for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i - W, i + W]) {
+        if (j >= 0 && j < N && NORMAL[j] && !isWarm(j) && !blooming(j)) { c = C.inkRGB; break; }
+      }
+    }
+    d[k] = c[0]; d[k + 1] = c[1]; d[k + 2] = c[2]; d[k + 3] = 255;
+  }
+  offCtx.putImageData(px, 0, 0);
+  const r = canvas.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  if (canvas.width !== Math.round(r.width * dpr)) { canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr); }
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
+
+  // lilac sites: filled once they've opened, hollow before
+  sites.attr("fill", s => (day === null || s.obs <= day ? C.season(s.obs) : "none"));
+  drawTimeline();
+  d3.select("#readout").text(day === null ? "Mar–Aug" : date(day));
+}
+
+// ---- timeline: share of lilac country in bloom on each day ----
+const TL = { w: 760, h: 78, top: 20, bottom: 22 };   // w follows the element's real width, so text stays 14px
+const tl = d3.select("#timeline"), tlSvg = tl.append("svg");
+const tx = d3.scaleLinear().domain([D.d0, D.d1]);
+const series = (() => {
+  const starts = new Float64Array(400); let total = 0;
+  for (let i = 0; i < N; i++) { const s = NORMAL[i]; if (s && !isWarm(i)) { starts[s]++; total++; } }
+  return d3.range(D.d0, D.d1 + 1).map(dd => {
+    let c = 0; for (let s = dd - BLOOM_DAYS + 1; s <= dd; s++) c += starts[s] || 0;
+    return [dd, c / total];
+  });
+})();
+const ty = d3.scaleLinear().domain([0, d3.max(series, d => d[1])]).range([TL.h - TL.bottom, TL.top]);
+const tlArea = tlSvg.append("path").attr("class", "area");
+const tlBase = tlSvg.append("line").attr("class", "base").attr("x1", 0).attr("y1", ty(0)).attr("y2", ty(0));
+const tlTicks = tlSvg.append("g");
+const tlCap = tlSvg.append("text").attr("class", "cap").attr("x", 0).attr("y", 14);
+const nowLine = tlSvg.append("line").attr("class", "now").attr("y1", TL.top - 4).attr("y2", ty(0));
+const peakLbl = tlSvg.append("text").attr("class", "now-lbl").attr("text-anchor", "end").attr("y", 14);
+function layoutTimeline() {
+  TL.w = Math.max(240, tl.node().clientWidth || 760);
+  const narrow = TL.w < 520;
+  tlSvg.attr("viewBox", `0 0 ${TL.w} ${TL.h}`);
+  tx.range([0, TL.w]);
+  tlBase.attr("x2", TL.w);
+  peakLbl.attr("x", TL.w);
+  tlCap.text(narrow ? "In bloom" : "Share of lilac country in bloom");
+  tlTicks.selectAll("text").data(narrow ? [60, 121, 182] : [60, 91, 121, 152, 182, 213]).join("text").attr("class", "tick")
+    .attr("x", tx).attr("y", TL.h - 3).attr("text-anchor", (d, i) => (i ? "middle" : "start")).text(date);
+  tlArea.attr("d", d3.area().x(d => tx(d[0])).y0(ty(0)).y1(d => ty(d[1])).curve(d3.curveMonotoneX)(series));
+}
+layoutTimeline();
+function drawTimeline() {
+  nowLine.style("display", day === null ? "none" : null).attr("x1", tx(day ?? D.d0)).attr("x2", tx(day ?? D.d0));
+  if (day === null) { const pk = d3.greatest(series, d => d[1]); peakLbl.text(`Peak: ${d3.format(".0%")(pk[1])} on ${date(pk[0])}`); }
+  else peakLbl.text(`${d3.format(".0%")(series[day - D.d0][1])} in bloom`);
+  tl.attr("aria-valuemin", D.d0).attr("aria-valuemax", D.d1).attr("aria-valuenow", day ?? D.d1)
+    .attr("aria-valuetext", day === null ? "Whole season" : date(day));
+}
+function scrub(ev) {
+  const r = tlSvg.node().getBoundingClientRect();
+  setDay(Math.round(tx.invert(ev.clientX - r.left)));
+}
+tl.on("pointerdown", ev => { stop(); tl.node().setPointerCapture(ev.pointerId); scrub(ev); })
+  .on("pointermove", ev => { if (ev.buttons) scrub(ev); })
+  .on("keydown", ev => {
+    const step = { ArrowRight: 1, ArrowLeft: -1, PageUp: 7, PageDown: -7 }[ev.key];
+    if (step) { ev.preventDefault(); stop(); setDay((day ?? D.d0 - step) + step); }
+    if (ev.key === "Escape" || ev.key === "End") { stop(); setDay(null); }
+  });
+function setDay(d) { day = d === null ? null : Math.max(D.d0, Math.min(D.d1, d)); render(); refreshLegend(); }
+
+// ---- play ----
+const ICON = { play: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z"/></svg>Play spring',
+               pause: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>Pause' };
+const playBtn = d3.select("#play").html(ICON.play).on("click", () => (timer ? stop() : start()));
+let timer = null;
+function start() {
+  if (day === null || day >= D.d1) setDay(D.d0);
+  playBtn.html(ICON.pause);
+  const from = day;   // advance by elapsed time (75 ms a day), so dropped frames don't slow the season
+  timer = d3.timer(t => {
+    const d = from + Math.floor(t / 75);
+    if (d > D.d1) { stop(); setDay(null); return; }
+    if (d !== day) setDay(d);
+  });
+}
+function stop() { if (timer) { timer.stop(); timer = null; } playBtn.html(ICON.play); }
+
+// ---- legend (rebuilt when play starts or ends) ----
+let legendKey = "";
+function refreshLegend() {
+  const key = day === null ? "season" : "play";
+  if (key === legendKey) return;
+  legendKey = key;
+  stage.selectAll(".legend").remove();
+  const sq = (color, stroke) => g => g.append("rect").attr("x", -6).attr("y", -6).attr("width", 12).attr("height", 12)
+    .attr("fill", color).attr("stroke", stroke ?? "none").attr("stroke-width", 1.5);
+  const keys = [];
+  if (day !== null) keys.push({ draw: sq(C.season(120), C.ink), label: "In bloom now (2 weeks)" },
+                              { draw: sq(C.ctl), label: "Not open yet" });
+  keys.push({ draw: sq(C.warm), label: "Too warm for lilacs" },
+            { draw: g => g.append("circle").attr("r", 4).attr("fill", C.season(120)).attr("stroke", "currentColor"),
+              label: "Lilac watched by volunteers" });
+  MapKit.legend(svg, {
+    x: 12, y: H - 8, anchor: "bottom", width: 230,
+    title: "Lilacs first open, typical year",
+    stops: D.seasonStops, ticks: [[D.seasonStops[0][0], date(D.seasonStops[0][0])], [121, date(121)], [182, `${date(182)}+`]],
+    keys,
+  });
+}
+
+// ---- hover: nearest lilac site within 12px, else the grid cell ----
+const tip = MapKit.tooltip();
+const delaunay = d3.Delaunay.from(D.sites, s => s.x, s => s.y);
+let hotSite = null;
+svg.on("pointermove", ev => {
+  const [mx, my] = d3.pointer(ev, svg.node());
+  const r = svg.node().getBoundingClientRect(), unitsPerPx = 1 / Math.min(r.width / W, r.height / H);
+  const s = D.sites[delaunay.find(mx, my)];
+  if (s && Math.hypot(s.x - mx, s.y - my) / unitsPerPx <= 12) {
+    setHot(s); hoverSt.attr("d", null);
+    const diff = s.obs - s.model;
+    tip.show(ev, `<b>A lilac watched in ${s.state}</b><span class="big">${date(s.obs)}</span>
+      First open flowers, ${s.n > 1 ? `median of ${s.n} springs` : "one spring watched"}<br>
+      <span class="m">Model, same years: ${date(s.model)} (${diff === 0 ? "same day" : `${days(diff)} ${diff > 0 ? "later" : "earlier"} in real life`})</span>`);
+    return;
+  }
+  setHot(null);
+  const c = Math.floor(mx), rr = Math.floor(my), i = rr * W + c;
+  if (c < 0 || rr < 0 || c >= W || rr >= H || !NORMAL[i]) { tip.hide(); hoverSt.attr("d", null); return; }
+  const st = STATE[i] - 1, name = D.stateNames[st] ?? "";
+  hoverSt.attr("d", st >= 0 ? path(D.states.features[st]) : null);
+  if (isWarm(i)) {
+    tip.show(ev, `<b>${name}</b>The model says ${date(NORMAL[i])} in a typical year, but winters here are mostly too warm for lilacs to bloom.`);
+    return;
+  }
+  const n = NORMAL[i];
+  tip.show(ev, `<b>${name}</b><span class="big">${date(n)}</span>Lilacs first open here in a typical year<br>
+    <span class="m">In bloom until about ${date(n + BLOOM_DAYS - 1)}</span>`);
+}).on("pointerleave", () => { tip.hide(); setHot(null); hoverSt.attr("d", null); });
+function setHot(s) { if (s === hotSite) return; hotSite = s; sites.classed("on", d => d === s); }
+
+// ---- wire up ----
+render(); refreshLegend();
+new ResizeObserver(() => render()).observe(canvas);
+new ResizeObserver(() => { const w = tl.node().clientWidth; if (w && w !== TL.w) layoutTimeline(); }).observe(tl.node());
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColors(); legendKey = ""; render(); refreshLegend(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "day": 19,
+  "theme": "Senses: Smell",
+  "title": "The smell of lilacs moves north about 13 miles a day",
+  "description": "When lilacs first open across the lower 48 in a typical year (1991–2020), modeled from daily temperatures. In the East, each degree north waits about five more days: lilacs open around March 21 near Atlanta and May 24 in Bangor, Maine, and not until August high on Montana's Beartooth Plateau. Press play to watch the bloom (and its smell) roll north and uphill. Dots are real lilacs watched by Nature's Notebook volunteers. Data: USA National Phenology Network, Extended Spring Index (PRISM).",
+  "html": "out/map.html",
+  "png": "out/map.png",
+  "published": "2026-11-19"
+}
