@@ -8,6 +8,7 @@ NY State Plane (feet), so they look like true hexagons on the map. Two views:
 Writes:
   - out/nyc_tree_hexes.png   (static, most-common view, extremes called out)
   - out/nyc_tree_hexes.html  (interactive, segmented toggle between the two views)
+  - out/nyc_tree_hexes_linkedin.png  (1080x1350 portrait for the LinkedIn feed; each borough's favorite called out)
 
 Data: NYC Parks Forestry Tree Points (hn5i-inap), NTA 2020 (9nt8-h7nd), Borough Boundaries.
 Fetch: ./fetch.sh    Run: ../.venv/bin/python build.py
@@ -24,7 +25,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import shapely
-from matplotlib.patches import Patch
+from matplotlib.patches import Patch, Rectangle
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "shared"))
@@ -164,6 +165,61 @@ def bin_hexes(pts, boros, nta):
     return hx, cats, wins, city
 
 
+def draw_linkedin(hx, boros, cats, colors, wins, boro_top, title, n, H):
+    """4:5 portrait, the largest shape the LinkedIn feed shows, with type sized to read on a phone."""
+    fig = plt.figure(figsize=(5.4, 6.75))
+    ax = fig.add_axes([0.02, 0.085, 0.96, 0.72])
+    ax.set_axis_off()
+    x0, y0, x1, y1 = boros.total_bounds
+    pos = ax.get_position()
+    aspect = (pos.width * fig.get_figwidth()) / (pos.height * fig.get_figheight())
+    h = max(y1 - y0, (x1 - x0) / aspect) * 1.03
+    w = h * aspect
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    ax.set_xlim(cx - w / 2, cx + w / 2)
+    ax.set_ylim(cy - h / 2, cy + h / 2)
+    ax.set_aspect("equal")
+    boros.plot(ax=ax, color=S.C["ctl"], edgecolor="none")
+    hx.plot(ax=ax, color=hx.color, edgecolor=S.EDGE, linewidth=0.15)
+    boros.boundary.plot(ax=ax, color=S.INK, linewidth=0.3)
+
+    # each borough's favorite tree, pointing at the middle of that species' hexes in the borough
+    spots = {"Manhattan": ((0.03, 0.80), "left"), "Brooklyn": ((0.40, 0.035), "left"),
+             "Staten Island": ((0.02, 0.43), "left")}
+    for b, (txy, ha) in spots.items():
+        sp, sh = boro_top[b]
+        mine = hx[(hx.boro == b) & (hx.top == sp)]
+        mx, my = mine.px.median(), mine.py.median()
+        k = ((mine.px - mx) ** 2 + (mine.py - my) ** 2).idxmin()  # a real hex near the middle
+        S.callout(ax, (hx.px[k], hx.py[k]), txy, f"{b}: {nice(sp)}", f"{sh:.0%} of the borough's street trees",
+                  ha=ha, halo=True)
+
+    # two-line headline, broken after "yet", shrunk until the longer line fits 94% of the width
+    t1, t2 = title.split(", just ")
+    head = fig.text(0.5, 0.972, t1 + ",\njust " + t2, ha="center", va="top", fontsize=17, fontweight="bold",
+                    fontfamily=S.HEAD_FONT, color=S.INK, linespacing=1.18)
+    renderer = fig.canvas.get_renderer()
+    while head.get_window_extent(renderer).width > 0.94 * fig.bbox.width:
+        head.set_fontsize(head.get_fontsize() - 0.25)
+    fig.text(0.5, 0.875, f"{n:,} street trees in quarter-mile hexagons, each colored by its most common tree",
+             ha="center", va="center", fontsize=8.5, color=S.MUTED)
+    # legend: two rows under the subtitle, so it never sits on the map
+    items = [(colors[c], nice(c)) for c in cats] + [(colors["other"], "Another species")]
+    rows = [items[:4], items[4:]]
+    for r, row in enumerate(rows):
+        y = 0.842 - r * 0.028
+        xs = np.linspace(0.07, 0.93, len(row) + 1)[:-1] + (0.86 / len(row) - 0.215) / 2
+        for (col, lab), x in zip(row, xs):
+            fig.patches.append(Rectangle((x, y - 0.007), 0.017, 0.0136, transform=fig.transFigure, fc=col, ec="none"))
+            fig.text(x + 0.025, y, lab, ha="left", va="center", fontsize=8, color=S.INK)
+    S.credit(fig, f"Cultivars counted as their species; hexagons with fewer than {MIN_TREES} street trees left blank.\n"
+                  f"Data: NYC Parks, Forestry Tree Points (Nov 2026)  ·  #30DayMapChallenge {DAY}\n"
+                  "daniellecarrick.github.io/30-day-map-challenge/day20", y=0.014)
+    fig.savefig(OUT / "nyc_tree_hexes_linkedin.png", dpi=200)
+    plt.close(fig)
+    print("wrote", OUT / "nyc_tree_hexes_linkedin.png")
+
+
 def main():
     S.apply()
     pts, boros, nta = load()
@@ -192,7 +248,7 @@ def main():
         boro_top[b] = (v.index[0], v.iat[0] / len(g))
         print(f"  {b:14s} top {nice(v.index[0])} {v.iat[0] / len(g):.1%}")
     under = [b for b, (_, sh) in boro_top.items() if sh <= RULE]
-    title = f"New York has {kinds} kinds of street tree, yet just four make up a third of all its street trees"
+    title = f"Of New York's {kinds} kinds of street tree, just four make up a third of the trees"
     print("TITLE:", title, f"({top4_share:.1%})")
 
     def bt(b, unit=""):  # "honeylocust in Manhattan (16%)"; proper-noun names keep their capital
@@ -240,12 +296,12 @@ def main():
               f"{mixed.species} species; the most common,\n{nice(mixed.top)}, is only {mixed.share:.0%}",
               outline=mixed.geometry, halo=True, ha="right")
 
-    t1, t2 = title.split(", yet ")
-    head = t1 + ",\nyet " + t2.replace(" a third of ", " a third\nof ")
+    t1, t2 = title.split(", just ")
+    head = t1 + ",\njust " + t2
     fig.text(0.03, 0.93, head,
              ha="left", va="top", fontsize=S.SIZE["title"], fontweight="bold", fontfamily=S.HEAD_FONT, color=S.INK,
              linespacing=1.2)
-    fig.text(0.03, 0.77,
+    fig.text(0.03, 0.80,
              f"Each hexagon (about a quarter mile across) is colored by its\n"
              f"most common tree. The favorite changes by borough:\n"
              + boro_line.split(": ", 1)[1].replace("trees), ", "trees),\n")
@@ -256,7 +312,7 @@ def main():
                      label=f"{nice(c)}  ({wins[c] / H:.0%})") for c in cats]
     handles += [Patch(facecolor=colors["other"], edgecolor="none", label="Another species"),
                 Patch(facecolor=S.C["ctl"], edgecolor="none", label=f"Fewer than {MIN_TREES} street trees")]
-    fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.03, 0.52), fontsize=S.SIZE["legend"] + 1,
+    fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.03, 0.56), fontsize=S.SIZE["legend"] + 1,
                labelcolor=S.INK, handlelength=1.2, handleheight=1.2, labelspacing=0.7, borderaxespad=0,
                title="Most common tree  (share of hexagons)", title_fontsize=S.SIZE["legend"] + 1,
                alignment="left")
@@ -266,6 +322,7 @@ def main():
     fig.savefig(OUT / "nyc_tree_hexes.png", dpi=S.MAP["png_dpi"])
     plt.close(fig)
     print("wrote", OUT / "nyc_tree_hexes.png")
+    draw_linkedin(hx, boros, cats, colors, wins, boro_top, title, n, H)
 
     # ---- interactive page (feet; page uses d3.geoIdentity) ----
     g = hx[["top", "cat", "trees", "species", "share", "top3", "place", "boro", "geometry"]].copy()

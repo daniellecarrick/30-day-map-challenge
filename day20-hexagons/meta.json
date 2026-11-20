@@ -1,7 +1,7 @@
 {
   "day": 20,
   "theme": "Hexagons",
-  "title": "New York has 330 kinds of street tree, yet just four make up a third of all its street trees",
+  "title": "Of New York's 330 kinds of street tree, just four make up a third of the trees",
   "description": "All 897,872 living street trees in New York City, binned into hexagons about a quarter mile across and colored by each one's most common species (cultivars count as their species). London plane, honeylocust, pin oak and Callery pear make up 33% of the city's trees. The favorite changes by borough: London plane in Brooklyn (17% of its trees), honeylocust in Manhattan (16%), Callery pear on Staten Island (16%). Hover any hexagon to see a photo of its most common tree. Switch to 'How mixed' to compare each hexagon with the forester's rule of thumb that no species should be more than 10% of a city's trees; London plane is 11% citywide, and only the Bronx keeps its top tree under 10%. Data: NYC Parks, Forestry Tree Points; photos from Wikimedia Commons.",
   "html": "out/nyc_tree_hexes.html",
   "png": "out/nyc_tree_hexes.png",
