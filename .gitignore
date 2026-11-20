@@ -37,3 +37,6 @@ day17-light-dark/data/
 
 # Day 18: 2020 Census block shapefiles (~10 GB) and processed caches; URLs in day18-null/build.py
 day18-null/data/
+
+# Day 20: street-tree points (96 MB, near GitHub's limit); re-download with day20-hexagons/fetch.sh
+day20-hexagons/data/trees.csv

@@ -9,13 +9,13 @@
 <meta property="og:title" content="30 Day Map Challenge 2026">
 <meta property="og:description" content="One map a day through November, made for the #30DayMapChallenge.">
 <meta property="og:url" content="https://daniellecarrick.github.io/30-day-map-challenge/">
-<meta property="og:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day19/preview.png">
+<meta property="og:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day20/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="30 Day Map Challenge 2026">
 <meta name="twitter:description" content="One map a day through November, made for the #30DayMapChallenge.">
-<meta name="twitter:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day19/preview.png">
+<meta name="twitter:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day20/preview.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 /* Shared web theme for the #30DayMapChallenge series.
@@ -25,7 +25,7 @@
 
 :root {
   --bg: #ffffff; --ink: #2b2b28; --muted: #6b6b66; --edge: #ffffff; --closed: #8a8a86;
-  --ctl: #f0efec; --ctl-on: #ffffff; --accent: #3987e5;
+  --ctl: #f0efec; --ctl-on: #ffffff; --accent: #3987e5; --other: #cfcec8;
   --font: "Raleway", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   /* NYC subway trunk colors (tokens.json scales.subway) */
   --sub-123: #ee352e; --sub-456: #00933c; --sub-7: #b933ad; --sub-ACE: #0039a6; --sub-BDFM: #ff6319;
@@ -40,19 +40,21 @@
   --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #6da7ec; --seq-4: #3987e5; --seq-5: #256abf; --seq-6: #184f95; --seq-7: #0d366b;
   /* sequential purple (tokens.json scales.sequential_purple): lilac, light -> dark; same in light and dark */
   --seqp-1: #e9e4fa; --seqp-2: #cdc2f3; --seqp-3: #ae9fea; --seqp-4: #8f7cdf; --seqp-5: #7059cf; --seqp-6: #5240aa; --seqp-7: #35287a;
+  /* party (tokens.json scales.party): US election results only; light -> dark = margin; same in light and dark */
+  --dem-1: #9ec5f4; --dem-2: #2a78d6; --dem-3: #0d366b; --gop-1: #f4aaa2; --gop-2: #e34948; --gop-3: #8a1f1d;
   /* diverging (tokens.json scales.diverging): low = blue, center = neutral, high = amber -> brown */
   --div-1: #104281; --div-2: #6da7ec; --div-3: #f0efec; --div-4: #d98a00; --div-5: #5a3300;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
-    --ctl: #2c2c29; --ctl-on: #45453f;
+    --ctl: #2c2c29; --ctl-on: #45453f; --other: #4f4e49;
     --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
   }
 }
 :root[data-theme="dark"] {
   --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
-  --ctl: #2c2c29; --ctl-on: #45453f;
+  --ctl: #2c2c29; --ctl-on: #45453f; --other: #4f4e49;
   --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
 }
 
@@ -319,6 +321,13 @@ body { margin: 0; background: var(--bg); color: var(--ink);
       <div class="body">
         <p class="kicker">Day 19 · Senses: Smell</p>
         <h2><a href="day19/">The smell of lilacs moves north about 13 miles a day</a></h2>
+      </div>
+    </article>
+    <article class="card">
+      <a class="thumb" href="day20/"><img src="day20/thumb.png" alt="New York has 330 kinds of street tree, yet just four make up a third of all its street trees" loading="lazy"></a>
+      <div class="body">
+        <p class="kicker">Day 20 · Hexagons</p>
+        <h2><a href="day20/">New York has 330 kinds of street tree, yet just four make up a third of all its street trees</a></h2>
       </div>
     </article>
   </section>

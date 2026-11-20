@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYC Street Tree Hexagons</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .land { fill: var(--ctl); stroke: none; }
+  .boro { fill: none; stroke: var(--ink); stroke-width: 0.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .hex { stroke: var(--edge); stroke-width: 0.4; vector-effect: non-scaling-stroke; }
+  .hl { fill: none; stroke: var(--ink); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .map-wrap { overflow: hidden; }
+  /* pinch always zooms the map; one finger scrolls the page until you zoom in, then pans the map */
+  .map-wrap > svg { cursor: grab; touch-action: pan-y; }
+  .map-wrap > svg.zoomed { touch-action: none; }
+  .play[hidden] { display: none; }
+  .tip .row { display: flex; justify-content: space-between; gap: 14px; }
+  .tip .row span:last-child { font-variant-numeric: tabular-nums; }
+  .hint { color: var(--muted); }
+  /* legend panel: paper-colored and slightly see-through so it reads over zoomed-in hexes; collapsible */
+  .legend.panel { box-sizing: border-box; padding: 10px 12px; border-radius: 8px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent); box-shadow: 0 1px 4px rgb(0 0 0 / .14); }
+  .lg-toggle { pointer-events: auto; float: right; margin: -4px -6px 4px 8px; padding: 4px 6px; border: 0; border-radius: 6px;
+    font: inherit; font-size: 14px; color: var(--muted); background: none; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px; }
+  .lg-toggle:hover { color: var(--ink); background: var(--ctl); }
+  .lg-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .lg-toggle svg { transform: rotate(180deg); }
+  .legend.collapsed { width: auto !important; padding: 4px; }
+  .legend.collapsed > :not(.lg-toggle) { display: none; }
+  .legend.collapsed .lg-toggle { float: none; margin: 0; color: var(--ink); font-weight: 600; }
+  .legend.collapsed .lg-toggle svg { transform: none; }
+  /* tooltip photo of the hex's most common tree */
+  .tip { max-width: 232px; }
+  .tip .photo { position: relative; margin: 0 0 8px; }
+  .tip .photo img { display: block; width: 100%; height: auto; max-height: 200px; object-fit: cover; border-radius: 4px; background: var(--ctl); }
+  .tip .photo figcaption { position: absolute; left: 0; bottom: 0; right: 0; padding: 14px 8px 6px; border-radius: 0 0 4px 4px;
+    font-weight: 600; color: #fff; background: linear-gradient(transparent, rgb(0 0 0 / .6)); }
+  .tip .credit { margin-top: 6px; color: var(--muted); font-size: 14px; line-height: 1.25; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <div id="toggle" aria-label="Map view"></div>
+      <button class="play" id="reset" type="button" hidden>Reset zoom</button>
+    </div>
+  </header>
+  <div class="map-wrap" id="map"></div>
+  <footer><span id="n"></span> living street trees, binned into hexagons about a quarter mile across; hexagons with fewer than <span id="min"></span> trees (parks, airports, industrial areas) are left blank.
+    Data: <a id="src">NYC Parks, Forestry Tree Points</a> (Nov 2026); tree photos from Wikimedia Commons, credited on hover · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const W = 640, H = 640;
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[4, 4], [W - 4, H - 4]], D.boroughs);
+const path = d3.geoPath(proj);
+const tip = MapKit.tooltip();
+const fmt = d3.format(",");
+const pct = v => `${Math.round(100 * v)}%`;
+const PHOTO_W = 216;  // tooltip photo, CSS px
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const CAT = Object.fromEntries(D.cats.map(c => [c.key, c]));
+
+d3.select("#title").text(D.title);
+d3.select("#day").text(D.day);
+d3.select("#src").attr("href", D.source_url);
+d3.select("#n").text(fmt(D.n));
+d3.select("#min").text(D.min_trees);
+
+const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
+const g = svg.append("g");
+g.append("g").selectAll("path").data(D.boroughs.features).join("path").attr("class", "land").attr("d", path);
+const hexes = g.append("g").selectAll("path").data(D.features.features).join("path")
+  .attr("class", "hex").attr("d", path);
+g.append("g").selectAll("path").data(D.boroughs.features).join("path").attr("class", "boro").attr("d", path);
+const hl = g.append("path").attr("class", "hl");
+
+const divColor = d3.scaleLinear().domain(D.stops.map(s => s[0])).range(D.stops.map(s => s[1])).clamp(true);
+const VIEWS = {
+  top: {
+    label: "Most common tree",
+    fill: d => `var(${CAT[d.properties.cat].var})`,
+    lede: () => `London plane, honeylocust, pin oak and Callery pear are ${D.top4_pct}% of the city's ${fmt(D.n)} street trees. Each hexagon is colored by its most common tree. ${D.boro_line} Hover a hexagon to see its tree and its top three.`,
+  },
+  mix: {
+    label: "How mixed",
+    fill: d => divColor(d.properties.share),
+    lede: () => `Foresters suggest no single species make up more than 10% of a city's trees, so one pest can't wipe out a street. ${D.rule_line} Here each hexagon is shaded by its most common species' share.`,
+  },
+};
+
+let legend;
+function drawLegend(key) {
+  if (legend) legend.remove();
+  const o = { x: 8, y: 8, width: 250 };
+  const blank = { draw: s => s.append("rect").attr("x", -6).attr("y", -6).attr("width", 12).attr("height", 12).attr("fill", "var(--ctl)").attr("stroke", "var(--muted)").attr("stroke-width", 0.5), label: `Fewer than ${D.min_trees} street trees` };
+  if (key === "top") {
+    o.title = "Most common tree\n(share of hexagons)";
+    o.keys = D.cats.map(c => ({
+      draw: s => s.append("rect").attr("x", -6).attr("y", -6).attr("width", 12).attr("height", 12).attr("fill", `var(${c.var})`),
+      label: c.wins ? `${c.label}  ${pct(c.wins / D.hexes)}` : c.label,
+    })).concat([blank]);
+  } else {
+    o.title = "Top species' share\nof the trees";
+    o.stops = D.stops;
+    o.ticks = [[D.stops[0][0], ""], [D.rule, "10% rule"], [D.stops[D.stops.length - 1][0], "50%+"]];
+    o.keys = [blank];
+  }
+  legend = MapKit.legend(svg, o);
+  legend.append("div").attr("class", "hint").style("margin-top", "8px").text("Scroll or pinch to zoom");
+  // translucent panel so it reads over zoomed-in hexes; the button folds it down to one line
+  legend.classed("panel", true);
+  legend.insert("button", ":first-child").attr("class", "lg-toggle").attr("type", "button")
+    .on("click", () => { legendOpen = !legendOpen; setLegendOpen(); });
+  setLegendOpen();
+}
+let legendOpen = true;
+const CHEVRON = `<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function setLegendOpen() {
+  legend.classed("collapsed", !legendOpen);
+  legend.select(".lg-toggle").attr("aria-expanded", legendOpen)
+    .attr("aria-label", legendOpen ? "Hide legend" : "Show legend")
+    .html(legendOpen ? `Hide ${CHEVRON}` : `Legend ${CHEVRON}`);
+}
+
+function tipHtml(d) {
+  const p = d.properties, ph = D.photos[p.top];
+  const rows = p.top3.map(([name, n]) => `<div class="row"><span>${name}</span><span>${pct(n / p.trees)}</span></div>`).join("");
+  const photo = ph
+    ? `<figure class="photo"><img src="${ph.src}" width="${PHOTO_W}" height="${Math.round(PHOTO_W * ph.h / ph.w)}" alt="${D.names[p.top]}">
+       <figcaption>${D.names[p.top]}</figcaption></figure>` : "";
+  const credit = ph ? `<div class="credit">${ph.credit}</div>` : "";
+  return `${photo}<b>${p.place}</b><span class="m">${p.boro} · ${fmt(p.trees)} trees, ${p.species} species</span>${rows}${credit}`;
+}
+hexes.on("mousemove", (ev, d) => { tip.show(ev, tipHtml(d)); hl.attr("d", path(d)); })
+  .on("mouseleave", () => { tip.hide(); hl.attr("d", null); });
+
+function render(key) {
+  hexes.attr("fill", VIEWS[key].fill);
+  d3.select("#lede").text(VIEWS[key].lede());
+  drawLegend(key);
+}
+
+// pinch / wheel / drag zoom; the button resets
+const zoom = d3.zoom().scaleExtent([1, 8]).translateExtent([[0, 0], [W, H]])
+  .on("zoom", ev => {
+    g.attr("transform", ev.transform);
+    d3.select("#reset").attr("hidden", ev.transform.k > 1.01 ? null : true);
+    svg.classed("zoomed", ev.transform.k > 1.01);
+  });
+svg.call(zoom).on("dblclick.zoom", null);
+d3.select("#reset").on("click", () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity));
+
+MapKit.segmented("#toggle", Object.entries(VIEWS).map(([value, v]) => ({ value, label: v.label })), render);
+</script>
+</body>
+</html>
