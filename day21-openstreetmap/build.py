@@ -6,6 +6,7 @@ Where a borough looks empty it usually means nobody has mapped it yet, so each v
 points cluster.
 Writes:
   - out/nyc_folk_tags.png    (static, small multiples: one panel per tag)
+  - out/nyc_folk_tags_linkedin.png  (1080x1350 portrait for the LinkedIn feed, same ten maps in a 3x4 grid)
   - out/nyc_folk_tags.html   (interactive: pick a tag from a dropdown; hover a dot for its tags,
                               click to open it on openstreetmap.org)
 
@@ -39,6 +40,8 @@ BORO_ORDER = ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"]
 THIS_YEAR = "2026"
 
 TITLE = "OpenStreetMap volunteers have mapped 74 ghost bikes, 218 tree stumps and 68 hopscotch grids in NYC"
+TAKEAWAY = ("Mappers invent their own tags, and coverage follows them: "
+            "an empty borough usually means nobody has mapped it yet.")
 METHOD = ("Every OpenStreetMap feature in the five boroughs carrying one of ten tags; "
           "areas are drawn at their center")
 
@@ -86,32 +89,77 @@ def summarize(pts):
     return views
 
 
+DOT = S.C["accent"]   # series blue
+
+
+def draw_panel(ax, v, land, boros, size_small, size_large, fs):
+    """One small map: land, borough lines, the tag's points, and three heading lines above it.
+    fs = (heading, tag, note) font sizes; text offsets are in points so they hold at any figure size."""
+    land.plot(ax=ax, color=S.C["ctl"], edgecolor="none")
+    boros.boundary.plot(ax=ax, color=S.INK, linewidth=S.MAP["boundary_width"] * 0.6)
+    g = v["sel"].geometry
+    ax.scatter(g.x, g.y, s=size_small if v["n"] < 400 else size_large, color=DOT, edgecolor=S.BG,
+               linewidth=0.2, zorder=3)
+    ax.set_axis_off()
+    ax.set_aspect("equal")
+    ax.set_anchor("NW")   # map sits right under its heading, left-aligned with it
+    lines = [(f"{v['label']}  {v['n']:,}", fs[0], dict(fontweight="semibold", fontfamily=S.HEAD_FONT, color=S.INK)),
+             (v["tag"], fs[1], dict(fontfamily="monospace", color=S.MUTED)),
+             (short_note(v), fs[2], dict(color=S.INK))]
+    y = 3   # points above the axes top, stacked bottom-up
+    for text, size, kw in reversed(lines):
+        ax.annotate(text, xy=(0, 1), xycoords="axes fraction", xytext=(0, y), textcoords="offset points",
+                    fontsize=size, va="bottom", ha="left", **kw)
+        y += size * 1.35
+
+
 def png(views, boros):
     fig, axes = plt.subplots(2, 5, figsize=S.MAP["png_size_in"])
     fig.subplots_adjust(left=0.01, right=0.99, top=0.80, bottom=0.04, wspace=0.04, hspace=0.36)
     land = boros.dissolve()
     for ax, v in zip(axes.flat, views):
-        land.plot(ax=ax, color=S.TOKENS["color"]["light"]["ctl"], edgecolor="none")
-        boros.boundary.plot(ax=ax, color=S.INK, linewidth=S.MAP["boundary_width"] * 0.6)
-        g = v["sel"].geometry
-        size = 7 if v["n"] < 400 else 3
-        ax.scatter(g.x, g.y, s=size, color=S.INK, edgecolor=S.BG, linewidth=0.25, zorder=3)
-        ax.set_axis_off()
-        ax.set_aspect("equal")
-        ax.set_title("")
-        # heading above the panel: label + count, the raw tag, and where the points cluster
-        ax.text(0.0, 1.17, f"{v['label']}  {v['n']:,}", transform=ax.transAxes, fontsize=S.SIZE["panel_title"],
-                fontweight="semibold", color=S.INK, fontfamily=S.HEAD_FONT, va="bottom")
-        ax.text(0.0, 1.10, v["tag"], transform=ax.transAxes, fontsize=S.SIZE["subtitle"], color=S.MUTED,
-                va="bottom", fontfamily="monospace")
-        ax.text(0.0, 1.03, short_note(v), transform=ax.transAxes, fontsize=S.SIZE["annotation"],
-                color=S.INK, va="bottom")
+        draw_panel(ax, v, land, boros, 7, 3, (S.SIZE["panel_title"], S.SIZE["subtitle"], S.SIZE["annotation"]))
     S.title(fig, TITLE)
-    fig.text(0.5, 0.918, "Mappers invent their own tags, and coverage follows them: "
-             "an empty borough usually means nobody has mapped it yet.",
-             ha="center", fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED)
+    fig.text(0.5, 0.918, TAKEAWAY, ha="center", fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED)
     S.credit(fig, f"{METHOD}  ·  {SOURCE}  ·  #30DayMapChallenge {DAY}")
     fig.savefig(OUT / "nyc_folk_tags.png", dpi=S.MAP["png_dpi"])
+    plt.close(fig)
+
+
+def linkedin(views, boros):
+    """4:5 portrait (1080x1350), the largest shape the LinkedIn feed shows: the ten maps in a 3x4 grid,
+    with the takeaway in the two spare cells, type sized to read on a phone."""
+    fig = plt.figure(figsize=(5.4, 6.75))
+    land = boros.dissolve()
+    cols, rows = 3, 4
+    left, right, top, bottom = 0.04, 0.98, 0.855, 0.065
+    cw, ch = (right - left) / cols, (top - bottom) / rows
+    head = 0.06   # room for the three heading lines above each map, in figure height
+    for i, v in enumerate(views):
+        r, c = divmod(i, cols)
+        ax = fig.add_axes([left + c * cw, top - (r + 1) * ch + 0.006, cw * 0.94, ch - head - 0.006])
+        draw_panel(ax, v, land, boros, 2.4, 0.8, (7.5, 5.5, 6))
+    # spare cells (last row, columns 2-3): the takeaway
+    fig.text(left + cw, bottom + ch * 0.6,
+             "Mappers invent their own tags,\nand coverage follows them.\n"
+             "An empty borough usually means\nnobody has mapped it yet.",
+             ha="left", va="center", fontsize=9, color=S.INK, linespacing=1.35, fontfamily=S.HEAD_FONT)
+    fig.text(left + cw, bottom + ch * 0.18, "Hover and click every dot:\n"
+             "daniellecarrick.github.io/30-day-map-challenge/day21",
+             ha="left", va="center", fontsize=7, color=S.MUTED, linespacing=1.35)
+    # two-line headline, shrunk until the longer line fits 94% of the width
+    t1, t2 = TITLE.split(", 218 ")
+    h = fig.text(0.5, 0.972, t1 + ",\n218 " + t2, ha="center", va="top", fontsize=17, fontweight="bold",
+                 fontfamily=S.HEAD_FONT, color=S.INK, linespacing=1.18)
+    renderer = fig.canvas.get_renderer()
+    while h.get_window_extent(renderer).width > 0.94 * fig.bbox.width:
+        h.set_fontsize(h.get_fontsize() - 0.25)
+    fig.text(0.5, 0.89, "Ten odd OpenStreetMap tags in New York City, one map each",
+             ha="center", va="center", fontsize=8.5, color=S.MUTED)
+    fig.text(0.5, 0.012, f"Every OSM feature in the five boroughs with one of ten tags; areas drawn at their center.\n"
+                         f"{SOURCE}\n#30DayMapChallenge {DAY}", ha="center", va="bottom", fontsize=5.5,
+             color=S.MUTED, linespacing=1.4)
+    fig.savefig(OUT / "nyc_folk_tags_linkedin.png", dpi=200)
     plt.close(fig)
 
 
@@ -167,6 +215,8 @@ def main():
         print(f"{v['label']:24} {v['n']:>5}  {v['finding']}")
     png(views, boros)
     print("wrote out/nyc_folk_tags.png")
+    linkedin(views, boros)
+    print("wrote out/nyc_folk_tags_linkedin.png")
     page(views, boros)
 
 
