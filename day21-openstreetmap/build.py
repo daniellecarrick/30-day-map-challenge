@@ -40,6 +40,7 @@ BORO_ORDER = ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"]
 THIS_YEAR = "2026"
 
 TITLE = "OpenStreetMap volunteers have mapped 74 ghost bikes, 218 tree stumps and 68 hopscotch grids in NYC"
+LINKEDIN_TITLE = "Mappers invent their own tags, including\nghost bikes, tree stumps and hopscotch"
 TAKEAWAY = ("Mappers invent their own tags, and coverage follows them: "
             "an empty borough usually means nobody has mapped it yet.")
 METHOD = ("Every OpenStreetMap feature in the five boroughs carrying one of ten tags; "
@@ -128,7 +129,7 @@ def png(views, boros):
 
 def linkedin(views, boros):
     """4:5 portrait (1080x1350), the largest shape the LinkedIn feed shows: the ten maps in a 3x4 grid,
-    with the takeaway in the two spare cells, type sized to read on a phone."""
+    with the link in the two spare cells, type sized to read on a phone."""
     fig = plt.figure(figsize=(5.4, 6.75))
     land = boros.dissolve()
     cols, rows = 3, 4
@@ -139,17 +140,12 @@ def linkedin(views, boros):
         r, c = divmod(i, cols)
         ax = fig.add_axes([left + c * cw, top - (r + 1) * ch + 0.006, cw * 0.94, ch - head - 0.006])
         draw_panel(ax, v, land, boros, 5, 1.6, (7.5, 5.5, 6))
-    # spare cells (last row, columns 2-3): the takeaway
-    fig.text(left + cw, bottom + ch * 0.6,
-             "Mappers invent their own tags,\nand coverage follows them.\n"
-             "An empty borough usually means\nnobody has mapped it yet.",
-             ha="left", va="center", fontsize=9, color=S.INK, linespacing=1.35, fontfamily=S.HEAD_FONT)
-    fig.text(left + cw, bottom + ch * 0.18, "Hover and click every dot:\n"
+    # spare cells (last row, columns 2-3): where to explore it
+    fig.text(left + cw, bottom + ch * 0.45, "Hover and click every dot:\n"
              "daniellecarrick.github.io/30-day-map-challenge/day21",
-             ha="left", va="center", fontsize=7, color=S.MUTED, linespacing=1.35)
+             ha="left", va="center", fontsize=8, color=S.MUTED, linespacing=1.35)
     # two-line headline, shrunk until the longer line fits 94% of the width
-    t1, t2 = TITLE.split(", 218 ")
-    h = fig.text(0.5, 0.972, t1 + ",\n218 " + t2, ha="center", va="top", fontsize=17, fontweight="bold",
+    h = fig.text(0.5, 0.972, LINKEDIN_TITLE, ha="center", va="top", fontsize=15.5, fontweight="bold",
                  fontfamily=S.HEAD_FONT, color=S.INK, linespacing=1.18)
     renderer = fig.canvas.get_renderer()
     while h.get_window_extent(renderer).width > 0.94 * fig.bbox.width:
