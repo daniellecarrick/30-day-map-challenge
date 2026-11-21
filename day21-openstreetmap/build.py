@@ -94,8 +94,8 @@ DOT = S.C["accent"]   # series blue
 
 
 def draw_panel(ax, v, land, boros, size_small, size_large, fs):
-    """One small map: land, borough lines, the tag's points, and three heading lines above it.
-    fs = (heading, tag, note) font sizes; text offsets are in points so they hold at any figure size."""
+    """One small map: land, borough lines, the tag's points, and two heading lines above it.
+    fs = (heading, tag) font sizes; text offsets are in points so they hold at any figure size."""
     land.plot(ax=ax, color=S.C["ctl"], edgecolor="none")
     boros.boundary.plot(ax=ax, color=S.INK, linewidth=S.MAP["boundary_width"] * 0.6)
     g = v["sel"].geometry
@@ -105,8 +105,7 @@ def draw_panel(ax, v, land, boros, size_small, size_large, fs):
     ax.set_aspect("equal")
     ax.set_anchor("NW")   # map sits right under its heading, left-aligned with it
     lines = [(f"{v['label']}  {v['n']:,}", fs[0], dict(fontweight="semibold", fontfamily=S.HEAD_FONT, color=S.INK)),
-             (v["tag"], fs[1], dict(fontfamily="monospace", color=S.MUTED)),
-             (short_note(v), fs[2], dict(color=S.INK))]
+             (v["tag"], fs[1], dict(fontfamily="monospace", color=S.MUTED))]
     y = 3   # points above the axes top, stacked bottom-up
     for text, size, kw in reversed(lines):
         ax.annotate(text, xy=(0, 1), xycoords="axes fraction", xytext=(0, y), textcoords="offset points",
@@ -119,7 +118,7 @@ def png(views, boros):
     fig.subplots_adjust(left=0.01, right=0.99, top=0.80, bottom=0.04, wspace=0.04, hspace=0.36)
     land = boros.dissolve()
     for ax, v in zip(axes.flat, views):
-        draw_panel(ax, v, land, boros, 14, 5, (S.SIZE["panel_title"], S.SIZE["subtitle"], S.SIZE["annotation"]))
+        draw_panel(ax, v, land, boros, 14, 5, (S.SIZE["panel_title"], S.SIZE["subtitle"]))
     S.title(fig, TITLE)
     fig.text(0.5, 0.918, TAKEAWAY, ha="center", fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED)
     S.credit(fig, f"{METHOD}  ·  {SOURCE}  ·  #30DayMapChallenge {DAY}")
@@ -135,11 +134,11 @@ def linkedin(views, boros):
     cols, rows = 3, 4
     left, right, top, bottom = 0.04, 0.98, 0.855, 0.065
     cw, ch = (right - left) / cols, (top - bottom) / rows
-    head = 0.06   # room for the three heading lines above each map, in figure height
+    head = 0.045   # room for the two heading lines above each map, in figure height
     for i, v in enumerate(views):
         r, c = divmod(i, cols)
         ax = fig.add_axes([left + c * cw, top - (r + 1) * ch + 0.006, cw * 0.94, ch - head - 0.006])
-        draw_panel(ax, v, land, boros, 5, 1.6, (7.5, 5.5, 6))
+        draw_panel(ax, v, land, boros, 5, 1.6, (7.5, 5.5))
     # spare cells (last row, columns 2-3): where to explore it
     fig.text(left + cw, bottom + ch * 0.45, "Hover and click every dot:\n"
              "daniellecarrick.github.io/30-day-map-challenge/day21",
@@ -157,30 +156,6 @@ def linkedin(views, boros):
              color=S.MUTED, linespacing=1.4)
     fig.savefig(OUT / "nyc_folk_tags_linkedin.png", dpi=200)
     plt.close(fig)
-
-
-def at(boro):
-    return f"on {boro}" if boro == "Staten Island" else f"in {boro}"
-
-
-def short_note(v):
-    """Short per-panel callout of the extreme: the borough with the most (or none)."""
-    b, n = v["boro"], v["n"]
-    top, top_n = max(b.items(), key=lambda kv: kv[1])
-    empty = [x for x in BORO_ORDER if b[x] == 0]
-    if v["key"] == "ghost_bike":
-        return "In every borough"
-    if v["key"] == "memorial_bench":
-        return "Only Staten Island and Manhattan"
-    if v["key"] == "closed_shop":
-        return f"Just {b['Bronx']} in the Bronx"
-    if v["key"] == "alpr":
-        return f"{top_n} {at(top)}, the most"
-    if top_n / n >= 0.5:
-        return f"{top_n} {at(top)}"
-    if empty:
-        return f"None in the {empty[0]}"
-    return f"{top_n} {at(top)}, the most"
 
 
 def page(views, boros):
