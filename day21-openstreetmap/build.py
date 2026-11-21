@@ -1,0 +1,174 @@
+"""Day 21 · OpenStreetMap — ten unusual "folk tags" volunteers have mapped in New York City.
+
+OpenStreetMap has no fixed list of things you may map: mappers invent and agree on tags as they go.
+This maps ten of the odd ones in the five boroughs (ghost bikes, plate readers, tree stumps, ...).
+Where a borough looks empty it usually means nobody has mapped it yet, so each view says where the
+points cluster.
+Writes:
+  - out/nyc_folk_tags.png    (static, small multiples: one panel per tag)
+  - out/nyc_folk_tags.html   (interactive: pick a tag from a dropdown; hover a dot for its tags,
+                              click to open it on openstreetmap.org)
+
+Data: OpenStreetMap contributors (ODbL), Geofabrik New York extract of 2026-11-20.
+Get it with ./fetch.sh, then ../.venv/bin/python extract.py  ->  data/folk_tags.geojson
+Run:  ../.venv/bin/python build.py
+"""
+import json
+import sys
+from pathlib import Path
+
+import geopandas as gpd
+import matplotlib.pyplot as plt
+
+from folk import FOLK, SHOW
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "shared"))
+import style as S  # noqa: E402  (shared series look: fonts, colors, page builder)
+
+HERE = Path(__file__).parent
+DATA = HERE / "data"
+OUT = HERE / "out"
+OUT.mkdir(exist_ok=True)
+
+DAY = "Day 21: OpenStreetMap"
+EXTRACT_DATE = "Nov 20, 2026"
+SOURCE = f"Data: © OpenStreetMap contributors (ODbL), Geofabrik extract of {EXTRACT_DATE}"
+SOURCE_URL = "https://www.openstreetmap.org/copyright"
+CRS_M = "EPSG:32618"   # UTM 18N, metres
+BORO_ORDER = ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"]
+THIS_YEAR = "2026"
+
+TITLE = "OpenStreetMap volunteers have mapped 74 ghost bikes, 218 tree stumps and 68 hopscotch grids in NYC"
+METHOD = ("Every OpenStreetMap feature in the five boroughs carrying one of ten tags; "
+          "areas are drawn at their center")
+
+
+def finding(key: str, n: int, b: dict, year: dict) -> str:
+    """One literally-true sentence per tag, filled from the counts (so it can't drift from the data)."""
+    pct = lambda k: round(100 * k / n)
+    # the sentences below make claims about the data; stop if a fresh extract breaks one
+    if key == "poop_bags":
+        assert b["Bronx"] == 0, "poop bags now mapped in the Bronx: reword"
+    if key == "ghost_bike":
+        assert min(b.values()) > 0 and b["Brooklyn"] == b["Manhattan"], "ghost bike counts changed: reword"
+    if key == "memorial_bench":
+        assert b["Staten Island"] + b["Manhattan"] == n, "memorial benches elsewhere now: reword"
+    return {
+        "ghost_bike": f"{n} ghost bikes, in all five boroughs; Brooklyn and Manhattan have {b['Brooklyn']} each",
+        "alpr": f"{n:,} license-plate readers; {year.get(THIS_YEAR, 0):,} were added or last edited in {THIS_YEAR}",
+        "fire_alarm_box": f"{b['Queens']} of the {n} mapped fire alarm boxes are in Queens",
+        "playground_map": f"{b['Queens']} of the {n} painted playground maps are in Queens",
+        "hopscotch": f"Staten Island has {b['Staten Island']} of the {n} mapped hopscotch grids",
+        "tree_stump": f"{b['Queens']} of the {n} mapped tree stumps are in Queens",
+        "bookcase": f"Brooklyn has {b['Brooklyn']} of the {n} mapped little free libraries ({pct(b['Brooklyn'])}%)",
+        "memorial_bench": f"{n} memorial benches, all on Staten Island ({b['Staten Island']}) or in Manhattan ({b['Manhattan']})",
+        "poop_bags": f"{n} poop-bag dispensers, and none mapped in the Bronx",
+        "closed_shop": f"{n:,} shops marked as closed, but only {b['Bronx']} of them in the Bronx",
+    }[key]
+
+
+def load():
+    pts = gpd.read_file(DATA / "folk_tags.geojson").to_crs(CRS_M)
+    pts["edited"] = pts.edited.astype(str).str[:10]   # read_file parses dates; keep them as YYYY-MM-DD text
+    boros = gpd.read_file(DATA / "boroughs.geojson").to_crs(CRS_M)
+    boros["geometry"] = boros.geometry.simplify(40)
+    return pts, boros
+
+
+def summarize(pts):
+    views = []
+    for f in FOLK:
+        sel = pts[pts.folk == f["key"]]
+        boro = {b: int((sel.boro == b).sum()) for b in BORO_ORDER}
+        year = sel.edited.str[:4].value_counts().to_dict()
+        views.append({**{k: f[k] for k in ("key", "label", "one", "tag", "about")}, "n": len(sel), "boro": boro,
+                      "finding": finding(f["key"], len(sel), boro, year), "sel": sel})
+    return views
+
+
+def png(views, boros):
+    fig, axes = plt.subplots(2, 5, figsize=S.MAP["png_size_in"])
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.80, bottom=0.04, wspace=0.04, hspace=0.36)
+    land = boros.dissolve()
+    for ax, v in zip(axes.flat, views):
+        land.plot(ax=ax, color=S.TOKENS["color"]["light"]["ctl"], edgecolor="none")
+        boros.boundary.plot(ax=ax, color=S.INK, linewidth=S.MAP["boundary_width"] * 0.6)
+        g = v["sel"].geometry
+        size = 7 if v["n"] < 400 else 3
+        ax.scatter(g.x, g.y, s=size, color=S.INK, edgecolor=S.BG, linewidth=0.25, zorder=3)
+        ax.set_axis_off()
+        ax.set_aspect("equal")
+        ax.set_title("")
+        # heading above the panel: label + count, the raw tag, and where the points cluster
+        ax.text(0.0, 1.17, f"{v['label']}  {v['n']:,}", transform=ax.transAxes, fontsize=S.SIZE["panel_title"],
+                fontweight="semibold", color=S.INK, fontfamily=S.HEAD_FONT, va="bottom")
+        ax.text(0.0, 1.10, v["tag"], transform=ax.transAxes, fontsize=S.SIZE["subtitle"], color=S.MUTED,
+                va="bottom", fontfamily="monospace")
+        ax.text(0.0, 1.03, short_note(v), transform=ax.transAxes, fontsize=S.SIZE["annotation"],
+                color=S.INK, va="bottom")
+    S.title(fig, TITLE)
+    fig.text(0.5, 0.918, "Mappers invent their own tags, and coverage follows them: "
+             "an empty borough usually means nobody has mapped it yet.",
+             ha="center", fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED)
+    S.credit(fig, f"{METHOD}  ·  {SOURCE}  ·  #30DayMapChallenge {DAY}")
+    fig.savefig(OUT / "nyc_folk_tags.png", dpi=S.MAP["png_dpi"])
+    plt.close(fig)
+
+
+def at(boro):
+    return f"on {boro}" if boro == "Staten Island" else f"in {boro}"
+
+
+def short_note(v):
+    """Short per-panel callout of the extreme: the borough with the most (or none)."""
+    b, n = v["boro"], v["n"]
+    top, top_n = max(b.items(), key=lambda kv: kv[1])
+    empty = [x for x in BORO_ORDER if b[x] == 0]
+    if v["key"] == "ghost_bike":
+        return "In every borough"
+    if v["key"] == "memorial_bench":
+        return "Only Staten Island and Manhattan"
+    if v["key"] == "closed_shop":
+        return f"Just {b['Bronx']} in the Bronx"
+    if v["key"] == "alpr":
+        return f"{top_n} {at(top)}, the most"
+    if top_n / n >= 0.5:
+        return f"{top_n} {at(top)}"
+    if empty:
+        return f"None in the {empty[0]}"
+    return f"{top_n} {at(top)}, the most"
+
+
+def page(views, boros):
+    def props(row):
+        p = {k: row[k] for k in SHOW if k in row and isinstance(row[k], str) and row[k]}
+        return {"t": p, "osm": row["osm"], "boro": row["boro"], "edited": row["edited"]}
+
+    data = {
+        "title": TITLE, "day": DAY, "source": SOURCE, "source_url": SOURCE_URL, "method": METHOD,
+        "boros_order": BORO_ORDER,
+        "boroughs": json.loads(boros[["boroname", "geometry"]].to_json(drop_id=True)),
+        "views": [{
+            **{k: v[k] for k in ("key", "label", "one", "tag", "about", "n", "boro", "finding")},
+            "xy": [[round(p.x), round(p.y)] for p in v["sel"].geometry],
+            "props": [props(r) for _, r in v["sel"].drop(columns="geometry").iterrows()],
+        } for v in views],
+    }
+    size = S.build_page(HERE / "web" / "index.html", data, OUT / "nyc_folk_tags.html")
+    (HERE / "web" / "data.js").write_text("window.DATA = " + json.dumps(data) + ";")   # for dev from disk
+    print("wrote out/nyc_folk_tags.html", f"({size / 1e6:.1f} MB)")
+
+
+def main():
+    S.apply()
+    pts, boros = load()
+    views = summarize(pts)
+    for v in views:
+        print(f"{v['label']:24} {v['n']:>5}  {v['finding']}")
+    png(views, boros)
+    print("wrote out/nyc_folk_tags.png")
+    page(views, boros)
+
+
+if __name__ == "__main__":
+    main()

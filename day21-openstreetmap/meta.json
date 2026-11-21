@@ -1,0 +1,9 @@
+{
+  "day": 21,
+  "theme": "OpenStreetMap",
+  "title": "OpenStreetMap volunteers have mapped 74 ghost bikes, 218 tree stumps and 68 hopscotch grids in NYC",
+  "description": "OpenStreetMap has no fixed list of what can be mapped: volunteers invent tags and agree on them as they go. This maps ten of the odd ones in New York City: ghost bikes (74), license-plate readers (1,367), fire alarm boxes (328), painted playground maps (170), hopscotch grids (68), tree stumps (218), little free libraries (197), memorial benches (130), poop-bag dispensers (46) and shops marked as closed (1,203). Coverage follows the mappers: 191 of the 218 tree stumps are in Queens, Brooklyn has 141 of the 197 little free libraries, and every memorial bench is on Staten Island or in Manhattan. Pick a tag, hover a dot for what mappers wrote about it, and click to open it on openstreetmap.org. Data: © OpenStreetMap contributors (ODbL), Geofabrik New York extract of Nov 20, 2026.",
+  "html": "out/nyc_folk_tags.html",
+  "png": "out/nyc_folk_tags.png",
+  "published": "2026-11-21"
+}
