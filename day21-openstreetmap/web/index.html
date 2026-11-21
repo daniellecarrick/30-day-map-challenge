@@ -54,7 +54,7 @@ const D = window.DATA;
 // wide screens: the tag panel gets its own column left of the map; phones: it moves under the map
 const WIDE = matchMedia("(min-width: 641px)").matches;
 const PANEL = WIDE ? 290 : 0;
-const W = 640 + PANEL, H = 640, R = 2.6;   // view units; dots keep their screen size when zoomed
+const W = 640 + PANEL, H = 640, R = 3.6;   // view units; dots keep their screen size when zoomed
 const proj = d3.geoIdentity().reflectY(true).fitExtent([[PANEL + 8, 8], [W - 8, H - 8]], D.boroughs);
 const path = d3.geoPath(proj);
 const tip = MapKit.tooltip();

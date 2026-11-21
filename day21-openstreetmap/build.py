@@ -118,7 +118,7 @@ def png(views, boros):
     fig.subplots_adjust(left=0.01, right=0.99, top=0.80, bottom=0.04, wspace=0.04, hspace=0.36)
     land = boros.dissolve()
     for ax, v in zip(axes.flat, views):
-        draw_panel(ax, v, land, boros, 7, 3, (S.SIZE["panel_title"], S.SIZE["subtitle"], S.SIZE["annotation"]))
+        draw_panel(ax, v, land, boros, 14, 5, (S.SIZE["panel_title"], S.SIZE["subtitle"], S.SIZE["annotation"]))
     S.title(fig, TITLE)
     fig.text(0.5, 0.918, TAKEAWAY, ha="center", fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED)
     S.credit(fig, f"{METHOD}  ·  {SOURCE}  ·  #30DayMapChallenge {DAY}")
@@ -138,7 +138,7 @@ def linkedin(views, boros):
     for i, v in enumerate(views):
         r, c = divmod(i, cols)
         ax = fig.add_axes([left + c * cw, top - (r + 1) * ch + 0.006, cw * 0.94, ch - head - 0.006])
-        draw_panel(ax, v, land, boros, 2.4, 0.8, (7.5, 5.5, 6))
+        draw_panel(ax, v, land, boros, 5, 1.6, (7.5, 5.5, 6))
     # spare cells (last row, columns 2-3): the takeaway
     fig.text(left + cw, bottom + ch * 0.6,
              "Mappers invent their own tags,\nand coverage follows them.\n"
