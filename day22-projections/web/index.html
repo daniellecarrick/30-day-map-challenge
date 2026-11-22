@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Same Votes, Four Maps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/map.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  /* Small multiples on purpose (an exception to the series' toggle rule): the comparison is the point. */
+  /* this page scrolls: maps take their column's full width at their natural shape */
+  .page { max-width: 1240px; height: auto; padding: 28px 24px 32px; }
+  .lede { margin-bottom: 18px; max-width: 900px; }
+  .controls { gap: 16px 40px; margin-bottom: 0; align-items: center; }
+  .legend.inline { position: static; width: 240px; text-align: left; }
+
+  /* the grid: two rows that share the viewport on desktop */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px 64px; margin-top: 44px;
+          padding-top: 36px; border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
+  .panel { display: flex; flex-direction: column; }
+  .panel header { display: flex; align-items: baseline; gap: 4px 14px; flex-wrap: wrap; }
+  .panel h2 { font: 700 18px/1.2 var(--font-head); margin: 0; }
+  .panel .find { color: var(--muted); }
+  .panel .find b { color: var(--ink); font-weight: 700; }
+  .panel .map { position: relative; aspect-ratio: 960 / 600; margin-top: 16px; }
+  .panel .map > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* gap bars: how much redder (right) or bluer (left) the map looks than the vote; center line = matches the vote */
+  .gapbar { display: flex; align-items: center; gap: 12px; margin-top: 10px; width: max-content; max-width: 100%; cursor: pointer; outline: none; }
+  .gapbar .track { position: relative; flex: none; width: 200px; height: 10px; border-radius: 2px;
+                   background: color-mix(in srgb, var(--ink) 8%, transparent); }
+  .gapbar .fill { position: absolute; top: 0; height: 100%; transition: left .5s, width .5s, background-color .5s; }
+  .gapbar .track::after { content: ""; position: absolute; left: 50%; top: -5px; width: 2px; height: 20px; margin-left: -1px;
+                          background: var(--ink); border-radius: 1px; }
+  .gapbar:hover .track::after, .gapbar:focus-visible .track::after { width: 3px; margin-left: -1.5px; }
+  .gapbar .gl { color: var(--muted); white-space: nowrap; }
+  .gapbar .gl b { color: var(--ink); font-weight: 700; }
+  .page > footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
+  .nums { display: flex; justify-content: space-between; }
+
+  .st, .co, .hx { stroke: var(--edge); stroke-linejoin: round; }
+  .st { stroke-width: 0.8; }
+  .co { stroke-width: 0.25; }
+  .hx { stroke-width: 2; }
+  .borders path { fill: none; stroke: var(--edge); stroke-width: 1.2; pointer-events: none; }
+  .hl { fill: none; stroke: var(--ink); stroke-width: 1.6; pointer-events: none; stroke-linejoin: round; }
+  .labels { position: absolute; inset: 0; pointer-events: none; }
+  .labels span { position: absolute; transform: translate(-50%, -50%); font: 600 14px/1 var(--font); }
+
+  .tip .m { font-weight: 700; }
+  .tip table { border-collapse: collapse; margin-top: 4px; }
+  .tip td { padding: 1px 0; }
+  .tip td + td { padding-left: 12px; text-align: right; font-variant-numeric: tabular-nums lining-nums; }
+  .tip .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .tip .note { color: var(--muted); margin-top: 4px; }
+
+  @media (max-width: 640px), (max-height: 520px) {
+    .page { padding: 20px 16px 24px; }
+    .grid { grid-template-columns: 1fr; gap: 40px; margin-top: 32px; padding-top: 28px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">The same votes, drawn four ways. Land leans Republican; people don't. Each map gives area to something different: acres, counties, people or states. Each bar shows how much redder or bluer the map looks than the vote.</p>
+    <div class="controls">
+      <div id="year"></div>
+      <div class="legend inline">
+        <div class="lg-title">Margin, percentage points</div>
+        <div class="lg-bar" id="lg-bar"></div>
+        <div class="lg-ticks"><span id="t-dem"></span><span class="mid" style="left:50%">0</span><span class="end" style="left:100%" id="t-gop"></span></div>
+      </div>
+    </div>
+  </header>
+  <div class="grid">
+    <section class="panel" data-view="states"><header><h2>States</h2><span class="find"></span></header><div class="gapbar" tabindex="0"><div class="track"><i class="fill"></i></div><span class="gl"></span></div><div class="map"></div></section>
+    <section class="panel" data-view="counties"><header><h2>Counties</h2><span class="find"></span></header><div class="gapbar" tabindex="0"><div class="track"><i class="fill"></i></div><span class="gl"></span></div><div class="map"></div></section>
+    <section class="panel" data-view="carto"><header><h2>States sized by population</h2><span class="find"></span></header><div class="gapbar" tabindex="0"><div class="track"><i class="fill"></i></div><span class="gl"></span></div><div class="map"></div></section>
+    <section class="panel" data-view="hex"><header><h2>One hexagon per state</h2><span class="find"></span></header><div class="gapbar" tabindex="0"><div class="track"><i class="fill"></i></div><span class="gl"></span></div><div class="map"></div></section>
+  </div>
+  <footer>"Red" = share of each map's drawn area won by Trump (Alaska and Hawaii as drawn). Lower 48 in Albers equal-area; population cartogram after Dougenik et al. (1985). Alaska reports by house district, so it is one unit in the county map.
+    <a id="source"></a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA, W = D.W, H = D.H;
+const color = d3.scaleLinear().domain(D.stops.map(s => s[0])).range(D.stops.map(s => s[1])).clamp(true);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+d3.select("#title").text(D.title);
+d3.select("#source").attr("href", D.sourceUrl).text(D.source);
+d3.select("#day").text(D.day);
+
+const fmt = d3.format(","), pct1 = d3.format(".1%"), pct0 = d3.format(".0%");
+const big = v => v >= 1e6 ? d3.format(".1f")(v / 1e6) + " million" : fmt(v);
+const pts = m => d3.format(".1f")(Math.abs(m) * 100);
+const tip = MapKit.tooltip();
+let year = "2024";
+const Y = () => D.years[year];
+const byFips = new Map(D.states.map(s => [s.fips, s]));
+
+
+// margin key (same stops as the maps)
+const v0 = D.stops[0][0], v1 = D.stops[D.stops.length - 1][0];
+d3.select("#lg-bar").style("background", `linear-gradient(to right, ${D.stops.map(([v, c]) => `${c} ${(100 * (v - v0)) / (v1 - v0)}%`).join(", ")})`);
+
+const ringPath = rings => rings.map(r => "M" + r.map(p => p.join(",")).join("L") + "Z").join("");
+const lerpRings = (a, b, t) => a.map((r, i) => r.map((p, j) => [p[0] + (b[i][j][0] - p[0]) * t, p[1] + (b[i][j][1] - p[1]) * t]));
+const R = D.hexR * 0.97;
+const hexD = ([x, y]) => "M" + d3.range(6).map(i => { const a = Math.PI / 3 * i + Math.PI / 6; return [x + R * Math.cos(a), y + R * Math.sin(a)].map(v => v.toFixed(1)).join(","); }).join("L") + "Z";
+
+// ---- one SVG per panel
+const panels = {};
+d3.selectAll(".panel").each(function () {
+  const view = this.dataset.view, el = d3.select(this);
+  const svg = el.select(".map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
+    .attr("preserveAspectRatio", "xMinYMid meet").attr("role", "img");
+  const body = svg.append("g");
+  const hl = svg.append("path").attr("class", "hl");
+  panels[view] = { el, svg, body, hl };
+});
+
+// states and population cartogram: one path per state; the cartogram morphs when the year changes
+const shape = new Map(D.states.map(s => [s.fips, s.geo]));   // cartogram shape now shown
+panels.states.body.selectAll("path").data(D.states).join("path").attr("class", "st").attr("d", s => ringPath(s.geo));
+panels.carto.body.selectAll("path").data(D.states).join("path").attr("class", "st").attr("d", s => ringPath(s.geo));
+panels.hex.body.selectAll("path").data(D.states).join("path").attr("class", "hx").attr("d", s => hexD(s.hex));
+const gCounties = panels.counties.body.append("g");
+panels.counties.body.append("g").attr("class", "borders").selectAll("path").data(D.states).join("path").attr("d", s => ringPath(s.geo));
+
+for (const v of ["states", "carto", "hex"]) {
+  panels[v].body.selectAll("path")
+    .on("mousemove", (ev, s) => { tip.show(ev, stateTip(s, v)); highlight(s.fips); })
+    .on("mouseleave", unhighlight);
+}
+
+// hover one state: outline it in all four maps
+function highlight(fips, countyId) {
+  const s = byFips.get(fips);
+  panels.states.hl.attr("d", ringPath(s.geo));
+  panels.carto.hl.attr("d", ringPath(shape.get(fips)));
+  panels.hex.hl.attr("d", hexD(s.hex));
+  panels.counties.hl.attr("d", countyId ? D.counties[countyId].d : ringPath(s.geo));
+}
+function unhighlight() { tip.hide(); for (const p of Object.values(panels)) p.hl.attr("d", null); }
+
+// hex labels in HTML so they stay 14px; they track the hex centres as the SVG letterboxes
+const hexWrap = panels.hex.el.select(".map");
+const hexLabels = hexWrap.append("div").attr("class", "labels").selectAll("span").data(D.states).join("span").text(s => s.abbr);
+function placeLabels() {
+  const r = panels.hex.svg.node().getBoundingClientRect(), h = hexWrap.node().getBoundingClientRect();
+  const k = Math.min(r.width / W, r.height / H);
+  const ox = r.left - h.left, oy = r.top - h.top + (r.height - H * k) / 2;
+  hexLabels.style("left", s => ox + s.hex[0] * k + "px").style("top", s => oy + s.hex[1] * k + "px");
+}
+new ResizeObserver(placeLabels).observe(panels.hex.svg.node());
+
+// ---- tooltips
+function rows(v, y) {
+  const other = v.total - v.gop - v.dem;
+  const line = (name, n, c) => `<tr><td><span class="sw" style="background:${c}"></span>${name}</td><td>${fmt(n)}</td><td>${pct1(n / v.total)}</td></tr>`;
+  const list = [[y.dem, v.dem, css("--dem-2")], [y.gop, v.gop, css("--gop-2")]].sort((a, b) => b[1] - a[1]);
+  return `<table>${list.map(l => line(...l)).join("")}${other > 0 ? line("Other", other, css("--closed")) : ""}</table>`;
+}
+const winner = (m, y) => `<span class="m">${m < 0 ? y.dem : y.gop} +${pts(m)}</span>`;
+function stateTip(s, view) {
+  const y = Y(), v = y.states[s.fips];
+  const share = view === "carto" ? `${pct1(v.pop / d3.sum(Object.values(y.states), d => d.pop))} of the map (its share of Americans)`
+              : view === "hex" ? "1 of 51 hexagons"
+              : `${pct1(s.land / d3.sum(D.states, d => d.land))} of US land`;
+  return `<b>${s.name}</b>${winner(v.margin, y)}${rows(v, y)}
+    <div class="note">${big(v.pop)} people · ${fmt(s.land)} sq mi<br>Here: ${share}</div>`;
+}
+function countyTip(id) {
+  const c = D.counties[id], y = Y(), r = y.counties[id];
+  const name = id === "02000" ? "Alaska (all boroughs)" : `${c.name}, ${c.st}`;
+  if (!r) return `<b>${name}</b><div class="note">No separate results: its votes are counted with Maui County.</div>`;
+  const v = { gop: r[0], dem: r[1], total: r[2], margin: (r[0] - r[1]) / r[2] };
+  return `<b>${name}</b>${winner(v.margin, y)}${rows(v, y)}<div class="note">${fmt(c.land)} sq mi</div>`;
+}
+
+// ---- render a year
+const GAP_MAX = 40;   // points; the track spans ±40
+function render(animate) {
+  const y = Y(), t = y.total, dur = animate ? 750 : 0;
+  const fill = s => color(y.states[s.fips].margin);
+  panels.states.body.selectAll("path").transition().duration(dur).attr("fill", fill);
+  panels.hex.body.selectAll("path").transition().duration(dur).attr("fill", fill);
+  panels.carto.body.selectAll("path").transition().duration(dur).ease(d3.easeCubicInOut).attr("fill", fill)
+    .attrTween("d", function (s) {
+      const a = shape.get(s.fips), b = y.states[s.fips].carto;
+      shape.set(s.fips, b);
+      return u => ringPath(lerpRings(a, b, u));
+    });
+  hexLabels.style("color", s => Math.abs(y.states[s.fips].margin) > 0.2 ? "#fff" : "#2b2b28");
+
+  // counties (only Connecticut's shapes differ between 2020 and 2024)
+  gCounties.selectAll("path").data(Object.keys(y.counties), id => id).join("path")
+    .attr("class", "co").attr("d", id => D.counties[id].d)
+    .attr("fill", id => { const v = y.counties[id]; return v ? color((v[0] - v[1]) / v[2]) : css("--closed"); })
+    .on("mousemove", (ev, id) => { tip.show(ev, countyTip(id)); highlight(id === "02000" ? "02" : id.slice(0, 2), id); })
+    .on("mouseleave", unhighlight);
+
+  // findings + bars
+  const finds = {
+    states: `<b>${pct0(y.ink.states)}</b> of the map is red`,
+    counties: `<b>${pct0(y.ink.counties)}</b> of the map is red`,
+    carto: `<b>${pct0(y.ink.carto)}</b> of the map is red`,
+    hex: `<b>${Math.round(y.ink.hex * 51)} of 51</b> hexagons are red`,
+  };
+  for (const [v, p] of Object.entries(panels)) {
+    p.el.select(".find").html(finds[v]);
+    p.svg.attr("aria-label", `${p.el.select("h2").text()}: ${p.el.select(".find").text()}`);
+  }
+  // headline follows the year: the most and least red of the four maps
+  const inks = Object.values(y.ink);
+  d3.select("#title").text(`The same ${year} votes can look ${pct0(d3.max(inks))} red or ${pct0(d3.min(inks))} red, depending on how you draw the map`);
+  d3.select("#t-dem").text(`${y.dem} +60`);
+  d3.select("#t-gop").text(`${y.gop} +60`);
+  // gap bars: share of the map that's red minus Trump's share of all votes
+  const gopShare = t.gop / t.total, demShare = t.dem / t.total;
+  for (const [v, p] of Object.entries(panels)) {
+    const ink = y.ink[v], gap = Math.round((ink - gopShare) * 100);
+    const w = Math.min(Math.abs(gap), GAP_MAX) / GAP_MAX * 50;
+    p.el.select(".fill").style("left", (gap >= 0 ? 50 : 50 - w) + "%").style("width", w + "%")
+      .style("background-color", css(gap >= 0 ? "--gop-2" : "--dem-2"));
+    const label = gap === 0 ? "about as red as the vote" : `<b>${Math.abs(gap)} pts</b> ${gap > 0 ? "redder" : "bluer"} than the vote`;
+    p.el.select(".gl").html(label);
+    const what = v === "hex" ? `${Math.round(ink * 51)} of 51 hexagons (${pct0(ink)}) are` : `${pct0(ink)} of this map is`;
+    const diff = gap === 0 ? "about the same as" : `${Math.abs(gap)} points ${gap > 0 ? "more" : "less"} than`;
+    const html = `<b>Map vs. vote</b>${y.gop} won ${pct1(gopShare)} of the vote; ${y.dem} ${pct1(demShare)}.
+      <div class="note">${what} red: ${diff} ${y.gop}'s share. The center line is a map whose red matches the vote;
+      the bar grows right when the map looks redder, left when it looks bluer.</div>`;
+    p.el.select(".gapbar")
+      .attr("aria-label", `${p.el.select(".gl").text()}. ${y.gop} won ${pct1(gopShare)} of the vote; ${what} red.`)
+      .on("mousemove", ev => tip.show(ev, html)).on("mouseleave", () => tip.hide())
+      .on("focus", function () { const r = this.getBoundingClientRect(); tip.show({ clientX: r.right, clientY: r.bottom }, html); })
+      .on("blur", () => tip.hide());
+  }
+}
+
+let first = true;
+MapKit.segmented("#year", [{ value: "2020", label: "2020" }, { value: "2024", label: "2024" }],
+  v => { year = v; render(!first); first = false; }, "2024");
+</script>
+</body>
+</html>

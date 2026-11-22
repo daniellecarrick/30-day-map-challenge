@@ -1,0 +1,9 @@
+{
+  "day": 22,
+  "theme": "Projections",
+  "title": "The same 2020 votes can look 81% red or 43% red, depending on how you draw the map",
+  "description": "The same election drawn four ways. On a county map, Trump counties cover 81% of the drawn area; on a state map, 58%. Size states by population (a contiguous cartogram) and red drops to 43%; give every state one equal hexagon and it's 25 of 51. Nothing about the votes changes, only what each map gives area to: land, counties, people or states. The page opens on 2024, when Trump won 49.9% of the vote and 86% of the county map; switch to 2020 to see a red map where blue won. Data: county results compiled by Tony McGovern from official sources; US Census Bureau population estimates and boundaries.",
+  "html": "out/map.html",
+  "png": "out/map.png",
+  "published": "2026-11-22"
+}

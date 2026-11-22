@@ -20,6 +20,8 @@
   --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #6da7ec; --seq-4: #3987e5; --seq-5: #256abf; --seq-6: #184f95; --seq-7: #0d366b;
   /* sequential purple (tokens.json scales.sequential_purple): lilac, light -> dark; same in light and dark */
   --seqp-1: #e9e4fa; --seqp-2: #cdc2f3; --seqp-3: #ae9fea; --seqp-4: #8f7cdf; --seqp-5: #7059cf; --seqp-6: #5240aa; --seqp-7: #35287a;
+  /* party (tokens.json scales.party): US election results only; light -> dark = margin; same in light and dark */
+  --dem-1: #9ec5f4; --dem-2: #2a78d6; --dem-3: #0d366b; --gop-1: #f4aaa2; --gop-2: #e34948; --gop-3: #8a1f1d;
   /* diverging (tokens.json scales.diverging): low = blue, center = neutral, high = amber -> brown */
   --div-1: #104281; --div-2: #6da7ec; --div-3: #f0efec; --div-4: #d98a00; --div-5: #5a3300;
 }
