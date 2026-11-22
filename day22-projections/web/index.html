@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Same Votes, Four Maps</title>
+<title>Same Votes, Six Maps</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
@@ -12,13 +12,13 @@
 <style>
   /* Small multiples on purpose (an exception to the series' toggle rule): the comparison is the point. */
   /* this page scrolls: maps take their column's full width at their natural shape */
-  .page { max-width: 1240px; height: auto; padding: 28px 24px 32px; }
+  .page { max-width: 1440px; height: auto; padding: 28px 24px 32px; }
   .lede { margin-bottom: 18px; max-width: 900px; }
   .controls { gap: 16px 40px; margin-bottom: 0; align-items: center; }
   .legend.inline { position: static; width: 240px; text-align: left; }
 
-  /* the grid: two rows that share the viewport on desktop */
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px 64px; margin-top: 44px;
+  /* the grid: three maps a row on desktop, two on tablets, one on phones */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 56px 48px; margin-top: 44px;
           padding-top: 36px; border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); }
   .panel { display: flex; flex-direction: column; }
   .panel header { display: flex; align-items: baseline; gap: 4px 14px; flex-wrap: wrap; }
@@ -26,7 +26,7 @@
   .panel .find { color: var(--muted); }
   .panel .find b { color: var(--ink); font-weight: 700; }
   .panel .map { position: relative; aspect-ratio: 960 / 600; margin-top: 16px; }
-  .panel .map > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .panel .map > svg, .panel .map > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   /* gap bars: how much redder (right) or bluer (left) the map looks than the vote; center line = matches the vote */
   .gapbar { display: flex; align-items: center; gap: 12px; margin-top: 10px; width: max-content; max-width: 100%; cursor: pointer; outline: none; }
@@ -45,6 +45,10 @@
   .st { stroke-width: 0.8; }
   .co { stroke-width: 0.25; }
   .hx { stroke-width: 2; }
+  .evt { stroke: none; }
+  .ev-out path { fill: none; stroke: var(--edge); stroke-width: 1.6; stroke-linejoin: round; pointer-events: none; }
+  .hit { fill: transparent; stroke: none; }
+  .dot-borders path { fill: none; stroke: var(--muted); stroke-opacity: .45; stroke-width: .5; pointer-events: none; }
   .borders path { fill: none; stroke: var(--edge); stroke-width: 1.2; pointer-events: none; }
   .hl { fill: none; stroke: var(--ink); stroke-width: 1.6; pointer-events: none; stroke-linejoin: round; }
   .labels { position: absolute; inset: 0; pointer-events: none; }
@@ -57,9 +61,16 @@
   .tip .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
   .tip .note { color: var(--muted); margin-top: 4px; }
 
+  @media (max-width: 1199px) {
+    .grid { grid-template-columns: 1fr 1fr; gap: 56px 56px; }
+  }
+  @media (min-width: 1200px) and (max-width: 1399px) {
+    .gapbar .track { width: 150px; }
+  }
   @media (max-width: 640px), (max-height: 520px) {
     .page { padding: 20px 16px 24px; }
     .grid { grid-template-columns: 1fr; gap: 40px; margin-top: 32px; padding-top: 28px; }
+    .gapbar .track { width: 120px; }
   }
 </style>
 </head>
@@ -67,7 +78,7 @@
 <div class="page">
   <header>
     <h1 id="title"></h1>
-    <p class="lede">The same votes, drawn four ways. Land leans Republican; people don't. Each map gives area to something different: acres, counties, people or states. Each bar shows how much redder or bluer the map looks than the vote.</p>
+    <p class="lede">The same votes, drawn six ways. Each map gives area to something different: land, counties, people, states, electoral votes or the votes themselves. Each bar shows how much redder or bluer the map looks than the vote.</p>
     <div class="controls">
       <div id="year"></div>
       <div class="legend inline">
@@ -82,8 +93,10 @@
     <section class="panel" data-view="counties"><header><h2>Counties</h2><span class="find"></span></header><div class="gapbar" tabindex="0"><div class="track"><i class="fill"></i></div><span class="gl"></span></div><div class="map"></div></section>
     <section class="panel" data-view="carto"><header><h2>States sized by population</h2><span class="find"></span></header><div class="gapbar" tabindex="0"><div class="track"><i class="fill"></i></div><span class="gl"></span></div><div class="map"></div></section>
     <section class="panel" data-view="hex"><header><h2>One hexagon per state</h2><span class="find"></span></header><div class="gapbar" tabindex="0"><div class="track"><i class="fill"></i></div><span class="gl"></span></div><div class="map"></div></section>
+    <section class="panel" data-view="ev"><header><h2>One hexagon per electoral vote</h2><span class="find"></span></header><div class="gapbar" tabindex="0"><div class="track"><i class="fill"></i></div><span class="gl"></span></div><div class="map"></div></section>
+    <section class="panel" data-view="dots"><header><h2>One dot per 5,000 votes</h2><span class="find"></span></header><div class="gapbar" tabindex="0"><div class="track"><i class="fill"></i></div><span class="gl"></span></div><div class="map"></div></section>
   </div>
-  <footer>"Red" = share of each map's drawn area won by Trump (Alaska and Hawaii as drawn). Lower 48 in Albers equal-area; population cartogram after Dougenik et al. (1985). Alaska reports by house district, so it is one unit in the county map.
+  <footer>"Red" = share of each map's drawn area won by Trump (Alaska and Hawaii as drawn). Lower 48 in Albers equal-area; population cartogram after Dougenik et al. (1985). Alaska reports by house district, so it is one unit in the county map. Electoral tiles grow from each state's place on the population map; Maine and Nebraska split by district. Dots: one per 5,000 votes for each candidate, placed at random inside its county; third-party votes left out.
     <a id="source"></a> · #30DayMapChallenge <span id="day"></span></footer>
 </div>
 
@@ -114,7 +127,9 @@ d3.select("#lg-bar").style("background", `linear-gradient(to right, ${D.stops.ma
 const ringPath = rings => rings.map(r => "M" + r.map(p => p.join(",")).join("L") + "Z").join("");
 const lerpRings = (a, b, t) => a.map((r, i) => r.map((p, j) => [p[0] + (b[i][j][0] - p[0]) * t, p[1] + (b[i][j][1] - p[1]) * t]));
 const R = D.hexR * 0.97;
-const hexD = ([x, y]) => "M" + d3.range(6).map(i => { const a = Math.PI / 3 * i + Math.PI / 6; return [x + R * Math.cos(a), y + R * Math.sin(a)].map(v => v.toFixed(1)).join(","); }).join("L") + "Z";
+const hexAt = (x, y, rr) => "M" + d3.range(6).map(i => { const a = Math.PI / 3 * i + Math.PI / 6; return [x + rr * Math.cos(a), y + rr * Math.sin(a)].map(v => v.toFixed(1)).join(","); }).join("L") + "Z";
+const hexD = ([x, y]) => hexAt(x, y, R);
+const byAbbr = new Map(D.states.map(s => [s.abbr, s]));
 
 // ---- one SVG per panel
 const panels = {};
@@ -133,6 +148,28 @@ panels.states.body.selectAll("path").data(D.states).join("path").attr("class", "
 panels.carto.body.selectAll("path").data(D.states).join("path").attr("class", "st").attr("d", s => ringPath(s.geo));
 panels.hex.body.selectAll("path").data(D.states).join("path").attr("class", "hx").attr("d", s => hexD(s.hex));
 const gCounties = panels.counties.body.append("g");
+// electoral tiles: tiles, then one white outline per state (both change with the year)
+const gEv = panels.ev.body.append("g"), gEvOut = panels.ev.body.append("g").attr("class", "ev-out");
+// dots: drawn on a canvas under the SVG; the SVG holds invisible county shapes for hover, plus state lines
+const dotCanvas = panels.dots.el.select(".map").insert("canvas", "svg").node();
+const gDotHit = panels.dots.body.append("g");
+panels.dots.body.append("g").attr("class", "dot-borders").selectAll("path").data(D.states).join("path").attr("d", s => ringPath(s.geo));
+function drawDots() {
+  const box = dotCanvas.parentNode.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  dotCanvas.width = Math.round(box.width * dpr); dotCanvas.height = Math.round(box.height * dpr);
+  const k = Math.min(box.width / W, box.height / H) / 2, oy = (box.height - H * 2 * k) / 2;   // xy in half-pixels
+  const sz = Math.max(0.8, 3.6 * k);   // ~1.1px at desktop width, smaller on phones
+  const ctx = dotCanvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, box.width, box.height);
+  const { xy, gop } = Y().dots, c0 = css("--dem-2"), c1 = css("--gop-2");
+  for (let i = 0; i < gop.length; i++) {
+    ctx.fillStyle = gop[i] === "1" ? c1 : c0;
+    ctx.fillRect(xy[2 * i] * k - sz / 2, oy + xy[2 * i + 1] * k - sz / 2, sz, sz);
+  }
+}
+new ResizeObserver(drawDots).observe(dotCanvas.parentNode);
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawDots);
 panels.counties.body.append("g").attr("class", "borders").selectAll("path").data(D.states).join("path").attr("d", s => ringPath(s.geo));
 
 for (const v of ["states", "carto", "hex"]) {
@@ -148,19 +185,24 @@ function highlight(fips, countyId) {
   panels.carto.hl.attr("d", ringPath(shape.get(fips)));
   panels.hex.hl.attr("d", hexD(s.hex));
   panels.counties.hl.attr("d", countyId ? D.counties[countyId].d : ringPath(s.geo));
+  panels.ev.hl.attr("d", Y().ev.outlines[s.abbr]);
+  panels.dots.hl.attr("d", countyId ? D.counties[countyId].d : ringPath(s.geo));
 }
 function unhighlight() { tip.hide(); for (const p of Object.values(panels)) p.hl.attr("d", null); }
 
-// hex labels in HTML so they stay 14px; they track the hex centres as the SVG letterboxes
-const hexWrap = panels.hex.el.select(".map");
-const hexLabels = hexWrap.append("div").attr("class", "labels").selectAll("span").data(D.states).join("span").text(s => s.abbr);
-function placeLabels() {
-  const r = panels.hex.svg.node().getBoundingClientRect(), h = hexWrap.node().getBoundingClientRect();
+// hex and electoral-tile labels in HTML so they stay 14px; they track the SVG as it letterboxes
+function place(view, sel, xy) {
+  const r = panels[view].svg.node().getBoundingClientRect(), h = panels[view].el.select(".map").node().getBoundingClientRect();
   const k = Math.min(r.width / W, r.height / H);
   const ox = r.left - h.left, oy = r.top - h.top + (r.height - H * k) / 2;
-  hexLabels.style("left", s => ox + s.hex[0] * k + "px").style("top", s => oy + s.hex[1] * k + "px");
+  sel.style("left", d => ox + xy(d)[0] * k + "px").style("top", d => oy + xy(d)[1] * k + "px");
 }
+const hexLabels = panels.hex.el.select(".map").append("div").attr("class", "labels").selectAll("span").data(D.states).join("span").text(s => s.abbr);
+const evLayer = panels.ev.el.select(".map").append("div").attr("class", "labels");
+let evLabels = evLayer.selectAll("span");
+function placeLabels() { place("hex", hexLabels, s => s.hex); place("ev", evLabels, d => d[1]); }
 new ResizeObserver(placeLabels).observe(panels.hex.svg.node());
+new ResizeObserver(placeLabels).observe(panels.ev.svg.node());
 
 // ---- tooltips
 function rows(v, y) {
@@ -174,6 +216,7 @@ function stateTip(s, view) {
   const y = Y(), v = y.states[s.fips];
   const share = view === "carto" ? `${pct1(v.pop / d3.sum(Object.values(y.states), d => d.pop))} of the map (its share of Americans)`
               : view === "hex" ? "1 of 51 hexagons"
+              : view === "ev" ? `${y.evotes[s.abbr]} of 538 electoral votes${s.abbr === "ME" || s.abbr === "NE" ? " (split by district)" : ""}`
               : `${pct1(s.land / d3.sum(D.states, d => d.land))} of US land`;
   return `<b>${s.name}</b>${winner(v.margin, y)}${rows(v, y)}
     <div class="note">${big(v.pop)} people · ${fmt(s.land)} sq mi<br>Here: ${share}</div>`;
@@ -208,18 +251,36 @@ function render(animate) {
     .on("mousemove", (ev, id) => { tip.show(ev, countyTip(id)); highlight(id === "02000" ? "02" : id.slice(0, 2), id); })
     .on("mouseleave", unhighlight);
 
+  // electoral tiles
+  const ev = y.ev;
+  gEv.selectAll("path").data(ev.tiles).join("path").attr("class", "evt")
+    .attr("d", t => hexAt(t[0], t[1], ev.r * 0.94)).attr("fill", t => css(t[3] ? "--gop-2" : "--dem-2"))
+    .on("mousemove", (e, t) => { const s = byAbbr.get(t[2]); tip.show(e, stateTip(s, "ev")); highlight(s.fips); })
+    .on("mouseleave", unhighlight);
+  gEvOut.selectAll("path").data(Object.values(ev.outlines)).join("path").attr("d", d => d);
+  evLabels = evLayer.selectAll("span").data(Object.entries(ev.labels), d => d[0]).join("span").text(d => d[0]).style("color", "#fff");
+  placeLabels();
+  // dots, with counties under the cursor for the tooltip
+  drawDots();
+  gDotHit.selectAll("path").data(Object.keys(y.counties), id => id).join("path")
+    .attr("class", "hit").attr("d", id => D.counties[id].d)
+    .on("mousemove", (ev, id) => { tip.show(ev, countyTip(id)); highlight(id === "02000" ? "02" : id.slice(0, 2), id); })
+    .on("mouseleave", unhighlight);
+
   // findings + bars
   const finds = {
     states: `<b>${pct0(y.ink.states)}</b> of the map is red`,
     counties: `<b>${pct0(y.ink.counties)}</b> of the map is red`,
     carto: `<b>${pct0(y.ink.carto)}</b> of the map is red`,
     hex: `<b>${Math.round(y.ink.hex * 51)} of 51</b> hexagons are red`,
+    ev: `<b>${Math.round(y.ink.ev * 538)} of 538</b> electoral votes are red`,
+    dots: `<b>${pct0(y.ink.dots)}</b> of the dots are red`,
   };
   for (const [v, p] of Object.entries(panels)) {
     p.el.select(".find").html(finds[v]);
     p.svg.attr("aria-label", `${p.el.select("h2").text()}: ${p.el.select(".find").text()}`);
   }
-  // headline follows the year: the most and least red of the four maps
+  // headline follows the year: the most and least red of the six maps
   const inks = Object.values(y.ink);
   d3.select("#title").text(`The same ${year} votes can look ${pct0(d3.max(inks))} red or ${pct0(d3.min(inks))} red, depending on how you draw the map`);
   d3.select("#t-dem").text(`${y.dem} +60`);
@@ -231,10 +292,12 @@ function render(animate) {
     const w = Math.min(Math.abs(gap), GAP_MAX) / GAP_MAX * 50;
     p.el.select(".fill").style("left", (gap >= 0 ? 50 : 50 - w) + "%").style("width", w + "%")
       .style("background-color", css(gap >= 0 ? "--gop-2" : "--dem-2"));
-    const label = gap === 0 ? "about as red as the vote" : `<b>${Math.abs(gap)} pts</b> ${gap > 0 ? "redder" : "bluer"} than the vote`;
+    const label = gap === 0 ? "about as red as the vote" : `<b>${Math.abs(gap)} ${Math.abs(gap) === 1 ? "pt" : "pts"}</b> ${gap > 0 ? "redder" : "bluer"} than the vote`;
     p.el.select(".gl").html(label);
-    const what = v === "hex" ? `${Math.round(ink * 51)} of 51 hexagons (${pct0(ink)}) are` : `${pct0(ink)} of this map is`;
-    const diff = gap === 0 ? "about the same as" : `${Math.abs(gap)} points ${gap > 0 ? "more" : "less"} than`;
+    const what = v === "hex" ? `${Math.round(ink * 51)} of 51 hexagons (${pct0(ink)}) are`
+               : v === "ev" ? `${Math.round(ink * 538)} of 538 electoral votes (${pct0(ink)}) are`
+               : v === "dots" ? `${pct0(ink)} of the dots are` : `${pct0(ink)} of this map is`;
+    const diff = gap === 0 ? "about the same as" : `${Math.abs(gap)} ${Math.abs(gap) === 1 ? "point" : "points"} ${gap > 0 ? "more" : "less"} than`;
     const html = `<b>Map vs. vote</b>${y.gop} won ${pct1(gopShare)} of the vote; ${y.dem} ${pct1(demShare)}.
       <div class="note">${what} red: ${diff} ${y.gop}'s share. The center line is a map whose red matches the vote;
       the bar grows right when the map looks redder, left when it looks bluer.</div>`;

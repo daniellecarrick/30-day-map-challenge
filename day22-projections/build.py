@@ -1,5 +1,6 @@
-"""Day 22 · Projections — the same election drawn four ways: states, counties, states sized by
-population (a contiguous cartogram), and one equal hexagon per state.
+"""Day 22 · Projections — the same election drawn six ways: states, counties, states sized by
+population (a contiguous cartogram), one equal hexagon per state, one hexagon per electoral vote,
+and one dot per 5,000 votes.
 
 The point: a map's look depends on what it gives area to. Land votes Republican; people are split.
 
@@ -7,6 +8,9 @@ Geometry: lower 48 in Albers equal-area (EPSG:5070); Alaska and Hawaii moved int
 Cartogram: Dougenik, Chrisman & Niemeyer (1985) rubber-sheet algorithm on the lower 48, so states
 keep their neighbours; Alaska and Hawaii are scaled to the same people-per-area afterwards.
 Alaska reports results by state house district, not borough, so the county view shows it as one unit.
+Electoral tiles: hexes sized so 538 cover the population cartogram; each state grows round-robin into
+free cells inside its own cartogram shape first. Dots: placed at random inside each county; third-party
+votes are left out.
 
 Writes:
   - out/map.png    (static, for posting)
@@ -24,6 +28,7 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import shapely
 from matplotlib.patches import Rectangle, RegularPolygon
 from shapely.geometry import MultiPolygon, Polygon
 
@@ -147,6 +152,89 @@ def scale_to(geom, area):
     return affinity.scale(geom, k, k, origin=geom.centroid)
 
 
+# ---------------------------------------------------------------- electoral tiles and dots
+# electoral votes by state (2020: 2010 apportionment; 2024: 2020 apportionment)
+EV2020 = dict(AL=9, AK=3, AZ=11, AR=6, CA=55, CO=9, CT=7, DE=3, DC=3, FL=29, GA=16, HI=4, ID=4, IL=20, IN=11, IA=6,
+              KS=6, KY=8, LA=8, ME=4, MD=10, MA=11, MI=16, MN=10, MS=6, MO=10, MT=3, NE=5, NV=6, NH=4, NJ=14, NM=5,
+              NY=29, NC=15, ND=3, OH=18, OK=7, OR=7, PA=20, RI=4, SC=9, SD=3, TN=11, TX=38, UT=6, VT=3, VA=13, WA=12,
+              WV=5, WI=10, WY=3)
+EV2024 = dict(EV2020, CA=54, CO=10, FL=30, IL=19, MI=15, MT=4, NY=28, NC=16, OH=17, OR=8, PA=19, TX=40, WV=4)
+EV = {2020: EV2020, 2024: EV2024}
+assert sum(EV2020.values()) == sum(EV2024.values()) == 538
+# Maine and Nebraska split by district, the same way in 2020 and 2024: Maine's rural north (ME-2) went
+# Republican, Omaha (NE-2, Nebraska's east end) Democratic. (sort axis, gop flags in that order)
+EV_SPLIT = {"ME": (1, [False] * 3 + [True]), "NE": (0, [True] * 4 + [False])}
+DOT_VOTES = 5000
+
+
+def ev_layout(s, yr):
+    """One pointy-top hex per electoral vote, in layout metres. Returns radius, tiles [(x, y, abbr, gop)]
+    and each state's outline (the union of its hexes)."""
+    carto = list(s.carto)
+    x0, y0, x1, y1 = gpd.GeoSeries(carto).total_bounds
+    r = np.sqrt(sum(g.area for g in carto) / 538 / (1.5 * np.sqrt(3)))
+    w, h = np.sqrt(3) * r, 1.5 * r
+    rows = np.arange(int((y1 - y0) / h) + 12) - 6
+    cols = np.arange(int((x1 - x0) / w) + 12) - 6
+    cells = np.array([(x0 + (cc + 0.5 * (rr % 2)) * w, y0 + rr * h) for rr in rows for cc in cols])
+    pts = shapely.points(cells)
+    free = np.ones(len(cells), bool)
+    nb = []
+    for i in range(len(cells)):
+        d = np.hypot(*(cells - cells[i]).T)
+        nb.append(np.where((d > 0) & (d < w * 1.05))[0])
+    abbr = dict(zip(s.index, s.STUSPS))
+    need = {abbr[f]: EV[yr][abbr[f]] for f in s.index}
+    mine = {a: [] for a in need}
+    dist = {abbr[f]: shapely.distance(g, pts) for f, g in zip(s.index, carto)}   # 0 inside its own shape
+    cen = {abbr[f]: np.array(g.centroid.coords[0]) for f, g in zip(s.index, carto)}
+    while any(need.values()):
+        for a in sorted(need, key=lambda k: -need[k]):
+            if not need[a]:
+                continue
+            cand = np.unique(np.concatenate([nb[i] for i in mine[a]])) if mine[a] else np.array([], int)
+            cand = cand[free[cand]] if len(cand) else cand
+            if not len(cand):
+                cand = np.where(free)[0]
+            score = dist[a][cand] + 1e-3 * np.hypot(*(cells[cand] - cen[a]).T)
+            i = cand[np.argmin(score)]
+            free[i] = False
+            mine[a].append(i)
+            need[a] -= 1
+    margin = dict(zip(s.STUSPS, s.margin))
+    tiles, outlines = [], {}
+    for a, idx in mine.items():
+        if a in EV_SPLIT:
+            axis, gops = EV_SPLIT[a]
+            idx = sorted(idx, key=lambda i: cells[i, axis])
+        else:
+            gops = [margin[a] > 0] * len(idx)
+        tiles += [(cells[i, 0], cells[i, 1], a, g) for i, g in zip(idx, gops)]
+        hexes = [Polygon(RegularPolygon(cells[i], 6, radius=r, orientation=0).get_verts()) for i in idx]
+        outlines[a] = shapely.unary_union(hexes).buffer(r * 0.02)
+    return dict(r=r, tiles=tiles, outlines=outlines)
+
+
+def vote_dots(c, seed=22):
+    """One dot per DOT_VOTES votes for each candidate, at random inside its county, shuffled so neither
+    color is drawn on top. Returns xy (n, 2) in layout metres and a gop flag per dot."""
+    rng = np.random.default_rng(seed)
+    voted = c[c.margin.notna()]
+    xy, gop = [], []
+    for col, g in (("votes_dem", False), ("votes_gop", True)):
+        # stochastic rounding, so small counties still get their fair share of dots
+        n = np.floor(voted[col].values / DOT_VOTES + rng.random(len(voted))).astype(int)
+        for mp in gpd.GeoSeries(voted.geometry.values).sample_points(size=n, rng=rng):
+            if mp is None or mp.is_empty:
+                continue
+            p = shapely.get_coordinates(mp)
+            xy.append(p)
+            gop += [g] * len(p)
+    xy, gop = np.vstack(xy), np.array(gop)
+    order = rng.permutation(len(xy))
+    return xy[order], gop[order]
+
+
 # ---------------------------------------------------------------- data
 def load_states():
     st = gpd.read_file(DATA / "cb_2020_us_state_20m.zip")
@@ -206,7 +294,10 @@ def main():
         for f in INSETS:
             cg[f] = scale_to(s.loc[f, "geometry"], s.loc[f, f"pop{yr}"] * dens)
         s["carto"] = cg.reindex(s.index)
-        years[yr] = dict(states=s, counties=c)
+        years[yr] = dict(states=s, counties=c, ev=ev_layout(s, yr), dots=vote_dots(c))
+        ev = years[yr]["ev"]
+        print(f"  electoral tiles: {sum(t[3] for t in ev['tiles'])} red of {len(ev['tiles'])}; "
+              f"dots: {years[yr]['dots'][1].mean():.1%} red of {len(years[yr]['dots'][1]):,}")
 
         tot = s[["votes_gop", "votes_dem", "total_votes"]].sum()
         red_s = s.margin > 0
@@ -249,6 +340,35 @@ def main():
     hdy = (H - (hx[:, 1].max() - hx[:, 1].min())) / 2 - hx[:, 1].min()
     hc = {a: (round(x + hdx, 1), round(y + hdy, 1)) for a, (x, y) in hc.items()}
 
+    # electoral tiles: their own frame (shared by both years so a tile is the same size in each)
+    evx = np.array([(t[0], t[1]) for y in years.values() for t in y["ev"]["tiles"]])
+    er = max(y["ev"]["r"] for y in years.values())
+    ex0, ey0 = evx.min(0) - er
+    ex1, ey1 = evx.max(0) + er
+    ek = min((W - 2 * PAD) / (ex1 - ex0), (H - 2 * PAD) / (ey1 - ey0))
+    eox, eoy = (W - (ex1 - ex0) * ek) / 2, (H - (ey1 - ey0) * ek) / 2
+    etx = lambda p: [round(eox + (p[0] - ex0) * ek, 1), round(eoy + (ey1 - p[1]) * ek, 1)]  # noqa: E731
+
+    def poly_d(g, t):
+        polys = g.geoms if isinstance(g, MultiPolygon) else [g]
+        return "".join("M" + "L".join(f"{a:g},{b:g}" for a, b in (t(q) for q in np.asarray(p.exterior.coords)[:-1])) + "Z"
+                       for p in polys)
+
+    def ev_web(ev):
+        tiles = [[*etx((x, y)), a, int(g)] for x, y, a, g in ev["tiles"]]
+        lab = {}
+        for a in ev["outlines"]:
+            xs = np.array([t[:2] for t in tiles if t[2] == a])
+            if len(xs) >= 10:   # label only states big enough to hold a 14px label
+                lab[a] = [round(float(v), 1) for v in xs.mean(0)]
+        return dict(r=round(ev["r"] * ek, 2), tiles=tiles, labels=lab,
+                    outlines={a: poly_d(g.simplify(0.5 / ek), etx) for a, g in ev["outlines"].items()})
+
+    def dots_web(d):
+        xy, gop = d
+        px = np.array([tx(p) for p in xy])
+        return dict(xy=np.round(px * 2).astype(int).ravel().tolist(), gop="".join("1" if g else "0" for g in gop))
+
     # ---- web data
     state_rows = []
     for f, row in st.iterrows():
@@ -265,9 +385,11 @@ def main():
             "counties": c.area[voted & (c.margin > 0)].sum() / c.area[voted].sum(),
             "carto": carea(s)[red].sum() / carea(s).sum(),
             "hex": red.mean(),
+            "ev": sum(t[3] for t in y["ev"]["tiles"]) / 538,
+            "dots": y["dots"][1].mean(),
         }
         year_data[yr] = dict(
-            dem=YEARS[yr]["dem"], gop=YEARS[yr]["gop"],
+            dem=YEARS[yr]["dem"], gop=YEARS[yr]["gop"], evotes=EV[yr], ev=ev_web(y["ev"]), dots=dots_web(y["dots"]),
             total=summarize(tot.votes_gop, tot.votes_dem, tot.total_votes),
             ink={kk: round(float(v), 4) for kk, v in ink.items()},
             states={f: dict(**summarize(q.votes_gop, q.votes_dem, q.total_votes), pop=int(q[f"pop{yr}"]),
@@ -290,24 +412,59 @@ def main():
 TITLE = "The same 2020 votes can look 81% red or 43% red, depending on how you draw the map"
 
 
-def draw_maps(axes, s, c, voted, hc, r, ew, hexfs):
-    """The four maps into a 2x2 array of axes: states, counties, population cartogram, hexagons."""
-    ax = axes[0, 0]
-    gpd.GeoSeries(s.geometry).plot(ax=ax, color=[margin_color(m) for m in s.margin], edgecolor=S.EDGE, linewidth=ew * 2)
-    ax = axes[0, 1]
+VIEWS = [("states", "States"), ("counties", "Counties"), ("carto", "States sized by population"),
+         ("hex", "One hexagon per state"), ("ev", "One hexagon per electoral vote"), ("dots", "One dot per 5,000 votes")]
+DEM2, GOP2 = P["dem"][1], P["gop"][1]
+
+
+def red_shares(y):
+    """Share of each map that is red (what the gap bars compare with the vote)."""
+    s, c = y["states"], y["counties"]
+    voted, red = c.margin.notna(), s.margin > 0
+    return dict(states=s.area[red].sum() / s.area.sum(),
+                counties=c.area[voted & (c.margin > 0)].sum() / c.area[voted].sum(),
+                carto=carea(s)[red].sum() / carea(s).sum(),
+                hex=red.mean(),
+                ev=sum(t[3] for t in y["ev"]["tiles"]) / 538,
+                dots=y["dots"][1].mean())
+
+
+def finding(view, y, share):
+    if view == "hex":
+        return f"{int((y['states'].margin > 0).sum())} of 51 hexagons are red"
+    if view == "ev":
+        return f"{sum(t[3] for t in y['ev']['tiles'])} of 538 electoral votes are red"
+    if view == "dots":
+        return f"{share:.0%} of the dots are red"
+    return f"{share:.0%} of the map is red"
+
+
+def draw_maps(axes, y, hc, r, ew, hexfs, dot_size, evfs=0):
+    """Draw the six maps into a dict of axes keyed by view."""
+    s, c = y["states"], y["counties"]
+    voted = c.margin.notna()
+    for ax in axes.values():
+        ax.set_axis_off(); ax.set_aspect("equal")
+    gpd.GeoSeries(s.geometry).plot(ax=axes["states"], color=[margin_color(m) for m in s.margin], edgecolor=S.EDGE,
+                                   linewidth=ew * 2)
+    ax = axes["counties"]
     c[voted].plot(ax=ax, color=[margin_color(m) for m in c.margin[voted]], edgecolor=S.EDGE, linewidth=ew * 0.4)
     c[~voted].plot(ax=ax, color=S.CLOSED, edgecolor=S.EDGE, linewidth=ew * 0.4)
     gpd.GeoSeries(s.geometry).boundary.plot(ax=ax, color=S.EDGE, linewidth=ew * 2)
-    ax = axes[1, 0]
-    gpd.GeoSeries(list(s.carto)).plot(ax=ax, color=[margin_color(m) for m in s.margin], edgecolor=S.EDGE, linewidth=ew * 2)
-    # common extent for the three geographic panels
+    gpd.GeoSeries(list(s.carto)).plot(ax=axes["carto"], color=[margin_color(m) for m in s.margin], edgecolor=S.EDGE,
+                                      linewidth=ew * 2)
+    ax = axes["dots"]
+    xy, gop = y["dots"]
+    gpd.GeoSeries(s.geometry).boundary.plot(ax=ax, color=S.MUTED, linewidth=ew * 0.5, alpha=0.6)
+    ax.scatter(xy[:, 0], xy[:, 1], s=dot_size, c=np.where(gop, GOP2, DEM2), linewidths=0)
+    # common extent for the geographic panels
     allb = np.array([gpd.GeoSeries(list(s.geometry)).total_bounds, gpd.GeoSeries(list(s.carto)).total_bounds])
     x0, y0 = allb[:, :2].min(0)
     x1, y1 = allb[:, 2:].max(0)
-    for a in (axes[0, 0], axes[0, 1], axes[1, 0]):
-        a.set_xlim(x0, x1); a.set_ylim(y0 - (y1 - y0) * 0.02, y1 + (y1 - y0) * 0.02)
+    for v in ("states", "counties", "carto", "dots"):
+        axes[v].set_xlim(x0, x1); axes[v].set_ylim(y0 - (y1 - y0) * 0.02, y1 + (y1 - y0) * 0.02)
 
-    ax = axes[1, 1]
+    ax = axes["hex"]
     for f, row in s.iterrows():
         x, yy = hc[row.STUSPS]
         ax.add_patch(RegularPolygon((x, -yy), 6, radius=r * 0.97, orientation=0, fc=margin_color(row.margin),
@@ -319,68 +476,82 @@ def draw_maps(axes, s, c, voted, hc, r, ew, hexfs):
     ax.set_xlim(hx[:, 0].min() - r * 1.2, hx[:, 0].max() + r * 1.2)
     ax.set_ylim(-hx[:, 1].max() - r * 1.2, -hx[:, 1].min() + r * 1.2)
 
+    ax = axes["ev"]
+    ev = y["ev"]
+    for x, yy, a, g in ev["tiles"]:
+        ax.add_patch(RegularPolygon((x, yy), 6, radius=ev["r"] * 0.94, orientation=0, fc=GOP2 if g else DEM2, ec="none"))
+    gpd.GeoSeries(list(ev["outlines"].values())).boundary.plot(ax=ax, color=S.EDGE, linewidth=ew * 2.5)
+    for a in ev["outlines"]:
+        xs = np.array([(t[0], t[1]) for t in ev["tiles"] if t[2] == a])
+        if evfs and len(xs) >= 15:
+            ax.text(*xs.mean(0), a, ha="center", va="center", fontsize=evfs, fontweight="semibold", color="white")
+    ex = np.array([(t[0], t[1]) for t in ev["tiles"]])
+    ax.set_xlim(ex[:, 0].min() - ev["r"] * 1.5, ex[:, 0].max() + ev["r"] * 1.5)
+    ax.set_ylim(ex[:, 1].min() - ev["r"] * 1.5, ex[:, 1].max() + ev["r"] * 1.5)
 
 
-def png(y, st, hc, W, H, r, tx, k):
-    s, c = y["states"], y["counties"]
-    yr = PNG_YEAR
-    voted = c.margin.notna()
-    fig, axes = plt.subplots(2, 2, figsize=S.MAP["png_size_in"])
-    fig.subplots_adjust(left=0.03, right=0.97, top=0.80, bottom=0.04, wspace=0.06, hspace=0.2)
-    ew = S.MAP["cell_edge_width"]
-    red = s.margin > 0
-
-    def pct(v):
-        return f"{v:.0%}"
-
-    panels = [
-        ("States", f"{pct(s.area[red].sum() / s.area.sum())} of the map is red"),
-        ("Counties", f"{pct(c.area[voted & (c.margin > 0)].sum() / c.area[voted].sum())} of the map is red"),
-        ("States sized by population", f"{pct(carea(s)[red].sum() / carea(s).sum())} of the map is red"),
-        ("One hexagon per state", f"{red.sum()} of 51 hexagons are red"),
-    ]
-    for ax, (head, sub) in zip(axes.flat, panels):
-        ax.set_axis_off()
-        ax.set_aspect("equal")
-        # heading + finding above the axes (the maps fill the axes, so there is no room inside)
-        ax.annotate(head, (0, 1), xycoords="axes fraction", xytext=(0, 15), textcoords="offset points",
-                    fontsize=S.SIZE["panel_title"], fontweight="semibold", fontfamily=S.HEAD_FONT, color=S.INK)
-        ax.annotate(sub, (0, 1), xycoords="axes fraction", xytext=(0, 1), textcoords="offset points",
-                    fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED)
-
-    draw_maps(axes, s, c, voted, hc, r, ew, S.SIZE["annotation"])
-
-    # callouts: the biggest gap between land and people
-    ak = s.loc["02"]
-    S.callout(axes[0, 0], (ak.geometry.centroid.x, ak.geometry.centroid.y), (0.47, 0.03),
-              "Alaska", f"{ak.land / s.land.sum():.0%} of the land, {ak.total_votes / s.total_votes.sum():.1%} of the votes",
-              outline=ak.geometry)
-    ca = s.loc["06"]
-    S.callout(axes[1, 0], (ca.carto.centroid.x, ca.carto.centroid.y), (0.0, 0.2),
-              "California", f"{ca[f'pop{yr}'] / s[f'pop{yr}'].sum():.0%} of Americans live here",
-              outline=ca.carto)
-
-    # legend: margin scale, top center under the title
-    lax = fig.add_axes([0.38, 0.875, 0.24, 0.016])
+def margin_key(fig, rect, yr, ticks, fs):
+    lax = fig.add_axes(rect)
     xs = np.linspace(-0.6, 0.6, 241)
     lax.imshow([[np.array(plt.matplotlib.colors.to_rgb(margin_color(v))) for v in xs]], aspect="auto",
                extent=(-0.6, 0.6, 0, 1))
     lax.set_yticks([])
-    lax.set_xticks([-0.6, -0.3, 0, 0.3, 0.6])
-    lax.set_xticklabels([f"{YEARS[yr]['dem']} +60", "+30", "0", "+30", f"{YEARS[yr]['gop']} +60"],
-                        fontsize=S.SIZE["legend"])
-    lax.tick_params(length=0, pad=3)
+    lab = {-0.6: f"{YEARS[yr]['dem']} +60", -0.3: "+30", 0: "0", 0.3: "+30", 0.6: f"{YEARS[yr]['gop']} +60"}
+    lax.set_xticks(ticks)
+    lax.set_xticklabels([lab[t] for t in ticks], fontsize=fs, color=S.INK)
+    lax.tick_params(length=0, pad=2)
     for sp in lax.spines.values():
         sp.set_visible(False)
+
+
+def grid_axes(fig, cols, rows, left, right, top, bottom, gapx, head):
+    cw = (right - left - gapx * (cols - 1)) / cols
+    ch = (top - bottom) / rows
+    axes = {}
+    for k, (v, _) in enumerate(VIEWS):
+        i, j = divmod(k, cols)
+        ax = fig.add_axes([left + j * (cw + gapx), top - (i + 1) * ch, cw, ch - head])
+        ax.set_anchor("N")
+        axes[v] = ax
+    return axes
+
+
+def png(y, st, hc, W, H, r, tx, k):
+    s = y["states"]
+    yr = PNG_YEAR
+    fig = plt.figure(figsize=S.MAP["png_size_in"])
+    axes = grid_axes(fig, 3, 2, 0.03, 0.97, 0.835, 0.06, 0.03, 0.075)
+    share = red_shares(y)
+    for v, head in VIEWS:
+        ax = axes[v]
+        # heading + finding above the axes (the maps fill the axes, so there is no room inside)
+        ax.annotate(head, (0, 1), xycoords="axes fraction", xytext=(0, 15), textcoords="offset points",
+                    fontsize=S.SIZE["panel_title"], fontweight="semibold", fontfamily=S.HEAD_FONT, color=S.INK)
+        ax.annotate(finding(v, y, share[v]), (0, 1), xycoords="axes fraction", xytext=(0, 1), textcoords="offset points",
+                    fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED)
+    draw_maps(axes, y, hc, r, S.MAP["cell_edge_width"], S.SIZE["annotation"] - 2, 0.25, S.SIZE["annotation"])
+
+    # callouts: the biggest gap between land and people
+    ak = s.loc["02"]
+    S.callout(axes["states"], (ak.geometry.centroid.x, ak.geometry.centroid.y), (0.47, 0.03),
+              "Alaska", f"{ak.land / s.land.sum():.0%} of the land, {ak.total_votes / s.total_votes.sum():.1%} of the votes",
+              outline=ak.geometry)
+    ca = s.loc["06"]
+    S.callout(axes["carto"], (ca.carto.centroid.x, ca.carto.centroid.y), (0.0, 0.2),
+              "California", f"{ca[f'pop{yr}'] / s[f'pop{yr}'].sum():.0%} of Americans live here",
+              outline=ca.carto)
+
+    margin_key(fig, [0.38, 0.875, 0.24, 0.016], yr, [-0.6, -0.3, 0, 0.3, 0.6], S.SIZE["legend"])
     tv = s[["votes_gop", "votes_dem", "total_votes"]].sum()
-    fig.text(0.5, 0.912, f"Same votes, four maps. {yr} presidential margin, percentage points. Nationwide: "
+    fig.text(0.5, 0.912, f"Same votes, six maps. {yr} presidential margin, percentage points. Nationwide: "
              f"{YEARS[yr]['dem']} {tv.votes_dem / tv.total_votes:.1%}, {YEARS[yr]['gop']} {tv.votes_gop / tv.total_votes:.1%}.",
              ha="center", fontsize=S.SIZE["subtitle"], color=S.MUTED)
 
     S.title(fig, TITLE)
-    S.credit(fig, f"Area shares from Albers equal-area maps (Alaska and Hawaii as drawn); cartogram after Dougenik et al. 1985. "
-                  f"{SOURCE}  ·  #30DayMapChallenge {DAY}")
+    S.credit(fig, f"Area shares from Albers equal-area maps (Alaska and Hawaii as drawn); cartogram after Dougenik et al. 1985; "
+                  f"dots placed at random within counties, third parties left out.\n{SOURCE}  ·  #30DayMapChallenge {DAY}")
     fig.savefig(OUT / "map.png", dpi=S.MAP["png_dpi"])
+    plt.close(fig)
     print("wrote out/map.png")
 
 
@@ -388,57 +559,33 @@ LINKEDIN_TITLE = "The same 2020 votes look 81% red\nor 43% red, depending on the
 
 
 def linkedin(y, hc, r):
-    """4:5 portrait (1080x1350) for the LinkedIn feed: the four maps in a 2x2 grid, type sized for a phone."""
-    s, c = y["states"], y["counties"]
+    """4:5 portrait (1080x1350) for the LinkedIn feed: the six maps in a 2x3 grid, type sized for a phone."""
+    s = y["states"]
     yr = PNG_YEAR
-    voted = c.margin.notna()
-    red = s.margin > 0
     fig = plt.figure(figsize=(5.4, 6.75))
-    left, right, top, bottom, gapx = 0.035, 0.975, 0.785, 0.09, 0.03
-    cw = (right - left - gapx) / 2
-    head = 0.075   # heading + two finding lines above each map, in figure height
-    ch = (top - bottom) / 2
-    axes = np.empty((2, 2), dtype=object)
-    for i in range(2):
-        for j in range(2):
-            ax = fig.add_axes([left + j * (cw + gapx), top - (i + 1) * ch, cw, ch - head])
-            ax.set_axis_off(); ax.set_aspect("equal"); ax.set_anchor("N")
-            axes[i, j] = ax
+    axes = grid_axes(fig, 2, 3, 0.035, 0.975, 0.80, 0.075, 0.03, 0.062)
     gop = s.votes_gop.sum() / s.total_votes.sum()
-    shares = [s.area[red].sum() / s.area.sum(),
-              c.area[voted & (c.margin > 0)].sum() / c.area[voted].sum(),
-              carea(s)[red].sum() / carea(s).sum(),
-              red.sum() / 51]
-    heads = ["States", "Counties", "States sized by population", "One hexagon per state"]
-    for ax, h, sh in zip(axes.flat, heads, shares):
-        gap = round((sh - gop) * 100)
-        what = f"{red.sum()} of 51 hexagons are red" if h.startswith("One") else f"{sh:.0%} of the map is red"
-        vs = "as red as the vote" if gap == 0 else f"{abs(gap)} pts {'redder' if gap > 0 else 'bluer'} than the vote"
-        ax.annotate(h, (0, 1), xycoords="axes fraction", xytext=(0, 24), textcoords="offset points",
-                    fontsize=9.5, fontweight="semibold", fontfamily=S.HEAD_FONT, color=S.INK)
-        ax.annotate(f"{what}\n{vs}", (0, 1), xycoords="axes fraction", xytext=(0, 4), textcoords="offset points",
-                    fontsize=6.5, color=S.MUTED, linespacing=1.3)
-    draw_maps(axes, s, c, voted, hc, r, S.MAP["cell_edge_width"] * 0.6, 4.2)
+    share = red_shares(y)
+    for v, head in VIEWS:
+        gap = round((share[v] - gop) * 100)
+        unit = "pt" if abs(gap) == 1 else "pts"
+        vs = "as red as the vote" if gap == 0 else f"{abs(gap)} {unit} {'redder' if gap > 0 else 'bluer'} than the vote"
+        axes[v].annotate(head, (0, 1), xycoords="axes fraction", xytext=(0, 18), textcoords="offset points",
+                         fontsize=8.5, fontweight="semibold", fontfamily=S.HEAD_FONT, color=S.INK)
+        axes[v].annotate(f"{finding(v, y, share[v])} · {vs}", (0, 1), xycoords="axes fraction", xytext=(0, 6),
+                         textcoords="offset points", fontsize=6, color=S.MUTED)
+    draw_maps(axes, y, hc, r, S.MAP["cell_edge_width"] * 0.5, 3.6, 0.04)
 
-    h = fig.text(0.5, 0.965, LINKEDIN_TITLE, ha="center", va="top", fontsize=16, fontweight="bold",
+    h = fig.text(0.5, 0.968, LINKEDIN_TITLE, ha="center", va="top", fontsize=16, fontweight="bold",
                  fontfamily=S.HEAD_FONT, color=S.INK, linespacing=1.18)
     renderer = fig.canvas.get_renderer()
     while h.get_window_extent(renderer).width > 0.94 * fig.bbox.width:
         h.set_fontsize(h.get_fontsize() - 0.25)
     tv = s[["votes_gop", "votes_dem", "total_votes"]].sum()
-    fig.text(0.5, 0.865, f"{YEARS[yr]['dem']} won {tv.votes_dem / tv.total_votes:.1%} of the vote. "
-             f"{YEARS[yr]['gop']} won {tv.votes_gop / tv.total_votes:.1%}. Same votes, four maps.",
+    fig.text(0.5, 0.872, f"{YEARS[yr]['dem']} won {tv.votes_dem / tv.total_votes:.1%} of the vote. "
+             f"{YEARS[yr]['gop']} won {tv.votes_gop / tv.total_votes:.1%}. Same votes, six maps.",
              ha="center", va="center", fontsize=8, color=S.MUTED)
-    lax = fig.add_axes([0.3, 0.818, 0.4, 0.013])
-    xs = np.linspace(-0.6, 0.6, 241)
-    lax.imshow([[np.array(plt.matplotlib.colors.to_rgb(margin_color(v))) for v in xs]], aspect="auto",
-               extent=(-0.6, 0.6, 0, 1))
-    lax.set_yticks([])
-    lax.set_xticks([-0.6, 0, 0.6])
-    lax.set_xticklabels([f"{YEARS[yr]['dem']} +60", "0", f"{YEARS[yr]['gop']} +60"], fontsize=6.5, color=S.INK)
-    lax.tick_params(length=0, pad=2)
-    for sp in lax.spines.values():
-        sp.set_visible(False)
+    margin_key(fig, [0.3, 0.83, 0.4, 0.012], yr, [-0.6, 0, 0.6], 6.5)
     fig.text(0.5, 0.012, "Explore 2020 and 2024: daniellecarrick.github.io/30-day-map-challenge/day22\n"
              f"{SOURCE}\n#30DayMapChallenge {DAY}", ha="center", va="bottom", fontsize=5.5,
              color=S.MUTED, linespacing=1.4)
