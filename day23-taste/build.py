@@ -412,16 +412,12 @@ def flavor_png(boros, land, hexes, views, fl):
              f"{total:,} spots, more than any other ({fl['by_cuisine'].index[1]} is next, {int(fl['by_cuisine'].iloc[1])}).\n"
              f"Colors group the {len(views)} cuisines into families.",
              ha="left", va="top", fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED, linespacing=1.5)
-    handles = []
-    for i, (name, _) in enumerate(FAMILIES):
-        cs = [c for c in fl["by_cuisine"].index if FAMILY_OF[next(v["key"] for v in views if v["label"] == c)] == i][:3]
-        handles.append(Patch(color=S.CATEGORICAL[i], label=f"{name}  ({int(fl['by_family'].get(i, 0))})\n" +
-                             ", ".join(cs) + ("…" if len([c for c in fl["by_cuisine"].index
-                                                          if FAMILY_OF[next(v['key'] for v in views if v['label'] == c)] == i]) > 3 else "")))
+    handles = [Patch(color=S.CATEGORICAL[i], label=f"{name}  ({int(fl['by_family'].get(i, 0))})")
+               for i, (name, _) in enumerate(FAMILIES)]
     handles.append(Patch(color=LAND, label=f"Nothing stands out ({BINS[0]:g}×+, {FLAVOR_MIN_K}+ restaurants),\nor fewer than {MIN_N} restaurants"))
     fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.03, 0.66), fontsize=S.SIZE["legend"] + 1,
                title="Standout cuisine (spots it leads)", title_fontsize=S.SIZE["legend"] + 1, alignment="left",
-               handlelength=1.4, handleheight=1.2, labelspacing=0.75, borderaxespad=0, labelcolor=S.INK)
+               handlelength=1.4, handleheight=1.0, labelspacing=0.6, borderaxespad=0, labelcolor=S.INK)
     S.credit(fig, f"Restaurants with an inspection since {ACTIVE_SINCE[:4]}, by the cuisine they registered; {HEX} m hexes, "
                   f"each scored on restaurants within {R} m of its center; cuisines with {MIN_CUISINE}+ restaurants "
                   f"(not coffee).  Data: NYC DOHMH Restaurant Inspection Results (Nov 2026)  ·  #30DayMapChallenge {DAY}")
