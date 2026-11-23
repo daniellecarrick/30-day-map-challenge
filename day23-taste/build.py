@@ -4,6 +4,8 @@ For every 400 m hex, look at all restaurants within 500 m of its center and comp
 there with its share citywide (location quotient: 2× = twice as common as in NYC overall).
 Writes:
   - out/nyc_cuisine_capitals.png    (static, small multiples: 8 cuisines, one panel each)
+  - out/nyc_flavor_map.png          (static flavor map: each spot's standout cuisine)
+  - out/nyc_flavor_map_linkedin.png (1080x1350 portrait of the flavor map for the LinkedIn feed)
   - out/nyc_cuisine_capitals.html   (interactive: every cuisine with 100+ restaurants, picked from a dropdown,
                                      with a side panel of numbers + a context note from context.json)
 
@@ -257,6 +259,7 @@ def main():
     png(boros, land, hexes, [by_key[k] for k in PNG_PANELS], title)
     fl = flavor(hexes, views)
     flavor_png(boros, land, hexes, views, fl)
+    flavor_linkedin(boros, land, hexes, views, fl)
     web(g, boros, hexes, views, title, total, fl)
 
 
@@ -424,6 +427,74 @@ def flavor_png(boros, land, hexes, views, fl):
     fig.savefig(OUT / "nyc_flavor_map.png", dpi=S.MAP["png_dpi"])
     plt.close(fig)
     print("wrote", OUT / "nyc_flavor_map.png")
+
+
+# LinkedIn portrait: which families' strongest spots get a callout, and where the label sits (axes fraction, ha)
+LINKEDIN_POS = {
+    "East & Southeast Asian": (0.98, 0.95, "right"),
+    "Caribbean": (0.98, 0.10, "right"),
+    "European": (0.40, 0.025, "right"),
+}
+
+
+def flavor_linkedin(boros, land, hexes, views, fl):
+    """4:5 portrait (1080x1350), the largest shape the LinkedIn feed shows, with type sized to read on a phone."""
+    from matplotlib.patches import Rectangle
+    fig = plt.figure(figsize=(5.4, 6.75))
+    ax = fig.add_axes([0.02, 0.085, 0.96, 0.72])
+    ax.set_axis_off()
+    x0, y0, x1, y1 = boros.total_bounds
+    pos = ax.get_position()
+    aspect = (pos.width * fig.get_figwidth()) / (pos.height * fig.get_figheight())
+    h = max(y1 - y0, (x1 - x0) / aspect) * 1.03
+    w = h * aspect
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    ax.set_xlim(cx - w / 2, cx + w / 2)
+    ax.set_ylim(cy - h / 2, cy + h / 2)
+    ax.set_aspect("equal")
+    clipped = hexes.copy()
+    clipped["geometry"] = clipped.geometry.intersection(land)
+    clipped.plot(ax=ax, color=[S.CATEGORICAL[f] if f >= 0 else LAND for f in fl["fam"]], linewidth=0)
+    boros.boundary.plot(ax=ax, color=S.INK, linewidth=0.3)
+    for i, j in fl["peaks"].items():
+        name = FAMILIES[i][0]
+        if name not in LINKEDIN_POS:
+            continue
+        v = views[fl["win"][j]]
+        tx, ty, ha = LINKEDIN_POS[name]
+        S.callout(ax, (hexes.x[j], hexes.y[j]), (tx, ty), f"{v['label']}, {hexes.label[j]}",
+                  f"{pct(v['share'][j])} of nearby restaurants · {fl['best'][j]:.0f}× NYC",
+                  ha=ha, outline=hexes.geometry[j], halo=True)
+
+    head = fig.text(0.5, 0.972, FLAVOR_TITLE.replace(" in more", "\nin more"), ha="center", va="top", fontsize=17,
+                    fontweight="bold", fontfamily=S.HEAD_FONT, color=S.INK, linespacing=1.18)
+    renderer = fig.canvas.get_renderer()
+    while head.get_window_extent(renderer).width > 0.94 * fig.bbox.width:
+        head.set_fontsize(head.get_fontsize() - 0.25)
+    fig.text(0.5, 0.875, f"Each spot colored by the cuisine most over-represented among the restaurants within {R} m",
+             ha="center", va="center", fontsize=8, color=S.MUTED)
+    # legend: two rows of four families under the subtitle, so it never sits on the map
+    # (column-major in the fixed family order; columns spaced by their widest label so nothing collides)
+    items = [(S.CATEGORICAL[i], name) for i, (name, _) in enumerate(FAMILIES)]
+    cols = [items[c * 2:c * 2 + 2] for c in range(4)]
+    texts = [[fig.text(0, 0.842 - r * 0.028, lab, ha="left", va="center", fontsize=7, color=S.INK)
+              for r, (_, lab) in enumerate(col)] for col in cols]
+    sw = 0.025   # swatch + gap, figure fraction
+    widths = [sw + max(t.get_window_extent(renderer).width for t in ts) / fig.bbox.width for ts in texts]
+    gap = (0.94 - sum(widths)) / (len(cols) - 1)
+    x = 0.03
+    for col, ts, wdt in zip(cols, texts, widths):
+        for (c, _), t in zip(col, ts):
+            y = t.get_position()[1]
+            fig.patches.append(Rectangle((x, y - 0.007), 0.017, 0.0136, transform=fig.transFigure, fc=c, ec="none"))
+            t.set_x(x + sw)
+        x += wdt + gap
+    S.credit(fig, f"A cuisine needs {FLAVOR_MIN_K}+ restaurants within {R} m and {BINS[0]:g}× its city share to stand out.\n"
+                  f"Data: NYC DOHMH restaurant inspections (Nov 2026)  ·  #30DayMapChallenge {DAY}\n"
+                  "daniellecarrick.github.io/30-day-map-challenge/day23", y=0.014)
+    fig.savefig(OUT / "nyc_flavor_map_linkedin.png", dpi=200)
+    plt.close(fig)
+    print("wrote", OUT / "nyc_flavor_map_linkedin.png")
 
 
 def group_for(clustered: float) -> str:
