@@ -513,8 +513,6 @@ function renderTop() {
     .on("mouseleave blur", () => gHex.selectAll("path").classed("dim", false));
   rows.append("span").attr("class", "sw").style("background", (_, fi) => `var(--cat-${fi + 1})`);
   rows.append("span").html(f => `<span class="name">${f.name}</span> · ${fmt(f.count)} spots`);
-  rows.append("span").attr("class", "m").text(f => f.members.slice(0, 4).map(([c, n]) => `${c} ${n}`).join(", ") +
-    (f.members.length > 4 ? `, +${f.members.length - 4} more` : ""));
   d3.select("#t-note").text(`A cuisine needs at least ${F.min_k} restaurants within ${D.r} m and ${D.labels[0]} its city share to stand out. ` +
     `Hover a family to see only its spots; pick "One cuisine" for the details of any of them.`);
   hideHover();
