@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NYC Cuisine Capitals</title>
+<title>NYC Flavor Map</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
@@ -322,7 +322,7 @@ const legendTop = MapKit.legend(svg, {
 
 MapKit.dropdown("#pick", D.cuisines.map(c => ({ value: c.key, label: c.label, group: c.group })), render, "Chinese", "Cuisine");
 d3.select("#pick select").attr("id", "pick-select");
-MapKit.segmented("#mode", [{ value: "one", label: "One cuisine" }, { value: "top", label: "Top cuisine" }], setMode, "one");
+MapKit.segmented("#mode", [{ value: "top", label: "Top cuisine" }, { value: "one", label: "One cuisine" }], setMode, "top");
 </script>
 </body>
 </html>
