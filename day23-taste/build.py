@@ -5,7 +5,8 @@ there with its share citywide (location quotient: 2× = twice as common as in NY
 Writes:
   - out/nyc_cuisine_capitals.png    (static, small multiples: 8 cuisines, one panel each)
   - out/nyc_flavor_map.png          (static flavor map: each spot's standout cuisine)
-  - out/nyc_flavor_map_linkedin.png (1080x1350 portrait of the flavor map for the LinkedIn feed)
+  - out/nyc_taste_linkedin_{1,2}.png + nyc_taste_linkedin.pdf  (1080x1350 slides for a LinkedIn document
+                                     post: the flavor map, then Chinese with Sunset Park vs Chinatown)
   - out/nyc_cuisine_capitals.html   (interactive: every cuisine with 100+ restaurants, picked from a dropdown,
                                      with a side panel of numbers + a context note from context.json)
 
@@ -264,7 +265,7 @@ def main():
     png(boros, land, hexes, [by_key[k] for k in PNG_PANELS], title)
     fl = flavor(hexes, views)
     flavor_png(boros, land, hexes, views, fl)
-    flavor_linkedin(boros, land, hexes, views, fl)
+    linkedin(boros, land, hexes, views, fl)
     web(g, boros, hexes, views, title, total, fl)
 
 
@@ -435,17 +436,21 @@ def flavor_png(boros, land, hexes, views, fl):
     print("wrote", OUT / "nyc_flavor_map.png")
 
 
-# LinkedIn portrait: which families' strongest spots get a callout, and where the label sits (axes fraction, ha)
+# ---- LinkedIn document post: two 4:5 portrait slides (1080x1350), type sized to read on a phone ----
+# slide 1 (flavor map): which families' strongest spots get a callout, and where the label sits (axes fraction, ha)
 LINKEDIN_POS = {
     "East & Southeast Asian": (0.98, 0.95, "right"),
     "Caribbean": (0.98, 0.10, "right"),
     "European": (0.40, 0.025, "right"),
 }
+# slide 2 (one cuisine): the cuisine, its headline, and where its labels sit
+SLIDE2_KEY = "Chinese"
+SLIDE2_TITLE = "Sunset Park, not Chinatown, has NYC's\nhighest share of Chinese restaurants"
+SLIDE2_POS = {"peak": (0.02, 0.47, "left"), "famous": (0.02, 0.66, "left"), "also": (0.98, 0.95, "right")}
 
 
-def flavor_linkedin(boros, land, hexes, views, fl):
-    """4:5 portrait (1080x1350), the largest shape the LinkedIn feed shows, with type sized to read on a phone."""
-    from matplotlib.patches import Rectangle
+def portrait(boros, title, subtitle):
+    """A blank 1080x1350 slide: map axes sized to the five boroughs, a headline shrunk to fit, a subtitle."""
     fig = plt.figure(figsize=(5.4, 6.75))
     ax = fig.add_axes([0.02, 0.085, 0.96, 0.72])
     ax.set_axis_off()
@@ -458,6 +463,38 @@ def flavor_linkedin(boros, land, hexes, views, fl):
     ax.set_xlim(cx - w / 2, cx + w / 2)
     ax.set_ylim(cy - h / 2, cy + h / 2)
     ax.set_aspect("equal")
+    head = fig.text(0.5, 0.972, title, ha="center", va="top", fontsize=17, fontweight="bold",
+                    fontfamily=S.HEAD_FONT, color=S.INK, linespacing=1.18)
+    renderer = fig.canvas.get_renderer()
+    while head.get_window_extent(renderer).width > 0.94 * fig.bbox.width:
+        head.set_fontsize(head.get_fontsize() - 0.25)
+    fig.text(0.5, 0.875, subtitle, ha="center", va="center", fontsize=8, color=S.MUTED)
+    return fig, ax
+
+
+def portrait_legend(fig, items, rows):
+    """Swatch legend under the subtitle, filled column by column in the given (fixed) order; columns are
+    spaced by their widest label across 94% of the width, so nothing collides and it never sits on the map."""
+    from matplotlib.patches import Rectangle
+    renderer = fig.canvas.get_renderer()
+    cols = [items[c:c + rows] for c in range(0, len(items), rows)]
+    texts = [[fig.text(0, 0.842 - r * 0.028, lab, ha="left", va="center", fontsize=7, color=S.INK)
+              for r, (_, lab) in enumerate(col)] for col in cols]
+    sw = 0.025   # swatch + gap, figure fraction
+    widths = [sw + max(t.get_window_extent(renderer).width for t in ts) / fig.bbox.width for ts in texts]
+    gap = (0.94 - sum(widths)) / max(len(cols) - 1, 1)
+    x = 0.03
+    for col, ts, wdt in zip(cols, texts, widths):
+        for (c, _), t in zip(col, ts):
+            y = t.get_position()[1]
+            fig.patches.append(Rectangle((x, y - 0.007), 0.017, 0.0136, transform=fig.transFigure, fc=c, ec="none"))
+            t.set_x(x + sw)
+        x += wdt + gap
+
+
+def slide_flavor(boros, land, hexes, views, fl):
+    fig, ax = portrait(boros, FLAVOR_TITLE.replace(" in more", "\nin more"),
+                       f"Each spot colored by the cuisine most over-represented among the restaurants within {R} m")
     clipped = hexes.copy()
     clipped["geometry"] = clipped.geometry.intersection(land)
     clipped.plot(ax=ax, color=[S.CATEGORICAL[f] if f >= 0 else LAND for f in fl["fam"]], linewidth=0)
@@ -471,36 +508,53 @@ def flavor_linkedin(boros, land, hexes, views, fl):
         S.callout(ax, (hexes.x[j], hexes.y[j]), (tx, ty), f"{v['label']}, {hexes.label[j]}",
                   f"{pct(v['share'][j])} of nearby restaurants · {fl['best'][j]:.0f}× NYC",
                   ha=ha, outline=hexes.geometry[j], halo=True)
-
-    head = fig.text(0.5, 0.972, FLAVOR_TITLE.replace(" in more", "\nin more"), ha="center", va="top", fontsize=17,
-                    fontweight="bold", fontfamily=S.HEAD_FONT, color=S.INK, linespacing=1.18)
-    renderer = fig.canvas.get_renderer()
-    while head.get_window_extent(renderer).width > 0.94 * fig.bbox.width:
-        head.set_fontsize(head.get_fontsize() - 0.25)
-    fig.text(0.5, 0.875, f"Each spot colored by the cuisine most over-represented among the restaurants within {R} m",
-             ha="center", va="center", fontsize=8, color=S.MUTED)
-    # legend: two rows of four families under the subtitle, so it never sits on the map
-    # (column-major in the fixed family order; columns spaced by their widest label so nothing collides)
-    items = [(S.CATEGORICAL[i], name) for i, (name, _) in enumerate(FAMILIES)]
-    cols = [items[c * 2:c * 2 + 2] for c in range(4)]
-    texts = [[fig.text(0, 0.842 - r * 0.028, lab, ha="left", va="center", fontsize=7, color=S.INK)
-              for r, (_, lab) in enumerate(col)] for col in cols]
-    sw = 0.025   # swatch + gap, figure fraction
-    widths = [sw + max(t.get_window_extent(renderer).width for t in ts) / fig.bbox.width for ts in texts]
-    gap = (0.94 - sum(widths)) / (len(cols) - 1)
-    x = 0.03
-    for col, ts, wdt in zip(cols, texts, widths):
-        for (c, _), t in zip(col, ts):
-            y = t.get_position()[1]
-            fig.patches.append(Rectangle((x, y - 0.007), 0.017, 0.0136, transform=fig.transFigure, fc=c, ec="none"))
-            t.set_x(x + sw)
-        x += wdt + gap
+    portrait_legend(fig, [(S.CATEGORICAL[i], name) for i, (name, _) in enumerate(FAMILIES)], rows=2)
     S.credit(fig, f"A cuisine needs {FLAVOR_MIN_K}+ restaurants within {R} m and {BINS[0]:g}× its city share to stand out.\n"
                   f"Data: NYC DOHMH restaurant inspections (Nov 2026)  ·  #30DayMapChallenge {DAY}\n"
                   "daniellecarrick.github.io/30-day-map-challenge/day23", y=0.014)
-    fig.savefig(OUT / "nyc_flavor_map_linkedin.png", dpi=200)
-    plt.close(fig)
-    print("wrote", OUT / "nyc_flavor_map_linkedin.png")
+    return fig
+
+
+def slide_cuisine(boros, land, hexes, v):
+    fig, ax = portrait(boros, SLIDE2_TITLE,
+                       f"How much more common {v['label']} food is near each spot than citywide ({v['city']:.1%})")
+    clipped = hexes.copy()
+    clipped["geometry"] = clipped.geometry.intersection(land)
+    clipped.plot(ax=ax, color=[bin_color(l, n) for l, n in zip(v["lq"], hexes.n)], linewidth=0)
+    boros.boundary.plot(ax=ax, color=S.INK, linewidth=0.3)
+    spots = [("peak", v["peak"], hexes.label[v["peak"]]), ("famous", v["famous_i"], v["famous"])]
+    if v["also"]:
+        spots.append(("also", v["also"][0], hexes.label[v["also"][0]]))
+    for role, j, name in spots:
+        if j is None:
+            continue
+        tx, ty, ha = SLIDE2_POS[role]
+        S.callout(ax, (hexes.x[j], hexes.y[j]), (tx, ty), f"{name}: {pct(v['share'][j])}",
+                  f"of {hexes.n[j]} nearby restaurants · {v['lq'][j]:.1f}× NYC",
+                  ha=ha, outline=hexes.geometry[j], halo=True)
+    labels = [f"{a}–{b}" if b else f"{a} or more" for a, b in zip(LABELS, LABELS[1:] + [None])]
+    portrait_legend(fig, list(zip(RAMP, labels)), rows=1)
+    S.credit(fig, f"{v['label']} share of the restaurants within {R} m ÷ its city share; uncolored under {LABELS[0]}.\n"
+                  f"Data: NYC DOHMH restaurant inspections (Nov 2026)  ·  #30DayMapChallenge {DAY}\n"
+                  "daniellecarrick.github.io/30-day-map-challenge/day23", y=0.014)
+    return fig
+
+
+def linkedin(boros, land, hexes, views, fl):
+    """Two slides for a LinkedIn document post: 1) the flavor map, 2) one cuisine. Saved as two PNGs and one
+    2-page PDF (fonts embedded)."""
+    from matplotlib.backends.backend_pdf import PdfPages
+    plt.rcParams["pdf.fonttype"] = 42
+    v = next(x for x in views if x["key"] == SLIDE2_KEY)
+    assert v["share"][v["peak"]] > v["share"][v["famous_i"]], "slide 2 headline: peak must beat the namesake"
+    assert hexes.label[v["peak"]].startswith("Sunset Park"), hexes.label[v["peak"]]
+    figs = [slide_flavor(boros, land, hexes, views, fl), slide_cuisine(boros, land, hexes, v)]
+    with PdfPages(OUT / "nyc_taste_linkedin.pdf") as pdf:
+        for i, f in enumerate(figs, 1):
+            f.savefig(OUT / f"nyc_taste_linkedin_{i}.png", dpi=200)
+            pdf.savefig(f)
+            plt.close(f)
+    print("wrote", OUT / "nyc_taste_linkedin_{1,2}.png and nyc_taste_linkedin.pdf")
 
 
 def group_for(clustered: float) -> str:
