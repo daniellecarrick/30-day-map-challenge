@@ -82,6 +82,16 @@ FAMILIES = [
 ]
 FLAVOR_TITLE = "Latin American food stands out in more of NYC than any other cuisine"
 CALLOUT_MIN_SHARE = 0.20   # flavor PNG labels a family's strongest spot only if that cuisine is 1 in 5+ nearby
+# Which categorical color (0-based index into tokens.json categorical) each family gets. Mostly the fixed order,
+# but Latin American and European swap so the headline family is the golden yellow that stands out on the map.
+FAMILY_COLOR = [3, 1, 2, 0, 4, 5, 6, 7]
+assert sorted(FAMILY_COLOR) == list(range(len(FAMILIES))), "each family needs its own color"
+
+
+def fam_color(i: int) -> str:
+    return S.CATEGORICAL[FAMILY_COLOR[i]]
+
+
 FAMILY_OF = {c: i for i, (_, cs) in enumerate(FAMILIES) for c in cs}
 # dropdown groups by how much of a cuisine sits in a cluster (share of its restaurants at 3x+ the city share)
 CLUSTER_X = 3
@@ -395,7 +405,7 @@ def flavor_png(boros, land, hexes, views, fl):
     ax = fig.add_axes([0.33, 0.05, 0.52, 0.90])   # the map is height-limited; labels use the margin to its right
     clipped = hexes.copy()
     clipped["geometry"] = clipped.geometry.intersection(land)
-    colors = [S.CATEGORICAL[f] if f >= 0 else LAND for f in fl["fam"]]
+    colors = [fam_color(f) if f >= 0 else LAND for f in fl["fam"]]
     clipped.plot(ax=ax, color=colors, linewidth=0)
     boros.boundary.plot(ax=ax, color=S.INK, linewidth=S.MAP["boundary_width"])
     xmin, ymin, xmax, ymax = boros.total_bounds
@@ -422,7 +432,7 @@ def flavor_png(boros, land, hexes, views, fl):
            f"Colors group the {len(views)} cuisines into families.")
     fig.text(0.03, 0.80, textwrap.fill(sub, 64, break_on_hyphens=False),
              ha="left", va="top", fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED, linespacing=1.5)
-    handles = [Patch(color=S.CATEGORICAL[i], label=f"{name}  ({int(fl['by_family'].get(i, 0))})")
+    handles = [Patch(color=fam_color(i), label=f"{name}  ({int(fl['by_family'].get(i, 0))})")
                for i, (name, _) in enumerate(FAMILIES)]
     handles.append(Patch(color=LAND, label=f"Nothing stands out ({BINS[0]:g}×+, {FLAVOR_MIN_K}+ restaurants),\nor fewer than {MIN_N} restaurants"))
     fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.03, 0.66), fontsize=S.SIZE["legend"] + 1,
@@ -497,7 +507,7 @@ def slide_flavor(boros, land, hexes, views, fl):
                        f"Each spot colored by the cuisine most over-represented among the restaurants within {R} m")
     clipped = hexes.copy()
     clipped["geometry"] = clipped.geometry.intersection(land)
-    clipped.plot(ax=ax, color=[S.CATEGORICAL[f] if f >= 0 else LAND for f in fl["fam"]], linewidth=0)
+    clipped.plot(ax=ax, color=[fam_color(f) if f >= 0 else LAND for f in fl["fam"]], linewidth=0)
     boros.boundary.plot(ax=ax, color=S.INK, linewidth=0.3)
     for i, j in fl["peaks"].items():
         name = FAMILIES[i][0]
@@ -508,7 +518,7 @@ def slide_flavor(boros, land, hexes, views, fl):
         S.callout(ax, (hexes.x[j], hexes.y[j]), (tx, ty), f"{v['label']}, {hexes.label[j]}",
                   f"{pct(v['share'][j])} of nearby restaurants · {fl['best'][j]:.0f}× NYC",
                   ha=ha, outline=hexes.geometry[j], halo=True)
-    portrait_legend(fig, [(S.CATEGORICAL[i], name) for i, (name, _) in enumerate(FAMILIES)], rows=2)
+    portrait_legend(fig, [(fam_color(i), name) for i, (name, _) in enumerate(FAMILIES)], rows=2)
     S.credit(fig, f"A cuisine needs {FLAVOR_MIN_K}+ restaurants within {R} m and {BINS[0]:g}× its city share to stand out.\n"
                   f"Data: NYC DOHMH restaurant inspections (Nov 2026)  ·  #30DayMapChallenge {DAY}\n"
                   "daniellecarrick.github.io/30-day-map-challenge/day23", y=0.014)
@@ -600,7 +610,8 @@ def web(g, boros, hexes, views, title, total, fl):
         "best": [round(float(b), 1) if w >= 0 else 0 for w, b in zip(fl["win"], fl["best"])],
         "families": [{
             "name": name, "count": int(fl["by_family"].get(i, 0)),
-            "cuisines": [display(c) for c in FAMILIES[i][1]],   # every cuisine in the family, in config order
+            "cuisines": [display(c) for c in FAMILIES[i][1]],
+            "color": FAMILY_COLOR[i] + 1,                          # --cat-N on the page   # every cuisine in the family, in config order
             "members": [[c, int(n)] for c, n in fl["by_cuisine"].items()
                         if FAMILY_OF[next(v["key"] for v in views if v["label"] == c)] == i],
             "peak": fl["peaks"].get(i) if name in FLAVOR_POS else None,

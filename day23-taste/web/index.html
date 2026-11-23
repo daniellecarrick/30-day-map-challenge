@@ -229,7 +229,7 @@ function renderTop() {
     if (w >= 0) byFam[famOf.get(D.cuisines[w].label)] += hexD(i);
   }
   gHex.selectAll("path").data(byFam.map((d, fi) => [fi, d]), d => "f" + d[0]).join("path")
-    .attr("class", null).attr("fill", d => `var(--cat-${d[0] + 1})`).attr("d", d => d[1]);
+    .attr("class", null).attr("fill", d => `var(--cat-${F.families[d[0]].color})`).attr("d", d => d[1]);
   dotPath.attr("d", null);
   gMark.selectAll("path").data(F.families.filter(f => f.peak != null).map(f => ({ i: f.peak, c: "mark" })))
     .join("path").attr("class", d => d.c).attr("d", d => hexD(d.i));
@@ -246,7 +246,7 @@ function renderTop() {
     .on("mousemove", (ev, f) => famTip(ev.currentTarget, ev.clientY, f))
     .on("focus.tip", (ev, f) => famTip(ev.currentTarget, ev.currentTarget.getBoundingClientRect().top, f))
     .on("mouseleave blur", () => { gHex.selectAll("path").classed("dim", false); tip.hide(); });
-  rows.append("span").attr("class", "sw").style("background", (_, fi) => `var(--cat-${fi + 1})`);
+  rows.append("span").attr("class", "sw").style("background", f => `var(--cat-${f.color})`);
   rows.append("span").html(f => `<span class="name">${f.name}</span> · ${fmt(f.count)} spots`);
   d3.select("#t-note").text(`A cuisine needs at least ${F.min_k} restaurants within ${D.r} m and ${D.labels[0]} its city share to stand out. ` +
     `Hover a family to see only its spots; pick "One cuisine" for the details of any of them.`);
