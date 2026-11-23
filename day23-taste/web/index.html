@@ -41,9 +41,8 @@
   .meter span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--ink); }
   .side .context { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); }
   .dd, .dd select { width: 100%; }
-  #mode { margin-bottom: 12px; }
-  #mode.seg { display: flex; }
-  #mode.seg button { flex: 1; }
+  .fam-key { display: grid; grid-template-columns: 14px 1fr; gap: 0 10px; padding: 6px 0; color: var(--muted); }
+  .fam-key svg { overflow: visible; margin-top: 3px; }
   .hexes path { transition: opacity .15s; }
   .hexes path.dim { opacity: .12; }
   .fam { display: grid; grid-template-columns: 14px 1fr; gap: 0 10px; width: 100%; text-align: left; font: inherit;
@@ -69,11 +68,11 @@
   <header>
     <h1 id="title"></h1>
     <p class="lede" id="lede"></p>
+    <div class="controls"><div id="mode" aria-label="Map view"></div></div>
   </header>
   <div class="main">
     <div class="map-wrap" id="map"></div>
     <div class="picker">
-      <div id="mode" aria-label="Map view"></div>
       <div id="pick-wrap">
         <label class="pick-label" for="pick-select">Cuisine</label>
         <div id="pick"></div>
@@ -84,6 +83,7 @@
       <h2>The standout cuisine</h2>
       <p class="big" id="t-big"></p>
       <div id="t-fams"></div>
+      <div class="fam-key"><svg width="14" height="14" viewBox="-7 -7 14 14"><path class="mark" d="M0,-6L5.2,-3L5.2,3L0,6L-5.2,3L-5.2,-3Z"/></svg><span>Outlined: each family's strongest spot</span></div>
       <p class="context" id="t-note"></p>
      </div>
      <div id="side-one">
@@ -247,7 +247,6 @@ function setMode(m) {
   d3.select("#side-one").style("display", m === "one" ? null : "none");
   d3.select("#side-top").style("display", m === "top" ? null : "none");
   legendOne.style("display", m === "one" ? null : "none");
-  legendTop.style("display", m === "top" ? null : "none");
   if (m === "top") renderTop(); else render(lastKey);
 }
 
@@ -309,15 +308,7 @@ const legendOne = MapKit.legend(svg, {
   ],
 });
 
-const legendTop = MapKit.legend(svg, {
-  x: 8, y: 8, width: 230,
-  title: "Standout cuisine",
-  keys: [
-    ...F.families.map((f, fi) => ({ label: f.name, draw: swatch(`var(--cat-${fi + 1})`) })),
-    { label: "Strongest spot of a family", draw: s => s.append("path").attr("d", "M0,-6L5.2,-3L5.2,3L0,6L-5.2,3L-5.2,-3Z").attr("class", "mark") },
-  ],
-});
-
+// "Top cuisine" has no in-map legend: the family list in the side panel is its legend (with counts + hover)
 MapKit.dropdown("#pick", D.cuisines.map(c => ({ value: c.key, label: c.label, group: c.group })), render, "Chinese", "Cuisine");
 d3.select("#pick select").attr("id", "pick-select");
 MapKit.segmented("#mode", [{ value: "top", label: "Top cuisine" }, { value: "one", label: "One cuisine" }], setMode, "top");
