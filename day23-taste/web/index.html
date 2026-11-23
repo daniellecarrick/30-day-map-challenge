@@ -210,6 +210,15 @@ function render(key) {
   hideHover();
 }
 
+function famHtml(f) {
+  return `<b>${f.name}</b>${f.cuisines.join(", ")}`;
+}
+function famTip(row, y, f) {
+  const r = row.getBoundingClientRect();
+  if (innerWidth <= 860) tip.show({ clientX: r.left, clientY: r.bottom }, famHtml(f));      // phone: under the row
+  else tip.show({ clientX: r.left - 300, clientY: y - 20 }, famHtml(f));                     // desktop: left of the panel
+}
+
 // "Top cuisine" view: each hex in its standout cuisine's family color
 const famOf = new Map(F.families.flatMap((f, fi) => f.members.map(([label]) => [label, fi])));
 function renderTop() {
@@ -225,13 +234,18 @@ function renderTop() {
   gMark.selectAll("path").data(F.families.filter(f => f.peak != null).map(f => ({ i: f.peak, c: "mark" })))
     .join("path").attr("class", d => d.c).attr("d", d => hexD(d.i));
 
-  const [top, next] = F.families.flatMap(f => f.members).sort((a, b) => b[1] - a[1]);
-  d3.select("#t-big").html(`Of ${fmt(F.spots)} spots where one cuisine stands out, <b>${top[0]}</b> leads in ${fmt(top[1])}, ` +
-    `more than any other (${next[0]} is next, ${fmt(next[1])}). Colors group the ${D.cuisines.length} cuisines into families.`);
+  // the leading family, with the cuisines it covers spelled out (its name is also one of its cuisines)
+  const lead = F.families.reduce((a, b) => (b.count > a.count ? b : a));
+  const andList = xs => xs.length === 1 ? xs[0] : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1];
+  d3.select("#t-big").html(`Of ${fmt(F.spots)} spots where one cuisine stands out, <b>${lead.name}</b> food ` +
+    `(${andList(lead.cuisines)}) leads in ${fmt(lead.count)}. Colors group the ${D.cuisines.length} cuisines into families.`);
   const rows = d3.select("#t-fams").html("").selectAll("button").data(F.families).join("button")
     .attr("type", "button").attr("class", "fam")
     .on("mouseenter focus", (_, f) => gHex.selectAll("path").classed("dim", d => d[0] !== F.families.indexOf(f)))
-    .on("mouseleave blur", () => gHex.selectAll("path").classed("dim", false));
+    // tooltip: every cuisine the family covers, just left of the panel (over the dimmed map) so the list stays readable
+    .on("mousemove", (ev, f) => famTip(ev.currentTarget, ev.clientY, f))
+    .on("focus.tip", (ev, f) => famTip(ev.currentTarget, ev.currentTarget.getBoundingClientRect().top, f))
+    .on("mouseleave blur", () => { gHex.selectAll("path").classed("dim", false); tip.hide(); });
   rows.append("span").attr("class", "sw").style("background", (_, fi) => `var(--cat-${fi + 1})`);
   rows.append("span").html(f => `<span class="name">${f.name}</span> · ${fmt(f.count)} spots`);
   d3.select("#t-note").text(`A cuisine needs at least ${F.min_k} restaurants within ${D.r} m and ${D.labels[0]} its city share to stand out. ` +

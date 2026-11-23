@@ -136,6 +136,11 @@ def pct(v: float) -> str:
     return f"{int(np.floor(100 * v + 0.5))}%"
 
 
+def and_list(items) -> str:
+    items = list(items)
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
 def short(name: str) -> str:
     return SHORT.get(name, name)
 
@@ -408,12 +413,13 @@ def flavor_png(boros, land, hexes, views, fl):
 
     fig.text(0.03, 0.93, title, ha="left", va="top", fontsize=S.SIZE["title"], fontweight="bold",
              fontfamily=S.HEAD_FONT, color=S.INK, linespacing=1.2)
-    fig.text(0.03, 0.80,
-             f"Each spot is colored by the cuisine that is most over-represented\n"
-             f"among the restaurants within {R} m, compared with its share\n"
-             f"of all NYC restaurants. Latin American leads in {top_n} of\n"
-             f"{total:,} spots, more than any other ({fl['by_cuisine'].index[1]} is next, {int(fl['by_cuisine'].iloc[1])}).\n"
-             f"Colors group the {len(views)} cuisines into families.",
+    import textwrap
+    fam_n = int(fl["by_family"].get(0, 0))
+    sub = (f"Each spot is colored by the cuisine that is most over-represented among the restaurants within {R} m, "
+           f"compared with its share of all NYC restaurants. Of {total:,} spots where one cuisine stands out, "
+           f"Latin American food ({and_list(display(c) for c in FAMILIES[0][1])}) leads in {fam_n}. "
+           f"Colors group the {len(views)} cuisines into families.")
+    fig.text(0.03, 0.80, textwrap.fill(sub, 64, break_on_hyphens=False),
              ha="left", va="top", fontsize=S.SIZE["subtitle"] + 1, color=S.MUTED, linespacing=1.5)
     handles = [Patch(color=S.CATEGORICAL[i], label=f"{name}  ({int(fl['by_family'].get(i, 0))})")
                for i, (name, _) in enumerate(FAMILIES)]
@@ -540,6 +546,7 @@ def web(g, boros, hexes, views, title, total, fl):
         "best": [round(float(b), 1) if w >= 0 else 0 for w, b in zip(fl["win"], fl["best"])],
         "families": [{
             "name": name, "count": int(fl["by_family"].get(i, 0)),
+            "cuisines": [display(c) for c in FAMILIES[i][1]],   # every cuisine in the family, in config order
             "members": [[c, int(n)] for c, n in fl["by_cuisine"].items()
                         if FAMILY_OF[next(v["key"] for v in views if v["label"] == c)] == i],
             "peak": fl["peaks"].get(i) if name in FLAVOR_POS else None,
