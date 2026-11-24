@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Citi Bike Routes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these three so out/citibike_routes.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .play[hidden] { display: none; }
+  .map-wrap { display: flex; gap: 16px; }
+  #deck { position: relative; flex: 1 1 auto; min-width: 0; border-radius: 8px; overflow: hidden; }
+  .side.legend { position: static; flex: none; width: 280px; overflow-y: auto; padding-top: 4px; }
+  @media (max-width: 640px), (max-height: 520px) {
+    .map-wrap { flex-direction: column; }
+    #deck { flex: none; height: 78vh; }
+    .side.legend { width: auto; order: 2; }
+  }
+
+  .find input { font: inherit; font-size: 14px; color: var(--ink); background: var(--ctl); border: 0;
+                border-radius: 8px; padding: 8px 12px; width: 230px; }
+  .find input::placeholder { color: var(--muted); }
+  .find input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* station panel */
+  .legend .nm { font: 700 19px/1.2 var(--font-head); margin-bottom: 4px; }
+  .legend .pin { color: var(--muted); margin-bottom: 6px; }
+  .legend .sum { margin-bottom: 10px; }
+  .legend .tops { margin-bottom: 12px; }
+  .legend .tops .lg-title { margin-bottom: 4px; }
+  .legend .row { display: grid; grid-template-columns: 1fr 44px; gap: 2px 8px; align-items: baseline; margin-top: 3px; }
+  .legend .row .v { text-align: right; color: var(--muted); }
+  .legend .row .bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--seq-5); }
+  .legend .hint { color: var(--muted); margin-top: 10px; }
+  .tip { max-width: 300px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">Citi Bike drawn like an airline route map. Hover a station to send its September riders arcing across the city; thicker arcs are busier routes, colored by the borough where the ride ended.</p>
+    <div class="controls">
+      <div class="find"><input id="find" list="names" placeholder="Find a station…" aria-label="Find a station" autocomplete="off"><datalist id="names"></datalist></div>
+      <button class="play" id="reset" type="button" hidden>Reset view</button>
+    </div>
+  </header>
+  <div class="map-wrap" id="map"><div id="deck" role="img"></div></div>
+  <footer><span id="method"></span>. Data: <a id="source" target="_blank" rel="noopener"></a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://unpkg.com/deck.gl@9.1.14/dist.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA, S = D.stations, N = S.name.length, DAYS = D.days;
+const WIDE = matchMedia("(min-width: 641px)").matches;
+const tip = MapKit.tooltip();
+const f1 = d3.format(".1f"), fmt = d3.format(",");
+const rate = t => { const v = t / DAYS; return v >= 9.95 ? d3.format(".0f")(v) : f1(v); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+d3.select("#title").text(D.title);
+d3.select("#deck").attr("aria-label", D.title);
+d3.select("#method").text(D.method);
+d3.select("#source").text(D.source).attr("href", D.source_url);
+d3.select("#day").text(D.day);
+
+// ---- stations and routes ----
+const st = d3.range(N).map(i => ({ i, name: S.name[i], pos: [S.lng[i], S.lat[i]], out: S.out[i], nout: S.nout[i], boro: S.to_boro[i], bk: S.boro[i] }));
+const OUT = st.map(() => []), IN = st.map(() => []);
+D.routes.forEach((r, a) => {
+  for (let k = 0; k < r.length; k += 3) {
+    const route = { a, b: r[k], t: r[k + 1], m: r[k + 2] };
+    OUT[a].push(route); IN[r[k]].push(route);
+  }
+});
+IN.forEach(l => l.sort((p, q) => q.t - p.t));   // OUT is already sorted busiest first
+
+// one fixed scale for every station, so arcs compare across the map
+const TMAX = d3.max(D.routes, r => d3.max(r.filter((_, k) => k % 3 === 1))) || 1;
+const lvl = t => Math.sqrt(Math.min(1, t / TMAX));
+const width = t => 0.8 + 7 * lvl(t);                       // screen px
+
+// colors come from theme.css, re-read when light/dark changes
+let C = {};
+function readColors() {
+  const css = getComputedStyle(document.documentElement);
+  const rgb = (name, a = 255) => { const c = d3.color(css.getPropertyValue(name).trim()); return [c.r, c.g, c.b, a]; };
+  C = { land: rgb("--ctl"), edge: rgb("--ink", 120), dot: rgb("--muted", 110), ink: rgb("--ink"), bg: rgb("--bg"),
+        cat: d3.range(1, 9).map(k => rgb(`--cat-${k}`)),
+        dark: d3.hsl(css.getPropertyValue("--bg").trim()).l < 0.5 };
+}
+readColors();
+// arcs take the destination borough's color (categorical, fixed order: Manhattan, Brooklyn, Queens, Bronx);
+// busier routes are wider and a little more opaque
+const boroC = (r, a = 255) => { const c = C.cat[st[r.b].bk]; return [c[0], c[1], c[2], a]; };
+const alpha = t => 150 + 95 * lvl(t);
+
+// ---- state ----
+const dir = "out";   // routes are drawn from where the ride starts
+let base = D.featured, shown = base, locked = false, hov = null;
+let lift = 1, anim = null;   // arc height, 0 -> 1 as the arcs are thrown
+const ARC_H = 0.6;           // arc peak, as a share of deck.gl's default (which rises about as high as the route is long)
+const GLOW = () => (C.dark ? 1 : 0.55);   // glow strength: fainter on paper, where it reads as blur rather than light
+const routesOf = i => (dir === "out" ? OUT[i] : IN[i]);
+const other = r => (dir === "out" ? r.b : r.a);
+
+// ---- deck.gl: a tilted map with the routes thrown up into the sky ----
+const deckEl = document.getElementById("deck");
+const [w0, s0, e0, n0] = D.core;
+const box0 = deckEl.getBoundingClientRect();
+const fit = new deck.WebMercatorViewport({ width: box0.width || 600, height: box0.height || 600 })
+  .fitBounds([[w0, s0], [e0, n0]], { padding: 10 });
+const HOME = { longitude: -73.962, latitude: 40.728, zoom: fit.zoom + 0.55,   // centred just south-east of Midtown
+               pitch: 52, bearing: 29, maxPitch: 75, minZoom: 9.5, maxZoom: 17 };
+let view = HOME;
+
+const map = new deck.Deck({
+  parent: deckEl,
+  initialViewState: HOME,
+  controller: { doubleClickZoom: false, touchRotate: true },
+  pickingRadius: 12,   // easy hover: the nearest station within ~12px
+  onViewStateChange: ({ viewState }) => {
+    view = viewState;
+    const moved = Math.abs(view.zoom - HOME.zoom) > 0.01 || Math.abs(view.bearing - HOME.bearing) > 0.5 ||
+      Math.abs(view.pitch - HOME.pitch) > 0.5 || Math.abs(view.longitude - HOME.longitude) > 1e-4 || Math.abs(view.latitude - HOME.latitude) > 1e-4;
+    d3.select("#reset").attr("hidden", moved ? null : true);
+  },
+  onHover: info => onHover(info),
+  onClick: info => onClick(info),
+  getCursor: ({ isDragging }) => (isDragging ? "grabbing" : hov ? "pointer" : "grab"),
+});
+d3.select("#reset").on("click", () => {
+  map.setProps({ initialViewState: { ...HOME, transitionDuration: 600, transitionInterpolator: new deck.FlyToInterpolator() } });
+  d3.select("#reset").attr("hidden", true);
+});
+
+function layers() {
+  const rs = routesOf(shown).slice().reverse();   // quietest first, busiest drawn on top
+  return [
+    new deck.GeoJsonLayer({ id: "land", data: D.boroughs, filled: true, stroked: true,
+      getFillColor: C.land, getLineColor: C.edge, lineWidthUnits: "pixels", getLineWidth: 0.8,
+      updateTriggers: { getFillColor: C.land, getLineColor: C.edge } }),
+    new deck.ScatterplotLayer({ id: "stations", data: st, pickable: true, getPosition: d => d.pos,
+      radiusUnits: "pixels", getRadius: d => 1.1 + 0.9 * Math.sqrt(d.out / 15000), getFillColor: C.dot,
+      updateTriggers: { getFillColor: C.dot } }),
+    // glow: the same arcs drawn twice more, wider and fainter, underneath. On a dark ground the
+    // glow adds light (additive blending); on paper it is a soft tinted halo.
+    ...[[4.5, 7, 16], [2.2, 3, 34]].map(([k, pad, a], n) => new deck.ArcLayer({ id: `glow${n}`, data: rs,
+      getSourcePosition: r => st[r.a].pos, getTargetPosition: r => st[r.b].pos,
+      getSourceColor: r => boroC(r, a * GLOW()), getTargetColor: r => boroC(r, a * GLOW() * 0.6),
+      getWidth: r => width(r.t) * k + pad, widthUnits: "pixels", getHeight: ARC_H * lift,
+      parameters: C.dark ? { depthWriteEnabled: false, blend: true, blendColorSrcFactor: "src-alpha", blendColorDstFactor: "one",
+                             blendAlphaSrcFactor: "one", blendAlphaDstFactor: "one" } : { depthWriteEnabled: false },
+      updateTriggers: { getSourceColor: [C.cat, C.dark], getTargetColor: [C.cat, C.dark], getHeight: lift } })),
+    new deck.ArcLayer({ id: "arcs", data: rs, getSourcePosition: r => st[r.a].pos, getTargetPosition: r => st[r.b].pos,
+      getSourceColor: r => boroC(r, alpha(r.t)), getTargetColor: r => boroC(r, alpha(r.t) * 0.6),
+      getWidth: r => width(r.t), widthUnits: "pixels", getHeight: ARC_H * lift,
+      parameters: { depthWriteEnabled: false },
+      updateTriggers: { getSourceColor: C.cat, getTargetColor: C.cat, getHeight: lift } }),
+    new deck.ScatterplotLayer({ id: "dests", data: rs, getPosition: r => st[other(r)].pos, radiusUnits: "pixels",
+      getRadius: r => 1.6 + 3.5 * lvl(r.t), getFillColor: r => boroC(r), stroked: true, getLineColor: C.bg,
+      lineWidthUnits: "pixels", getLineWidth: 0.6, updateTriggers: { getFillColor: C.cat, getLineColor: C.bg } }),
+    new deck.ScatterplotLayer({ id: "sel", data: [st[shown]].concat(hov && hov.i !== shown ? [hov] : []),
+      getPosition: d => d.pos, radiusUnits: "pixels", getRadius: d => (d.i === shown ? 6 : 7),
+      getFillColor: d => (d.i === shown ? C.ink : [0, 0, 0, 0]), stroked: true,
+      getLineColor: d => (d.i === shown ? C.bg : C.ink), lineWidthUnits: "pixels", getLineWidth: d => (d.i === shown ? 2 : 1.5),
+      updateTriggers: { getFillColor: [shown, C.ink], getLineColor: [shown, C.ink], getRadius: shown, getLineWidth: shown } }),
+  ];
+}
+function draw() { map.setProps({ layers: layers() }); }
+
+// the arcs rise from the ground like a thrown ball each time the station changes
+function throwArcs() {
+  cancelAnimationFrame(anim);
+  const t0 = performance.now(), dur = 650;
+  const tick = now => {
+    const k = Math.min(1, (now - t0) / dur);
+    lift = d3.easeCubicOut(k);
+    draw();
+    if (k < 1) anim = requestAnimationFrame(tick);
+  };
+  anim = requestAnimationFrame(tick);
+}
+function render(i) {
+  const changed = i !== shown;
+  shown = i;
+  panelFor(i);
+  if (changed) throwArcs(); else draw();
+}
+
+// ---- panel: the station's numbers and its top routes, plus the width key ----
+const panel = d3.select("#map").insert("div", "#deck").attr("class", "legend side");
+const pName = panel.append("div").attr("class", "nm");
+const pPin = panel.append("div").attr("class", "pin").text("Pinned. Click it again (or press Esc) to unpin.");
+const pSum = panel.append("div").attr("class", "sum");
+const pBoro = panel.append("div").attr("class", "tops");
+const key = panel.append("div");
+key.append("div").attr("class", "lg-title").text("Rides a day on the route");
+[1, 5, 20].forEach(v => {
+  const t = v * DAYS, row = key.append("div").attr("class", "lg-key");
+  row.append("svg").attr("width", 34).attr("height", 12).append("line")
+    .attr("x1", 4).attr("x2", 30).attr("y1", 6).attr("y2", 6).attr("stroke-linecap", "round")
+    .attr("stroke", "var(--muted)").attr("stroke-width", width(t));
+  row.append("span").text(v);
+});
+const keyNote = key.append("div").attr("class", "lg-muted").style("margin-top", "4px");
+const pHint = panel.append("div").attr("class", "hint");
+
+function panelFor(i) {
+  const d = st[i];
+  pName.text(d.name);
+  pPin.style("display", locked ? null : "none");
+  pSum.html(`<b>${rate(d.out)}</b> rides a day start here. Over September they went to <b>${fmt(d.nout)}</b> different stations.`);
+  // where they went, by borough (all rides, including routes too small to draw)
+  const rows = D.boro_names.map((name, k) => ({ name, k, t: d.boro[k] })).filter(r => r.t > 0).sort((p, q) => q.t - p.t);
+  const tot = d3.sum(rows, r => r.t) || 1;
+  pBoro.html("");
+  pBoro.append("div").attr("class", "lg-title").text("Where they ended up (arc color)");
+  rows.forEach(r => {
+    const row = pBoro.append("div").attr("class", "row");
+    row.append("span").text(r.name);
+    row.append("span").attr("class", "v").text(r.t / tot < 0.01 ? "<1%" : d3.format(".0%")(r.t / tot));
+    row.append("div").attr("class", "bar").style("width", Math.max(1, 100 * r.t / tot) + "%").style("background", `var(--cat-${r.k + 1})`);
+  });
+  keyNote.text(`Routes with fewer than ${D.min_trips} rides in the month aren't drawn.`);
+  pHint.text(locked ? "Click another station to pin it instead."
+    : WIDE ? "Hover any station to see its routes; click to pin one. Drag to pan; right-drag or Ctrl-drag to tilt and spin."
+           : "Tap a station to see its routes. Two fingers tilt and spin the map.");
+}
+
+// ---- tooltip ----
+function tipHtml(d) {
+  const t = OUT[d.i][0];
+  return `<b>${esc(d.name)}</b><div>${rate(d.out)} rides a day start here</div>` +
+    (t ? `<div class="m">Most popular destination: ${esc(st[t.b].name)} (${rate(t.t)} a day)</div>` : "");
+}
+
+// ---- hover / click ----
+const evAt = info => { const r = deckEl.getBoundingClientRect(); return { clientX: r.left + info.x, clientY: r.top + info.y }; };
+const stationOf = info => (info.layer && info.layer.id === "stations" ? info.object : null);
+function onHover(info) {
+  const d = stationOf(info);
+  if (d) {
+    if (hov !== d) { hov = d; if (!locked) render(d.i); else draw(); }
+    tip.show(evAt(info), tipHtml(d));
+  } else if (hov) {
+    hov = null; tip.hide();
+    if (!locked) render(base); else draw();
+  }
+}
+function onClick(info) {
+  const d = stationOf(info);
+  if (d) {
+    if (locked && d.i === base) locked = false;
+    else { base = d.i; locked = true; }
+    tip.hide();
+  } else locked = false;
+  hov = WIDE ? d : null;
+  render(d && !locked ? d.i : base);
+}
+d3.select(window).on("keydown", ev => { if (ev.key === "Escape" && locked) { locked = false; render(base); } });
+
+// ---- controls ----
+render(base);
+const byName = new Map();
+st.forEach(d => { if (!byName.has(d.name)) byName.set(d.name, d.i); });   // busiest dock wins a shared name
+d3.select("#names").selectAll("option").data([...byName.keys()].sort()).join("option").attr("value", d => d);
+d3.select("#find").on("change", function () {
+  const i = byName.get(this.value);
+  if (i == null) return;
+  base = i; locked = true; render(base); this.value = ""; this.blur();
+  map.setProps({ initialViewState: { ...view, longitude: st[i].pos[0], latitude: st[i].pos[1],
+                                     transitionDuration: 700, transitionInterpolator: new deck.FlyToInterpolator() } });
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColors(); draw(); });
+</script>
+</body>
+</html>

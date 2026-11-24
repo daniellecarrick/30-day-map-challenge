@@ -1,0 +1,9 @@
+{
+  "day": 24,
+  "theme": "Network",
+  "title": "Riders leaving the Citi Bike dock at Grand Central went to 840 different stations in September",
+  "description": "Citi Bike drawn like an airline route map. Pick any of 2,400 stations and its September 2026 riders arc across the city to everywhere they went, thicker for busier routes and colored by the borough where the ride ended. Unlike an airline, Citi Bike has no hubs: the dock outside Grand Central sends 479 riders a day to 840 different stations, and its most popular destination, 9 Ave & W 33 St, gets just 2% of them. 96% of its rides stay in Manhattan. Data: Citi Bike System Data, September 2026 trips; round trips left out.",
+  "html": "out/citibike_routes.html",
+  "png": "out/citibike_routes.png",
+  "published": "2026-11-24"
+}
