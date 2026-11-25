@@ -185,9 +185,8 @@ def web_data(p, a, land, title, sandy_years):
     atl = p.set_index("name").loc["Atlantis"]
     return dict(
         title=title, day=DAY, how=HOW, source=SOURCE, source_url=SOURCE_URL,
-        lede=(f"Borges imagined a map so exact it was as large as the empire it showed. Real maps went the other way: "
-              f"for centuries they showed islands, mountains, lakes and towns that were never there. "
-              f"Here are {len(p)} of them, drawn where the maps put them."),
+        lede=(f"Borges imagined a map as large as the empire it showed. Real maps went the other way, adding islands, "
+              f"mountains and towns that were never there. Here are {len(p)} of them."),
         land=json.loads(gpd.GeoDataFrame(geometry=g).to_json(drop_id=True)),
         cats=[dict(key=k, label=lab, n=int((p.category == k).sum())) for k, lab in CATS],
         places=places, sites=sites, plato=[atl.lon, atl.lat], sandy_years=sandy_years,

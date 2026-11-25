@@ -372,12 +372,12 @@ const VIEWS = {
   top: {
     label: "Most common tree",
     fill: d => `var(${CAT[d.properties.cat].var})`,
-    lede: () => `London plane, honeylocust, pin oak and Callery pear are ${D.top4_pct}% of the city's ${fmt(D.n)} street trees. Each hexagon is colored by its most common tree. ${D.boro_line} Hover a hexagon to see its tree and its top three.`,
+    lede: () => `London plane, honeylocust, pin oak and Callery pear are ${D.top4_pct}% of the city's ${fmt(D.n)} street trees. Each hexagon shows its most common tree. Hover one to see its top three.`,
   },
   mix: {
     label: "How mixed",
     fill: d => divColor(d.properties.share),
-    lede: () => `Foresters suggest no single species make up more than 10% of a city's trees, so one pest can't wipe out a street. ${D.rule_line} Here each hexagon is shaded by its most common species' share.`,
+    lede: () => `Foresters say no species should be over 10% of a city's trees. ${D.rule_line} Each hexagon is shaded by its top species' share.`,
   },
 };
 

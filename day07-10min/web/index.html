@@ -100,8 +100,7 @@ function render() {
   tip.hide();
   const s = D.summary[year], val = d => d[year]?.gap ?? 0;
   d3.select("#lede").text(`Each dot is a subway station, colored by whether OMNY or MetroCard had more entries, ${D.period[year]}. `
-    + `OMNY made up ${s.share}% of entries citywide and was the majority at ${s.wins} of ${s.n} stations.`
-    + " MetroCard sales ended on December 31, 2025.");
+    + `OMNY was ${s.share}% of entries and won ${s.wins} of ${s.n} stations.`);
   d3.select("#stat").text("OMNY majority: " + D.tally[year].map(t => `${t.boro} ${t.omny} of ${t.stations}`).join(" · "));
   dots.sort((a, b) => val(b) - val(a));   // largest first so small stations stay on top
   const motion = !first && !matchMedia("(prefers-reduced-motion: reduce)").matches;

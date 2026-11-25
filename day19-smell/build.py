@@ -240,7 +240,7 @@ TITLE = "The smell of lilacs moves north about 13 miles a day"
 SUBTITLE = ("Typical date lilacs first open, 1991–2020. In the East, each degree north waits about five more days; "
             "mountains wait longer still.")
 LEDE = ("When lilacs first open across the lower 48, modeled from daily temperatures. Press play to watch the bloom "
-        "(and its smell) roll north and uphill, March to August. Dots are real lilacs watched by volunteers.")
+        "roll north and uphill. Dots are real lilacs watched by volunteers.")
 LATE_PLACE = "on Montana's Beartooth Plateau"
 
 if __name__ == "__main__":
