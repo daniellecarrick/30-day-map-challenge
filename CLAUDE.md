@@ -34,6 +34,7 @@ Everything visual comes from `shared/`. Don't hard-code colors, fonts or control
 - **Minimal maps.** No basemap, no north arrow or scale bar unless they matter. Thin white edges between polygons, thin ink boundary lines.
 - **Color by job.** Diverging (blue → neutral → amber → brown) for above/below a meaningful center (state the center, e.g. "11 avg"). Sequential (one hue, light → dark) for magnitude. Categorical in the fixed `tokens.json` order, never cycled.
 - **Headline states the finding** ("On average, the nearest public bathroom is an 11-minute walk"), not the topic. Check that the number is literally true for the measure shown.
+- **Subhead (`.lede`) fits on two lines on desktop:** check it rendered at 1280px wide. With theme.css's default 640px max-width that's about 180 characters. Say what the map shows and how to use it; leave method and caveats to the footer.
 - **Interactive page:** fills the viewport with no page scroll on desktop; scrolls on phones. Legend goes inside the map's emptiest area. Alternate views use a segmented toggle, not side-by-side panels. Hover tooltip on every mark.
 - **Web text is 14px minimum**: legends, tooltips, controls, chart labels. Exception: the footer credit line is 11px. Text inside a scaling SVG shrinks on small screens, so put legends and labels in HTML (`MapKit.legend` does this).
 - **Easy hover:** small marks get a hit area bigger than the mark (e.g. nearest point within ~15px), not bigger marks.
