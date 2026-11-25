@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paint Strips from Space</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<!-- build.py inlines these so out/map.html is a single file -->
+<style>
+/* Shared web theme for the #30DayMapChallenge series.
+   Values mirror shared/tokens.json; change both together.
+   Minimum text size on every page is 14px (legends, tooltips, controls); the footer credit line is 11px.
+   Pages load Bitter (headlines) + Raleway (body) from Google Fonts (tokens.json font.web_css). */
+
+:root {
+  --bg: #ffffff; --ink: #2b2b28; --muted: #6b6b66; --edge: #ffffff; --closed: #8a8a86;
+  --ctl: #f0efec; --ctl-on: #ffffff; --accent: #3987e5; --other: #cfcec8;
+  --font: "Raleway", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  /* NYC subway trunk colors (tokens.json scales.subway) */
+  --sub-123: #ee352e; --sub-456: #00933c; --sub-7: #b933ad; --sub-ACE: #0039a6; --sub-BDFM: #ff6319;
+  --sub-G: #6cbe45; --sub-JZ: #996633; --sub-L: #a7a9ac; --sub-NQRW: #fccc0a; --sub-S: #808183; --sub-SIR: #1d5da8;
+  --font-head: "Bitter", Georgia, "Times New Roman", serif;
+  /* categorical (tokens.json scales.categorical_light / _dark): assign in this order, never cycle */
+  /* confidence badge (tokens.json scales.confidence): very low -> high; same in light and dark */
+  --conf-1: #cde2fb; --conf-2: #9ec5f4; --conf-3: #256abf; --conf-4: #0d366b;
+  --conf-fg-1: #2b2b28; --conf-fg-2: #2b2b28; --conf-fg-3: #ffffff; --conf-fg-4: #ffffff;
+  --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100; --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #6250d6; --cat-8: #e34948;
+  /* sequential (tokens.json scales.sequential_blue): light -> dark, for magnitude; same in light and dark */
+  --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #6da7ec; --seq-4: #3987e5; --seq-5: #256abf; --seq-6: #184f95; --seq-7: #0d366b;
+  /* sequential purple (tokens.json scales.sequential_purple): lilac, light -> dark; same in light and dark */
+  --seqp-1: #e9e4fa; --seqp-2: #cdc2f3; --seqp-3: #ae9fea; --seqp-4: #8f7cdf; --seqp-5: #7059cf; --seqp-6: #5240aa; --seqp-7: #35287a;
+  /* party (tokens.json scales.party): US election results only; light -> dark = margin; same in light and dark */
+  --dem-1: #9ec5f4; --dem-2: #2a78d6; --dem-3: #0d366b; --gop-1: #f4aaa2; --gop-2: #e34948; --gop-3: #8a1f1d;
+  /* diverging (tokens.json scales.diverging): low = blue, center = neutral, high = amber -> brown */
+  --div-1: #104281; --div-2: #6da7ec; --div-3: #f0efec; --div-4: #d98a00; --div-5: #5a3300;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
+    --ctl: #2c2c29; --ctl-on: #45453f; --other: #4f4e49;
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1b1b19; --ink: #ecebe6; --muted: #a3a29c; --edge: #1b1b19; --closed: #8f8e88;
+  --ctl: #2c2c29; --ctl-on: #45453f; --other: #4f4e49;
+  --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500; --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+}
+
+/* Aged-paper palette (tokens.json vintage). Use with <html data-palette="vintage" data-theme="light">. */
+:root[data-palette="vintage"] {
+  --bg: #f4ecd9; --ink: #3a2c1e; --muted: #6b5a45; --edge: #f4ecd9; --closed: #8f8674;
+  --ctl: #e8dcc2; --ctl-on: #fbf6ea; --accent: #1c5a94; --land: #faf5e8; --water: #7f9aa3;
+  --era-1: #8c2f22; --era-2: #d9695c; --era-3: #dfb02f; --era-4: #6f9a5e; --era-5: #74b4d4; --era-6: #1c5a94;
+}
+
+/* Aged-paper palette (tokens.json vintage). Use with <html data-palette="vintage" data-theme="light">. */
+:root[data-palette="vintage"] {
+  --bg: #f4ecd9; --ink: #3a2c1e; --muted: #6b5a45; --edge: #f4ecd9; --closed: #8f8674;
+  --ctl: #e8dcc2; --ctl-on: #fbf6ea; --accent: #1c5a94; --land: #faf5e8; --water: #7f9aa3;
+  --era-1: #8c2f22; --era-2: #d9695c; --era-3: #dfb02f; --era-4: #6f9a5e; --era-5: #74b4d4; --era-6: #1c5a94;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 14px/1.45 var(--font); -webkit-font-smoothing: antialiased;
+       font-variant-numeric: lining-nums; }
+
+/* ---- page layout: header / map that fills the rest of the viewport / footer ---- */
+.page { height: 100dvh; display: flex; flex-direction: column;
+        max-width: 1100px; margin: 0 auto; padding: 16px 16px 10px; }
+.page > header { flex: none; text-align: center; }
+.page h1 { font-size: clamp(22px, 2.8vw, 28px); line-height: 1.2; margin: 0 0 6px; font-weight: 700;
+            font-family: var(--font-head); text-wrap: balance; }
+.lede { color: var(--muted); margin: 0 auto 10px; max-width: 640px; text-wrap: balance; }
+.map-wrap { flex: 1 1 auto; min-height: 0; position: relative; }
+.map-wrap > svg { width: 100%; height: 100%; display: block; }
+.page > footer { flex: none; text-align: center; color: var(--muted); font-size: 11px;
+                 margin-top: 6px; text-wrap: balance; }
+.page > footer a { color: inherit; }
+/* "← All maps" link added by publish.py: pinned top-left on wide screens, above the title on phones */
+.home-link { position: fixed; top: 10px; left: 12px; z-index: 20; font: 600 14px/1 var(--font);
+             color: var(--muted); text-decoration: none; padding: 6px 8px; border-radius: 6px; background: var(--bg); }
+.home-link:hover { color: var(--ink); }
+@media (max-width: 900px) {
+  .home-link { position: static; display: inline-block; margin: 8px 0 0 8px; }
+}
+/* phones: let the page scroll and the map take its natural height */
+@media (max-width: 640px), (max-height: 520px) {
+  .page { height: auto; }
+  .map-wrap > svg { height: auto; }
+}
+
+/* ---- controls ---- */
+.controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 8px 14px; margin-bottom: 4px; }
+.seg { display: inline-flex; background: var(--ctl); border-radius: 8px; padding: 3px; }
+.seg button { font: inherit; font-size: 14px; color: var(--muted); background: none; border: 0;
+              padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ctl-on); color: var(--ink); font-weight: 600;
+                                   box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.stat { color: var(--muted); font-size: 14px; }
+/* dropdown (MapKit.dropdown): same surface as the segmented toggle, chevron drawn in CSS */
+.dd { position: relative; display: inline-block; }
+.dd select { font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: var(--ctl);
+             border: 0; border-radius: 8px; padding: 8px 34px 8px 12px; cursor: pointer;
+             appearance: none; -webkit-appearance: none; max-width: 100%; }
+.dd select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dd::after { content: ""; position: absolute; right: 14px; top: 50%; width: 7px; height: 7px; margin-top: -6px;
+             border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; }
+/* play / pause button for animated maps: same surface as the toggle; put an icon <svg> before the label */
+.play { font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: var(--ctl);
+        border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer; display: inline-flex; gap: 8px;
+        align-items: center; }
+.play:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.play svg { fill: currentColor; }
+/* the current value of an animated control (a clock, a date), in the headline face */
+.readout { font: 700 20px/1 var(--font-head); }
+
+/* ---- map marks ---- */
+.cell { stroke: var(--edge); stroke-width: 0.5; }
+.cell:hover { stroke: var(--ink); stroke-width: 1.5; }
+.boundary { fill: none; stroke: var(--ink); stroke-width: 0.5; pointer-events: none; }
+.pt { fill: var(--ink); pointer-events: none; }
+.closed { fill: var(--closed); stroke: var(--bg); stroke-width: 1; }
+
+/* ---- in-map legend (HTML overlay placed over the map by MapKit.legend, so text stays 14px) ---- */
+.legend { position: absolute; z-index: 2; font-size: 14px; line-height: 1.3; color: var(--ink); pointer-events: none; }
+.legend .lg-title { font-weight: 600; }
+.legend .lg-bar { height: 12px; border-radius: 2px; margin-top: 6px; }
+.legend .lg-ticks { position: relative; height: 22px; }
+.legend .lg-ticks span { position: absolute; top: 0; padding-top: 5px; white-space: nowrap; }
+.legend .lg-ticks span::before { content: ""; position: absolute; top: 0; left: 0; width: 1px; height: 4px; background: var(--muted); }
+.legend .lg-ticks span.mid { transform: translateX(-50%); }
+.legend .lg-ticks span.mid::before { left: 50%; }
+.legend .lg-ticks span.end { transform: translateX(-100%); }
+.legend .lg-ticks span.end::before { left: auto; right: 0; }
+.legend .lg-key { display: flex; align-items: center; gap: 7px; margin-top: 4px; }
+.legend .lg-key svg { flex: none; overflow: visible; }
+.legend .lg-muted { color: var(--muted); }
+/* phones: the legend sits under the map instead of on it */
+@media (max-width: 640px) { .legend { position: static; margin-top: 8px; } }
+
+/* ---- tooltip ---- */
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--bg); color: var(--ink);
+       border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent); border-radius: 6px;
+       padding: 8px 10px; font-size: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.12);
+       max-width: 260px; opacity: 0; transition: opacity .1s; }
+.tip b { display: block; margin-bottom: 2px; }
+.tip .m { color: var(--muted); }
+</style>
+<style>
+  .page { max-width: 1400px; }
+  /* city picker: each button is a tiny horizontal paint strip */
+  .cities { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 2px 0 10px; }
+  .city { font: inherit; font-size: 14px; color: var(--ink); background: var(--ctl); border: 0;
+          border-radius: 8px; padding: 6px 10px 7px; cursor: pointer; display: flex; flex-direction: column;
+          gap: 5px; align-items: stretch; min-width: 92px; }
+  .city .bar { display: flex; height: 8px; border-radius: 2px; overflow: hidden; }
+  .city .bar i { flex: 1; }
+  .city[aria-pressed="true"] { background: var(--ctl-on); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  .city:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .map-wrap { border-radius: 6px; overflow: hidden; }
+  #gl { width: 100%; height: 100%; }
+  .maplibregl-ctrl-attrib { font-size: 11px; }
+
+  /* the square that is being sampled */
+  .probe { position: absolute; pointer-events: none; border: 2px solid #fff; border-radius: 2px;
+           box-shadow: 0 0 0 1px rgba(0,0,0,.45), 0 0 0 9999px rgba(0,0,0,.18); display: none; z-index: 2; }
+
+  /* the paint card: always paper-white, like the real thing, in light and dark mode */
+  .card { position: absolute; left: 12px; top: 12px; z-index: 3; width: 184px; background: #fff; color: #2b2b28;
+          border-radius: 4px; padding: 10px 10px 8px; box-shadow: 0 2px 10px rgba(0,0,0,.28); }
+  .card h2 { font: 700 18px/1.15 var(--font-head); margin: 0 0 2px; }
+  .card .sub { font-size: 14px; color: #6b6b66; margin: 0 0 8px; line-height: 1.3; }
+  .chip { display: flex; align-items: flex-end; height: clamp(24px, 4.4vh, 40px); margin-bottom: 4px; padding: 0 8px 5px;
+          font: 600 14px/1 var(--font); letter-spacing: .02em; border: 0; width: 100%; cursor: copy;
+          text-align: left; }
+  .chip:last-of-type { margin-bottom: 0; }
+  @media (max-width: 640px) {
+    .map-wrap { height: 72vh; flex: none; }
+    .card { width: 150px; padding: 8px; }
+    .chip { height: 32px; }
+    .city { min-width: 78px; }
+  }
+</style>
+<meta name="description" content="What color is a place? A satellite map of the world where the square under your cursor becomes a paint strip: its pixels sorted from light to dark and cut into seven equal parts, each chip the average color of one part. Zoom in for a single block or out for a whole region, or start with twelve city cards, from Dubai&#x27;s sand and Marrakech&#x27;s terracotta to Singapore&#x27;s teal and Seattle&#x27;s evergreen. Click a chip to copy its color. Imagery: Sentinel-2 cloudless 2020 by EOX (contains modified Copernicus Sentinel data), CC BY-NC-SA 4.0.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Paint strips from space">
+<meta property="og:description" content="What color is a place? A satellite map of the world where the square under your cursor becomes a paint strip: its pixels sorted from light to dark and cut into seven equal parts, each chip the average color of one part. Zoom in for a single block or out for a whole region, or start with twelve city cards, from Dubai&#x27;s sand and Marrakech&#x27;s terracotta to Singapore&#x27;s teal and Seattle&#x27;s evergreen. Click a chip to copy its color. Imagery: Sentinel-2 cloudless 2020 by EOX (contains modified Copernicus Sentinel data), CC BY-NC-SA 4.0.">
+<meta property="og:url" content="https://daniellecarrick.github.io/30-day-map-challenge/day25/">
+<meta property="og:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day25/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Paint strips from space">
+<meta name="twitter:description" content="What color is a place? A satellite map of the world where the square under your cursor becomes a paint strip: its pixels sorted from light to dark and cut into seven equal parts, each chip the average color of one part. Zoom in for a single block or out for a whole region, or start with twelve city cards, from Dubai&#x27;s sand and Marrakech&#x27;s terracotta to Singapore&#x27;s teal and Seattle&#x27;s evergreen. Click a chip to copy its color. Imagery: Sentinel-2 cloudless 2020 by EOX (contains modified Copernicus Sentinel data), CC BY-NC-SA 4.0.">
+<meta name="twitter:image" content="https://daniellecarrick.github.io/30-day-map-challenge/day25/preview.png">
+</head>
+<body>
+<a class="home-link" href="../">&larr; All maps</a>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">What color is a place? Hover anywhere on this satellite map of the world and the square under
+      your cursor becomes a paint strip: its pixels sorted from light to dark and cut into seven equal parts, each
+      chip the average color of one part. Zoom in for a single block, out for a whole region, or start with one of
+      twelve cities. Click a chip to copy its color.</p>
+    <div class="cities" id="cities" role="group" aria-label="Jump to a city"></div>
+  </header>
+  <div class="map-wrap" id="map">
+    <div id="gl"></div>
+    <div class="probe" id="probe"></div>
+    <div class="card" id="card" aria-live="polite"></div>
+  </div>
+  <footer>Pixels sorted from light to dark and averaged in linear RGB; city strips use a ~12 km square around each
+    downtown. <span id="source"></span> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script>window.DATA = {"title":"Paint strips from space","day":"Day 25: Is this a map?","tiles":"https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg","cities":[{"name":"Dubai","lat":25.2048,"lon":55.2708,"chips":[{"hex":"#fcf2cc","L":95.38191746629916},{"hex":"#e8d6ae","L":86.11438797593401},{"hex":"#cabc98","L":76.52984615486803},{"hex":"#a89f7f","L":65.46496538099187},{"hex":"#7f7d5f","L":51.8680230837757},{"hex":"#354c3c","L":27.12338429108253},{"hex":"#133230","L":18.835311294511868}],"L":65.46496538099187},{"name":"Las Vegas","lat":36.1699,"lon":-115.1,"chips":[{"hex":"#f2e5ca","L":91.13671919917836},{"hex":"#c2ae90","L":71.5759654271456},{"hex":"#a69577","L":62.256369650270855},{"hex":"#928264","L":54.94238281121304},{"hex":"#7e7053","L":47.67099784642192},{"hex":"#665b3f","L":39.00793980855147},{"hex":"#443f25","L":26.95607930309309}],"L":54.94238281121304},{"name":"Marrakech","lat":31.6295,"lon":-7.9811,"chips":[{"hex":"#e2b98a","L":75.75161934099175},{"hex":"#be976b","L":65.04096207100528},{"hex":"#a8865b","L":58.103750517962794},{"hex":"#93774e","L":51.855657072307494},{"hex":"#7c673e","L":44.710842832211},{"hex":"#5f522a","L":35.44924275791338},{"hex":"#37350e","L":21.412717062524933}],"L":51.855657072307494},{"name":"Phoenix","lat":33.4484,"lon":-112.0,"chips":[{"hex":"#e3d5bb","L":83.15051587194417},{"hex":"#af9574","L":62.93314957541676},{"hex":"#9b8463","L":56.4175775926839},{"hex":"#8c7757","L":51.362158949000616},{"hex":"#7e6c4c","L":46.404230749198476},{"hex":"#6c5e3f","L":40.472743895532815},{"hex":"#50472a","L":31.23374424493904}],"L":51.362158949000616},{"name":"Cairo","lat":30.0444,"lon":31.2357,"chips":[{"hex":"#cab38b","L":70.80527760566991},{"hex":"#9b8d70","L":58.85645092224783},{"hex":"#8b7f64","L":53.43785433940026},{"hex":"#80755b","L":49.48788846078314},{"hex":"#756a51","L":45.326613290692805},{"hex":"#625c42","L":39.10624854149776},{"hex":"#384327","L":27.5300250090678}],"L":49.48788846078314},{"name":"Mexico City","lat":19.4326,"lon":-99.1332,"chips":[{"hex":"#bcb39e","L":65.62917035042445},{"hex":"#897d67","L":52.642386324033765},{"hex":"#796e58","L":46.83544132088539},{"hex":"#6d624d","L":42.02045110145461},{"hex":"#605641","L":37.122827914667575},{"hex":"#524934","L":31.450231515242223},{"hex":"#3a3620","L":22.875570019004705}],"L":42.02045110145461},{"name":"Tokyo","lat":35.6812,"lon":139.7,"chips":[{"hex":"#8e9284","L":54.83888109080078},{"hex":"#686d5f","L":45.00917435853349},{"hex":"#5b6052","L":39.78313837640465},{"hex":"#505548","L":35.43926883801366},{"hex":"#464b3d","L":31.11678268563363},{"hex":"#373e30","L":25.419640441758773},{"hex":"#1e2a1c","L":15.723964729615954}],"L":35.43926883801366},{"name":"Paris","lat":48.8566,"lon":2.3522,"chips":[{"hex":"#808170","L":49.72159882199348},{"hex":"#626555","L":42.056966075318016},{"hex":"#575a4a","L":37.61712506234028},{"hex":"#4e5141","L":33.868840566204874},{"hex":"#454938","L":30.060604948274317},{"hex":"#393f2e","L":25.555908400757673},{"hex":"#272f1e","L":18.6666137741786}],"L":33.868840566204874},{"name":"Singapore","lat":1.3,"lon":103.8,"chips":[{"hex":"#9ba08c","L":60.31589761564395},{"hex":"#68715c","L":45.907324265667135},{"hex":"#455e4f","L":37.21881708930209},{"hex":"#30564c","L":33.563361547994376},{"hex":"#2a5048","L":31.112666391154107},{"hex":"#2a483b","L":28.299178306405494},{"hex":"#1c351e","L":19.507098610713264}],"L":33.563361547994376},{"name":"New York","lat":40.758,"lon":-73.9855,"chips":[{"hex":"#adad9b","L":64.42431013825903},{"hex":"#727361","L":47.65306959862605},{"hex":"#5a5d4b","L":38.592719640686},{"hex":"#444a37","L":30.28296737202386},{"hex":"#2d3824","L":21.697454662973442},{"hex":"#1a2c1c","L":15.657184013844375},{"hex":"#132315","L":12.841375831095803}],"L":30.28296737202386},{"name":"Atlanta","lat":33.749,"lon":-84.388,"chips":[{"hex":"#a2a490","L":57.37753280279925},{"hex":"#545e4a","L":38.10747965855636},{"hex":"#3a4a35","L":29.37773558139167},{"hex":"#2b3d27","L":23.432147136442566},{"hex":"#1f321d","L":18.455242642038883},{"hex":"#162a16","L":14.829256394839387},{"hex":"#0f230f","L":11.79277581591574}],"L":23.432147136442566},{"name":"Seattle","lat":47.6062,"lon":-122.3,"chips":[{"hex":"#8f8f7e","L":50.07987545883174},{"hex":"#505441","L":34.472807096848236},{"hex":"#3b422e","L":26.743260988793864},{"hex":"#29341f","L":20.0014809891412},{"hex":"#121f0f","L":9.15578441985588},{"hex":"#05110c","L":4.175225030872356},{"hex":"#040d09","L":3.209859177166526}],"L":20.0014809891412}],"attribution":"<a href=\"https://s2maps.eu\">Sentinel-2 cloudless 2020</a> by EOX","source":"Imagery: <a href=\"https://s2maps.eu\">Sentinel-2 cloudless 2020</a> by EOX IT Services (contains modified Copernicus Sentinel data), CC BY-NC-SA 4.0"};</script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+const D = window.DATA;
+const CHIPS = 7;
+const PROBE = 140;                    // CSS px, side of the sampled square
+document.getElementById("title").textContent = D.title;
+document.getElementById("source").innerHTML = D.source;
+document.getElementById("day").textContent = D.day;
+
+// ---- colour maths (same as build.py) ----
+const LIN = new Float32Array(256);
+for (let i = 0; i < 256; i++) { const c = i / 255; LIN[i] = c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }
+const enc = c => Math.max(0, Math.min(255, Math.round(255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055))));
+const Lstar = Y => Y > 216 / 24389 ? 116 * Math.cbrt(Y) - 16 : Y * 24389 / 27;
+const hex = (r, g, b) => "#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("");
+
+/** RGBA bytes -> seven chips, lightest first. */
+function strip(px, step = 1) {
+  const n = Math.floor(px.length / 4 / step);
+  const Y = new Float32Array(n), idx = new Uint32Array(n);
+  for (let k = 0; k < n; k++) {
+    const i = k * step * 4;
+    Y[k] = 0.2126 * LIN[px[i]] + 0.7152 * LIN[px[i + 1]] + 0.0722 * LIN[px[i + 2]];
+    idx[k] = i;
+  }
+  const order = Array.from({ length: n }, (_, k) => k).sort((a, b) => Y[b] - Y[a]);
+  const out = [];
+  for (let c = 0; c < CHIPS; c++) {
+    const a = Math.floor(c * n / CHIPS), b = Math.floor((c + 1) * n / CHIPS);
+    let r = 0, g = 0, bl = 0;
+    for (let k = a; k < b; k++) { const i = idx[order[k]]; r += LIN[px[i]]; g += LIN[px[i + 1]]; bl += LIN[px[i + 2]]; }
+    const m = Math.max(1, b - a);
+    const L = Lstar(Y[order[Math.floor((a + b) / 2)]] || 0);
+    out.push({ hex: hex(enc(r / m), enc(g / m), enc(bl / m)), L });
+  }
+  return { chips: out, L: Lstar(Y[order[Math.floor(n / 2)]] || 0) };
+}
+
+// ---- paint card ----
+const card = document.getElementById("card");
+function drawCard(title, sub, chips) {
+  card.innerHTML = `<h2>${title}</h2><p class="sub">${sub}</p>` +
+    chips.map(c => `<button class="chip" style="background:${c.hex};color:${c.L > 55 ? "#2b2b28" : "#fff"}"
+      data-hex="${c.hex.toUpperCase()}" title="Copy ${c.hex.toUpperCase()}">${c.hex.toUpperCase()}</button>`).join("") +
+    "";
+}
+card.addEventListener("click", ev => {
+  const b = ev.target.closest(".chip");
+  if (!b) return;
+  navigator.clipboard?.writeText(b.dataset.hex);
+  const t = b.textContent; b.textContent = "Copied"; setTimeout(() => (b.textContent = t), 900);
+});
+
+// ---- city picker ----
+let active = null;
+const wrap = document.getElementById("cities");
+for (const c of D.cities) {
+  const b = document.createElement("button");
+  b.className = "city"; b.setAttribute("aria-pressed", "false");
+  b.innerHTML = `<span>${c.name}</span><span class="bar">${c.chips.map(k => `<i style="background:${k.hex}"></i>`).join("")}</span>`;
+  b.onclick = () => goCity(c);
+  c.btn = b; wrap.appendChild(b);
+}
+function showCity(c) {
+  drawCard(c.name, "Whole city, ~12 km square", c.chips);
+}
+function setActive(c) {
+  active = c;
+  for (const o of D.cities) o.btn.setAttribute("aria-pressed", o === c ? "true" : "false");
+}
+
+// ---- map ----
+const start = D.cities.find(c => c.name === "New York") || D.cities[0];
+const map = new maplibregl.Map({
+  container: "gl",
+  style: {
+    version: 8,
+    sources: { s2: { type: "raster", tileSize: 256, maxzoom: 14, tiles: [D.tiles],
+                     attribution: D.attribution } },
+    layers: [{ id: "s2", type: "raster", source: "s2", paint: { "raster-fade-duration": 0 } }],
+  },
+  center: [start.lon, start.lat], zoom: 12.3, maxZoom: 16, minZoom: 2,
+  preserveDrawingBuffer: true, attributionControl: { compact: true },
+  dragRotate: false, pitchWithRotate: false,
+});
+map.touchZoomRotate.disableRotation();
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+
+function goCity(c) {
+  setActive(c); showCity(c);
+  map.jumpTo({ center: [c.lon, c.lat], zoom: 12.3 });
+}
+setActive(start); showCity(start);
+
+const probe = document.getElementById("probe");
+const canvas = map.getCanvas();
+const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+
+function kmAcross(pxSide, y) {
+  const lat = map.unproject([canvas.clientWidth / 2, y]).lat;
+  const mPerPx = 40075016.686 * Math.cos(lat * Math.PI / 180) / (512 * 2 ** map.getZoom());
+  const km = pxSide * mPerPx / 1000;
+  return km < 1 ? `${Math.round(km * 1000 / 10) * 10} m` : `${km < 10 ? km.toFixed(1) : Math.round(km)} km`;
+}
+
+let pending = null, last = null;
+function sample(x, y) {
+  const dpr = canvas.width / canvas.clientWidth;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const s = Math.min(PROBE, w, h);
+  const x0 = Math.max(0, Math.min(w - s, x - s / 2)), y0 = Math.max(0, Math.min(h - s, y - s / 2));
+  probe.style.cssText = `display:block;left:${x0}px;top:${y0}px;width:${s}px;height:${s}px`;
+  const S = Math.round(s * dpr);
+  const buf = new Uint8Array(S * S * 4);
+  gl.readPixels(Math.round(x0 * dpr), Math.round(canvas.height - (y0 + s) * dpr), S, S, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+  const st = strip(buf, dpr > 1 ? 2 : 1);
+  const ll = map.unproject([x0 + s / 2, y0 + s / 2]);
+  const coord = `${Math.abs(ll.lat).toFixed(2)}°${ll.lat >= 0 ? "N" : "S"}, ${Math.abs(ll.lng).toFixed(2)}°${ll.lng >= 0 ? "E" : "W"}`;
+  drawCard("Under your cursor", `${kmAcross(s, y0 + s / 2)} square · ${coord}`, st.chips);
+}
+map.on("mousemove", e => {
+  last = [e.point.x, e.point.y];
+  if (!pending) pending = requestAnimationFrame(() => { pending = null; sample(...last); });
+});
+map.on("render", () => { if (last && !pending) pending = requestAnimationFrame(() => { pending = null; if (last) sample(...last); }); });
+map.getContainer().addEventListener("mouseleave", () => {
+  last = null; probe.style.display = "none";
+  if (active) showCity(active);
+});
+// phones: tap to sample, tap a city to go back
+map.on("click", e => { if (matchMedia("(hover: none)").matches) { last = [e.point.x, e.point.y]; sample(...last); } });
+map.on("dragstart", () => { if (matchMedia("(hover: none)").matches) { last = null; probe.style.display = "none"; } });
+map.on("moveend", () => {
+  if (!active) return;
+  const c = map.getCenter();
+  if (Math.hypot(c.lng - active.lon, c.lat - active.lat) > 0.3 || Math.abs(map.getZoom() - 12.3) > 2) setActive(null);
+});
+</script>
+</body>
+</html>

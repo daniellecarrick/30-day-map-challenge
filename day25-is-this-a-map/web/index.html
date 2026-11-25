@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paint Strips from Space</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<!-- build.py inlines these so out/map.html is a single file -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .page { max-width: 1400px; }
+  /* city picker: each button is a tiny horizontal paint strip */
+  .cities { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 2px 0 10px; }
+  .city { font: inherit; font-size: 14px; color: var(--ink); background: var(--ctl); border: 0;
+          border-radius: 8px; padding: 6px 10px 7px; cursor: pointer; display: flex; flex-direction: column;
+          gap: 5px; align-items: stretch; min-width: 92px; }
+  .city .bar { display: flex; height: 8px; border-radius: 2px; overflow: hidden; }
+  .city .bar i { flex: 1; }
+  .city[aria-pressed="true"] { background: var(--ctl-on); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  .city:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .map-wrap { border-radius: 6px; overflow: hidden; }
+  #gl { width: 100%; height: 100%; }
+  .maplibregl-ctrl-attrib { font-size: 11px; }
+
+  /* the square that is being sampled */
+  .probe { position: absolute; pointer-events: none; border: 2px solid #fff; border-radius: 2px;
+           box-shadow: 0 0 0 1px rgba(0,0,0,.45), 0 0 0 9999px rgba(0,0,0,.18); display: none; z-index: 2; }
+
+  /* the paint card: always paper-white, like the real thing, in light and dark mode */
+  .card { position: absolute; left: 12px; top: 12px; z-index: 3; width: 184px; background: #fff; color: #2b2b28;
+          border-radius: 4px; padding: 10px 10px 8px; box-shadow: 0 2px 10px rgba(0,0,0,.28); }
+  .card h2 { font: 700 18px/1.15 var(--font-head); margin: 0 0 2px; }
+  .card .sub { font-size: 14px; color: #6b6b66; margin: 0 0 8px; line-height: 1.3; }
+  .chip { display: flex; align-items: flex-end; height: clamp(24px, 4.4vh, 40px); margin-bottom: 4px; padding: 0 8px 5px;
+          font: 600 14px/1 var(--font); letter-spacing: .02em; border: 0; width: 100%; cursor: copy;
+          text-align: left; }
+  .chip:last-of-type { margin-bottom: 0; }
+  @media (max-width: 640px) {
+    .map-wrap { height: 72vh; flex: none; }
+    .card { width: 150px; padding: 8px; }
+    .chip { height: 32px; }
+    .city { min-width: 78px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">What color is a place? Hover anywhere on this satellite map of the world and the square under
+      your cursor becomes a paint strip: its pixels sorted from light to dark and cut into seven equal parts, each
+      chip the average color of one part. Zoom in for a single block, out for a whole region, or start with one of
+      twelve cities. Click a chip to copy its color.</p>
+    <div class="cities" id="cities" role="group" aria-label="Jump to a city"></div>
+  </header>
+  <div class="map-wrap" id="map">
+    <div id="gl"></div>
+    <div class="probe" id="probe"></div>
+    <div class="card" id="card" aria-live="polite"></div>
+  </div>
+  <footer>Pixels sorted from light to dark and averaged in linear RGB; city strips use a ~12 km square around each
+    downtown. <span id="source"></span> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+const D = window.DATA;
+const CHIPS = 7;
+const PROBE = 140;                    // CSS px, side of the sampled square
+document.getElementById("title").textContent = D.title;
+document.getElementById("source").innerHTML = D.source;
+document.getElementById("day").textContent = D.day;
+
+// ---- colour maths (same as build.py) ----
+const LIN = new Float32Array(256);
+for (let i = 0; i < 256; i++) { const c = i / 255; LIN[i] = c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }
+const enc = c => Math.max(0, Math.min(255, Math.round(255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055))));
+const Lstar = Y => Y > 216 / 24389 ? 116 * Math.cbrt(Y) - 16 : Y * 24389 / 27;
+const hex = (r, g, b) => "#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("");
+
+/** RGBA bytes -> seven chips, lightest first. */
+function strip(px, step = 1) {
+  const n = Math.floor(px.length / 4 / step);
+  const Y = new Float32Array(n), idx = new Uint32Array(n);
+  for (let k = 0; k < n; k++) {
+    const i = k * step * 4;
+    Y[k] = 0.2126 * LIN[px[i]] + 0.7152 * LIN[px[i + 1]] + 0.0722 * LIN[px[i + 2]];
+    idx[k] = i;
+  }
+  const order = Array.from({ length: n }, (_, k) => k).sort((a, b) => Y[b] - Y[a]);
+  const out = [];
+  for (let c = 0; c < CHIPS; c++) {
+    const a = Math.floor(c * n / CHIPS), b = Math.floor((c + 1) * n / CHIPS);
+    let r = 0, g = 0, bl = 0;
+    for (let k = a; k < b; k++) { const i = idx[order[k]]; r += LIN[px[i]]; g += LIN[px[i + 1]]; bl += LIN[px[i + 2]]; }
+    const m = Math.max(1, b - a);
+    const L = Lstar(Y[order[Math.floor((a + b) / 2)]] || 0);
+    out.push({ hex: hex(enc(r / m), enc(g / m), enc(bl / m)), L });
+  }
+  return { chips: out, L: Lstar(Y[order[Math.floor(n / 2)]] || 0) };
+}
+
+// ---- paint card ----
+const card = document.getElementById("card");
+function drawCard(title, sub, chips) {
+  card.innerHTML = `<h2>${title}</h2><p class="sub">${sub}</p>` +
+    chips.map(c => `<button class="chip" style="background:${c.hex};color:${c.L > 55 ? "#2b2b28" : "#fff"}"
+      data-hex="${c.hex.toUpperCase()}" title="Copy ${c.hex.toUpperCase()}">${c.hex.toUpperCase()}</button>`).join("") +
+    "";
+}
+card.addEventListener("click", ev => {
+  const b = ev.target.closest(".chip");
+  if (!b) return;
+  navigator.clipboard?.writeText(b.dataset.hex);
+  const t = b.textContent; b.textContent = "Copied"; setTimeout(() => (b.textContent = t), 900);
+});
+
+// ---- city picker ----
+let active = null;
+const wrap = document.getElementById("cities");
+for (const c of D.cities) {
+  const b = document.createElement("button");
+  b.className = "city"; b.setAttribute("aria-pressed", "false");
+  b.innerHTML = `<span>${c.name}</span><span class="bar">${c.chips.map(k => `<i style="background:${k.hex}"></i>`).join("")}</span>`;
+  b.onclick = () => goCity(c);
+  c.btn = b; wrap.appendChild(b);
+}
+function showCity(c) {
+  drawCard(c.name, "Whole city, ~12 km square", c.chips);
+}
+function setActive(c) {
+  active = c;
+  for (const o of D.cities) o.btn.setAttribute("aria-pressed", o === c ? "true" : "false");
+}
+
+// ---- map ----
+const start = D.cities.find(c => c.name === "New York") || D.cities[0];
+const map = new maplibregl.Map({
+  container: "gl",
+  style: {
+    version: 8,
+    sources: { s2: { type: "raster", tileSize: 256, maxzoom: 14, tiles: [D.tiles],
+                     attribution: D.attribution } },
+    layers: [{ id: "s2", type: "raster", source: "s2", paint: { "raster-fade-duration": 0 } }],
+  },
+  center: [start.lon, start.lat], zoom: 12.3, maxZoom: 16, minZoom: 2,
+  preserveDrawingBuffer: true, attributionControl: { compact: true },
+  dragRotate: false, pitchWithRotate: false,
+});
+map.touchZoomRotate.disableRotation();
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+
+function goCity(c) {
+  setActive(c); showCity(c);
+  map.jumpTo({ center: [c.lon, c.lat], zoom: 12.3 });
+}
+setActive(start); showCity(start);
+
+const probe = document.getElementById("probe");
+const canvas = map.getCanvas();
+const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+
+function kmAcross(pxSide, y) {
+  const lat = map.unproject([canvas.clientWidth / 2, y]).lat;
+  const mPerPx = 40075016.686 * Math.cos(lat * Math.PI / 180) / (512 * 2 ** map.getZoom());
+  const km = pxSide * mPerPx / 1000;
+  return km < 1 ? `${Math.round(km * 1000 / 10) * 10} m` : `${km < 10 ? km.toFixed(1) : Math.round(km)} km`;
+}
+
+let pending = null, last = null;
+function sample(x, y) {
+  const dpr = canvas.width / canvas.clientWidth;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const s = Math.min(PROBE, w, h);
+  const x0 = Math.max(0, Math.min(w - s, x - s / 2)), y0 = Math.max(0, Math.min(h - s, y - s / 2));
+  probe.style.cssText = `display:block;left:${x0}px;top:${y0}px;width:${s}px;height:${s}px`;
+  const S = Math.round(s * dpr);
+  const buf = new Uint8Array(S * S * 4);
+  gl.readPixels(Math.round(x0 * dpr), Math.round(canvas.height - (y0 + s) * dpr), S, S, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+  const st = strip(buf, dpr > 1 ? 2 : 1);
+  const ll = map.unproject([x0 + s / 2, y0 + s / 2]);
+  const coord = `${Math.abs(ll.lat).toFixed(2)}°${ll.lat >= 0 ? "N" : "S"}, ${Math.abs(ll.lng).toFixed(2)}°${ll.lng >= 0 ? "E" : "W"}`;
+  drawCard("Under your cursor", `${kmAcross(s, y0 + s / 2)} square · ${coord}`, st.chips);
+}
+map.on("mousemove", e => {
+  last = [e.point.x, e.point.y];
+  if (!pending) pending = requestAnimationFrame(() => { pending = null; sample(...last); });
+});
+map.on("render", () => { if (last && !pending) pending = requestAnimationFrame(() => { pending = null; if (last) sample(...last); }); });
+map.getContainer().addEventListener("mouseleave", () => {
+  last = null; probe.style.display = "none";
+  if (active) showCity(active);
+});
+// phones: tap to sample, tap a city to go back
+map.on("click", e => { if (matchMedia("(hover: none)").matches) { last = [e.point.x, e.point.y]; sample(...last); } });
+map.on("dragstart", () => { if (matchMedia("(hover: none)").matches) { last = null; probe.style.display = "none"; } });
+map.on("moveend", () => {
+  if (!active) return;
+  const c = map.getCenter();
+  if (Math.hypot(c.lng - active.lon, c.lat - active.lat) > 0.3 || Math.abs(map.getZoom() - 12.3) > 2) setActive(null);
+});
+</script>
+</body>
+</html>

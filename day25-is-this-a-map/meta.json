@@ -1,0 +1,9 @@
+{
+  "day": 25,
+  "theme": "Is this a map?",
+  "title": "Paint strips from space",
+  "description": "What color is a place? A satellite map of the world where the square under your cursor becomes a paint strip: its pixels sorted from light to dark and cut into seven equal parts, each chip the average color of one part. Zoom in for a single block or out for a whole region, or start with twelve city cards, from Dubai's sand and Marrakech's terracotta to Singapore's teal and Seattle's evergreen. Click a chip to copy its color. Imagery: Sentinel-2 cloudless 2020 by EOX (contains modified Copernicus Sentinel data), CC BY-NC-SA 4.0.",
+  "html": "out/paint_strips.html",
+  "png": "out/paint_strips.png",
+  "published": "2026-11-25"
+}
