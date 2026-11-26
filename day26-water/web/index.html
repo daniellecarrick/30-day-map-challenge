@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One Day of NYC Water</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .now { display: flex; align-items: baseline; gap: 12px; }
+  .now .readout { min-width: 6.5ch; text-align: right; font-size: 22px; }
+  .map-wrap { margin-top: 2px; overflow: hidden; }
+  .map-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .labels { position: absolute; inset: 0; pointer-events: none; }
+  .leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .leaders line { stroke: var(--muted); stroke-width: 1; }
+  .labels div { position: absolute; transform: translate(-50%, -100%); text-align: center; white-space: nowrap;
+                font-size: 14px; line-height: 1.2; font-weight: 600;
+                text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 3px var(--bg); }
+  .labels div { min-width: 9.5em; }
+  .labels div .s { display: block; font-weight: 400; color: var(--muted); }
+  .labels div.full .s { color: var(--seq-6); font-weight: 600; }
+  .labels div.filling .s { color: var(--ink); }
+  .clock { flex: none; height: 52px; position: relative; margin-top: 6px; touch-action: none; }
+  .clock svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .axis text { font: 14px var(--font); fill: var(--muted); }
+  .axis path, .axis line { stroke: var(--muted); stroke-width: .6; }
+  .track { fill: var(--ctl); }
+  .poured { fill: var(--seq-4); }
+  .tick-full { stroke: var(--bg); stroke-width: 2; }
+  .cursor { stroke: var(--ink); stroke-width: 1.5; }
+  .knob { fill: var(--bg); stroke: var(--ink); stroke-width: 1.5; }
+  @media (max-width: 640px), (max-height: 520px) { .map-wrap { height: 125vw; flex: none; } }
+  /* phones: names only (tap a tower for its status), so the labels fit in a few short rows */
+  @media (max-width: 640px) { .labels div { min-width: 0; } .labels div .s { display: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede" id="lede"></p>
+    <div class="controls">
+      <button class="play" id="play" type="button"><svg width="12" height="12" viewBox="0 0 12 12"><path id="icon" d="M2 1l9 5-9 5z"/></svg><span id="playlbl">Play</span></button>
+      <div id="year"></div>
+      <div class="now"><span class="readout" id="time"></span><span class="stat" id="stat"></span></div>
+    </div>
+  </header>
+  <div class="map-wrap" id="map"><svg class="leaders" id="leaders"></svg><div class="labels" id="labels"></div></div>
+  <div class="clock" id="clock"></div>
+  <footer>Each tower’s volume is its 3D shape in OpenStreetMap, measured in 5-ft slices; water use is the year’s daily average. <span id="source"></span> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const tip = MapKit.tooltip();
+d3.select("#title").html(D.title);
+d3.select("#source").html(D.source);
+d3.select("#day").text(D.day);
+const more = Math.round((D.days["1991"].mgd / D.days["2024"].mgd - 1) * 100);
+d3.select("#lede").text(`One day of city water (a billion gallons, enough to flood Central Park more than 3½ ft deep) poured into Midtown towers in turn. Press play, or switch to 1991, when New York used ${more}% more.`);
+
+// ---- scene: 1 unit = 1 ft, z up, NY State Plane centred on the landmarks ----
+const mapEl = document.getElementById("map");
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+mapEl.insertBefore(renderer.domElement, mapEl.firstChild);
+renderer.domElement.setAttribute("role", "img");
+renderer.domElement.setAttribute("aria-label", D.title);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 50, 60000);
+camera.up.set(0, 0, 1);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x999999, .8));
+const sun = new THREE.DirectionalLight(0xffffff, .5); sun.position.set(-3000, -5000, 8000); scene.add(sun);
+
+const cssv = n => new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue(n).trim());
+const M = {
+  ctx: new THREE.MeshLambertMaterial(),   // the rest of the city: flat footprints, so every landmark stays in view
+  glass: new THREE.MeshLambertMaterial({ transparent: true, opacity: .6, depthWrite: false }),
+  edge: new THREE.LineBasicMaterial({ transparent: true, opacity: .55 }),
+  water: new THREE.MeshLambertMaterial(),
+  ground: new THREE.MeshBasicMaterial(),
+};
+function paint() {
+  M.ctx.color = cssv("--other"); M.glass.color = cssv("--other"); M.edge.color = cssv("--ink");
+  M.water.color = cssv("--seq-4"); M.ground.color = cssv("--ctl");
+  render();
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paint);
+
+const shapeOf = flat => { const pts = []; for (let i = 0; i < flat.length; i += 2) pts.push(new THREE.Vector2(flat[i], flat[i + 1])); return new THREE.Shape(pts); };
+const prism = (flat, depth) => new THREE.ExtrudeGeometry(shapeOf(flat), { depth, bevelEnabled: false });
+// merge many prisms into one geometry (one draw call)
+function merged(list) {
+  const pos = [], nor = [];
+  list.forEach(([flat, mh, h]) => {
+    const g = prism(flat, h - mh), p = g.attributes.position.array, n = g.attributes.normal.array;
+    for (let i = 0; i < p.length; i += 3) pos.push(p[i], p[i + 1], p[i + 2] + mh);
+    for (let i = 0; i < n.length; i++) nor.push(n[i]);
+    g.dispose();
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+  return g;
+}
+// a round cut of Midtown centred on the landmarks
+const ax = D.landmarks.map(l => l.at[0]), ay = D.landmarks.map(l => l.at[1]);
+const C = [(d3.min(ax) + d3.max(ax)) / 2, (d3.min(ay) + d3.max(ay)) / 2], RAD = 4600;
+const ground = new THREE.Mesh(new THREE.CircleGeometry(RAD + 150, 96), M.ground);
+ground.position.set(C[0], C[1], -1); scene.add(ground);
+const city = new THREE.Mesh(merged(D.ctx.filter(([f, mh]) => mh === 0 && Math.hypot(f[0] - C[0], f[1] - C[1]) < RAD)
+  .map(([f]) => [f, 0, 4])), M.ctx);
+city.renderOrder = 5; scene.add(city);
+
+// landmarks: glass shell + edges, and one water block per piece that rises with the level
+const LM = D.landmarks.map((l, j) => {
+  const shell = new THREE.Mesh(merged(l.parts), M.glass); shell.renderOrder = 2;
+  const edges = new THREE.Group();
+  const water = l.parts.map(([flat, mh, h]) => {
+    const g = prism(flat, 1);
+    edges.add(new THREE.LineSegments(new THREE.EdgesGeometry(prism(flat, h - mh), 40), M.edge).translateZ(mh));
+    const m = new THREE.Mesh(g, M.water); m.position.z = mh; m.userData = { mh, h, j }; m.visible = false;
+    scene.add(m); return m;
+  });
+  shell.userData = { j };
+  scene.add(shell, edges);
+  return { ...l, shell, water };
+});
+
+// level (ft) that holds volume v (ft³), from the 5-ft cumulative table
+function levelFor(l, v) {
+  const t = l.table, V = v / 1e4;
+  if (V <= 0) return 0;
+  if (V >= t[t.length - 1]) return l.top;
+  const i = d3.bisectRight(t, V) - 1;
+  return (i + (V - t[i]) / (t[i + 1] - t[i])) * D.dz;
+}
+
+// ---- state: hours into the day and which year's water ----
+let hours = 0, year = "2024", lastYear = null;
+const perHour = () => D.days[year].ft3 / 24;
+const starts = D.landmarks.reduce((a, l) => (a.push(a[a.length - 1] + l.vol), a), [0]);   // cumulative ft³
+const fullAt = j => starts[j + 1] / perHour();   // hour at which landmark j is full
+const fmtHour = h => { const m = Math.round(h * 60) % 1440, hh = Math.floor(m / 60), mm = m % 60;
+  return `${hh % 12 || 12}:${String(mm).padStart(2, "0")} ${hh < 12 ? "am" : "pm"}`; };
+
+const lab = d3.select("#labels").selectAll("div").data(LM).join("div");
+lab.append("span").attr("class", "n").text(d => d.name);
+lab.append("span").attr("class", "s");
+
+function update() {
+  const poured = perHour() * hours;
+  LM.forEach((l, j) => {
+    const v = Math.max(0, Math.min(l.vol, poured - starts[j])), L = levelFor(l, v);
+    l.water.forEach(m => { const { mh, h } = m.userData, d = Math.min(h, L) - mh;
+      m.visible = d > .5; if (m.visible) m.scale.z = d; });
+    l.state = v >= l.vol - 1 ? "full" : v > 0 ? "filling" : "";
+    l.share = v / l.vol;
+  });
+  lab.attr("class", d => d.state).select(".s").text((d, j) => {
+    const f = fullAt(j);
+    if (d.state === "full") return `full by ${fmtHour(f)}`;
+    if (d.state === "filling") return `${Math.round(d.share * 100)}% full`;
+    return f <= 24 ? `fills at ${fmtHour(f)}` : `not reached`;
+  });
+  if (lastYear !== year) { lastYear = year; placeLabels(); }
+  const esb = poured / D.landmarks[0].vol;
+  d3.select("#time").text(hours >= 24 ? "midnight" : fmtHour(hours));
+  d3.select("#stat").text(`${d3.format(".1f")(esb)} Empire State Buildings of water so far`);
+  drawCursor(); render();
+}
+
+// ---- camera: from the south, looking uptown; this angle keeps every landmark clear of the others ----
+const AZ = 185 * Math.PI / 180, EL = 32 * Math.PI / 180;   // camera bearing from the target (clockwise from north)
+const target = new THREE.Vector3(C[0], C[1], 520);
+function fitCamera(w, h) {
+  camera.aspect = w / h;
+  const R = 10200 * Math.max(1, (w < 640 ? 1.15 : 1.7) / camera.aspect);
+  camera.position.set(target.x + R * Math.cos(EL) * Math.sin(AZ), target.y + R * Math.cos(EL) * Math.cos(AZ), target.z + R * Math.sin(EL));
+  camera.lookAt(target);
+  camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+}
+// labels sit in rows in the sky, left to right, each on the first row where it fits, with a
+// leader line down to its tower's top
+const leaders = d3.select("#leaders").selectAll("line").data(LM).join("line");
+function placeLabels() {
+  const w = mapEl.clientWidth, h = mapEl.clientHeight, narrow = w < 640, ROW = narrow ? 22 : 44, GAP = narrow ? 8 : 14;
+  const items = LM.map((d, j) => {
+    const v = new THREE.Vector3(d.at[0], d.at[1], d.top).project(camera);
+    return { j, x: (v.x + 1) / 2 * w, y: (1 - v.y) / 2 * h, wd: lab.nodes()[j].offsetWidth };
+  }).sort((a, b) => a.x - b.x);
+  const rowEnd = [];
+  items.forEach(it => {
+    let r = 0; while (rowEnd[r] != null && rowEnd[r] > it.x - it.wd / 2 - GAP) r++;
+    rowEnd[r] = it.x + it.wd / 2; it.r = r;
+  });
+  items.forEach(it => {
+    const ly = Math.min(ROW + it.r * ROW, it.y - 12);   // rows from the top down, never below the tower's top
+    const node = lab.nodes()[it.j];
+    const lx = Math.max(it.wd / 2 + 2, Math.min(w - it.wd / 2 - 2, it.x));   // keep the label inside the frame
+    node.style.left = lx + "px"; node.style.top = ly + "px";
+    d3.select(leaders.nodes()[it.j]).attr("x1", it.x).attr("x2", it.x).attr("y1", ly + 2).attr("y2", it.y - 4);
+  });
+}
+let pending = false;
+function render() { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; renderer.render(scene, camera); }); }
+new ResizeObserver(() => {
+  const w = mapEl.clientWidth, h = mapEl.clientHeight; if (!w || !h) return;
+  renderer.setSize(w, h, false); fitCamera(w, h); placeLabels(); render();
+}).observe(mapEl);
+
+// hover a landmark
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+renderer.domElement.addEventListener("pointermove", ev => {
+  const r = renderer.domElement.getBoundingClientRect();
+  ptr.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(LM.map(l => l.shell))[0];
+  if (!hit) return tip.hide();
+  const j = hit.object.userData.j, l = LM[j];
+  tip.show(ev, `<b>${l.name}</b>${d3.format(".1f")(l.vol / 1e6)} million cu ft · ${d3.format(",.0f")(l.vol / 0.133681 / 1e6)} million gallons<br>` +
+    `a ${year} day’s water would fill it ${d3.format(".1f")(D.days[year].ft3 / l.vol)} times<br>` +
+    `<span class="m">${fullAt(j) <= 24 ? `full at ${fmtHour(fullAt(j))}` : "not reached"} on a ${year} day</span>`);
+});
+renderer.domElement.addEventListener("pointerleave", tip.hide);
+
+// ---- 24-hour clock strip ----
+const ck = d3.select("#clock"), cSvg = ck.append("svg");
+const CM = { t: 4, r: 30, b: 22, l: 18 };
+let cx, cursor, knob, poured;
+function drawClock() {
+  const w = ck.node().clientWidth, h = ck.node().clientHeight;
+  cSvg.selectAll("*").remove();
+  cx = d3.scaleLinear().domain([0, 24]).range([CM.l, w - CM.r]);
+  const bh = h - CM.t - CM.b;
+  cSvg.append("rect").attr("class", "track").attr("x", cx(0)).attr("y", CM.t).attr("width", cx(24) - cx(0)).attr("height", bh).attr("rx", 3);
+  poured = cSvg.append("rect").attr("class", "poured").attr("x", cx(0)).attr("y", CM.t).attr("height", bh).attr("rx", 3);
+  // a notch each time a tower is full
+  cSvg.append("g").selectAll("line").data(D.landmarks.map((_, j) => fullAt(j)).filter(f => f < 24)).join("line")
+    .attr("class", "tick-full").attr("x1", cx).attr("x2", cx).attr("y1", CM.t).attr("y2", CM.t + bh);
+  cSvg.append("g").attr("class", "axis").attr("transform", `translate(0,${h - CM.b})`)
+    .call(d3.axisBottom(cx).tickValues(d3.range(0, 25, w < 500 ? 6 : 3)).tickFormat(v => v % 24 === 0 ? (v ? "midnight" : "12 am") : fmtHour(v).replace(":00", "")).tickSizeOuter(0));
+  cursor = cSvg.append("line").attr("class", "cursor").attr("y1", CM.t - 2).attr("y2", CM.t + bh + 2);
+  knob = cSvg.append("circle").attr("class", "knob").attr("r", 5).attr("cy", CM.t + bh / 2);
+  const scrub = ev => { pause(); hours = Math.max(0, Math.min(24, cx.invert(d3.pointer(ev, cSvg.node())[0]))); update(); };
+  cSvg.append("rect").attr("x", CM.l).attr("width", w - CM.l - CM.r).attr("height", h).attr("fill", "transparent").style("cursor", "ew-resize")
+    .on("pointerdown", ev => { try { ev.target.setPointerCapture(ev.pointerId); } catch (e) {} scrub(ev); })
+    .on("pointermove", ev => { if (ev.buttons) scrub(ev); });
+  drawCursor();
+}
+function drawCursor() {
+  if (!cx) return;
+  poured.attr("width", cx(hours) - cx(0));
+  cursor.attr("x1", cx(hours)).attr("x2", cx(hours)); knob.attr("cx", cx(hours));
+}
+
+MapKit.segmented("#year", [{ value: "2024", label: "2024" }, { value: "1991", label: "1991" }], v => {
+  year = v; drawClock(); update();
+}, "2024");
+
+// ---- play: a day in 24 seconds ----
+let raf = null, last = null;
+function frame(ts) {
+  if (last != null) hours = Math.min(24, hours + (ts - last) / 1000);
+  last = ts; update();
+  if (hours >= 24) return pause();
+  raf = requestAnimationFrame(frame);
+}
+function play() { if (hours >= 24) hours = 0; last = null; raf = requestAnimationFrame(frame); ui(true); }
+function pause() { if (raf) cancelAnimationFrame(raf); raf = null; ui(false); }
+function ui(on) {
+  d3.select("#icon").attr("d", on ? "M2 1h3v10H2zM7 1h3v10H7z" : "M2 1l9 5-9 5z");
+  d3.select("#playlbl").text(on ? "Pause" : hours >= 24 ? "Replay" : "Play");
+}
+d3.select("#play").on("click", () => (raf ? pause() : play()));
+
+paint();
+new ResizeObserver(drawClock).observe(ck.node());
+drawClock(); update();
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setTimeout(play, 600);
+else { hours = 24; update(); }
+</script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYC Reservoirs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .page { max-width: 1240px; }
+  .lede { max-width: 640px; }
+  .body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+          gap: 4px 28px; }
+  .map-wrap { min-height: 0; }
+  .charts { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 3fr) auto minmax(0, 2fr); }
+  .charts h2 { font: 600 16px/1.25 var(--font-head); margin: 12px 0 2px; }
+  .charts h2:first-child { margin-top: 0; }
+  .charts h2 .m { font: 400 14px var(--font); color: var(--muted); }
+  .chart { min-height: 0; position: relative; }
+  .chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .readout-row { display: flex; align-items: baseline; justify-content: center; gap: 10px; margin-bottom: 6px; }
+  .axis text { font: 14px var(--font); fill: var(--muted); }
+  .axis line, .axis path { stroke: var(--muted); stroke-width: .6; }
+  .half { stroke: var(--ink); stroke-width: .8; stroke-dasharray: 3 3; }
+  .half-lbl, .mark-lbl { font: 14px var(--font); fill: var(--ink); }
+  .mark-lbl { font-weight: 600; }
+  .line { fill: none; stroke: var(--seq-6); stroke-width: 1; }
+  .below { fill: var(--div-4); stroke: var(--div-4); stroke-width: 1.2; stroke-linejoin: round; }
+  .cursor { stroke: var(--ink); stroke-width: 1; }
+  .bar { fill: var(--seq-4); }
+  .bar.on { fill: var(--ink); }
+  .state { fill: none; stroke: var(--other); stroke-width: .7; }
+  .nyc { fill: var(--other); stroke: var(--ink); stroke-width: .4; }
+  .conduit { fill: none; stroke: var(--ink); stroke-width: 1.2; pointer-events: none; }
+  .conduit.Croton { stroke-width: .8; }
+  .hit { fill: none; stroke: transparent; stroke-width: 12; }
+  .res { stroke: var(--ink); stroke-width: .5; }
+  .res:hover { stroke-width: 1.6; }
+  .labels { position: absolute; inset: 0; pointer-events: none; }
+  .labels div { position: absolute; font-size: 14px; font-weight: 600; white-space: nowrap;
+                text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 3px var(--bg); }
+  .labels div span { font-weight: 400; color: var(--muted); }
+  @media (max-width: 860px) {
+    .page { height: auto; }
+    .body { grid-template-columns: 1fr; }
+    .map-wrap { height: 120vw; max-height: 640px; }
+    .charts { grid-template-rows: auto 240px auto 180px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">Each reservoir is shaded by how full it was on the day you pick. Move along the timeline to travel through 44 years; lines are the tunnels carrying the water to the city.</p>
+    <div class="controls">
+      <div id="toggle"></div>
+    </div>
+    <div class="readout-row"><span class="readout" id="date"></span><span class="stat" id="stat"></span></div>
+  </header>
+  <div class="body">
+    <div class="map-wrap" id="map"><div class="labels" id="labels"></div></div>
+    <div class="charts">
+      <h2>Catskill/Delaware reservoirs, % full <span class="m">· amber: below half full</span></h2>
+      <div class="chart" id="storage"></div>
+      <h2>New York City water use <span class="m">· million gallons a day</span></h2>
+      <div class="chart" id="use"></div>
+    </div>
+  </div>
+  <footer>% full = DEP daily storage ÷ usable capacity, Catskill/Delaware reservoirs only (the Croton system and Kensico have no daily data here). <span id="source"></span> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const tip = MapKit.tooltip();
+d3.select("#title").html(D.title);
+d3.select("#source").html(D.source);
+d3.select("#day").text(D.day);
+
+// ---- dates ----
+const t0 = new Date(D.start + "T00:00:00");
+const N = D.total.length;
+const dateAt = i => new Date(t0.getTime() + i * 864e5);
+const indexOf = s => Math.round((new Date(s + "T00:00:00") - t0) / 864e5);
+const fmt = d3.timeFormat("%b %-d, %Y");
+const pctOf = (k, i) => { const v = D.pct[k][i]; return v == null ? null : v / 10; };
+const color = d3.scaleLinear().domain(d3.range(D.seq.length).map(i => (100 * i) / (D.seq.length - 1)))
+  .range(D.seq).clamp(true);
+let pinned = indexOf(D.default), current = pinned;
+
+// ---- map ----
+const W = 560, H = 760;
+const all = { type: "FeatureCollection", features: [...D.reservoirs.features, ...D.nyc.features] };
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[10, 10], [W - 10, H - 10]], all);
+const path = d3.geoPath(proj);
+const svg = d3.select("#map").insert("svg", ":first-child").attr("viewBox", `0 0 ${W} ${H}`)
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
+svg.append("g").selectAll("path").data(D.states.features).join("path").attr("class", "state").attr("d", path);
+svg.append("g").selectAll("path").data(D.nyc.features).join("path").attr("class", "nyc").attr("d", path);
+const cg = svg.append("g");
+cg.selectAll("path.conduit").data(D.conduits.features).join("path")
+  .attr("class", d => `conduit ${d.properties.system}`).attr("d", path);
+cg.selectAll("path.hit").data(D.conduits.features).join("path").attr("class", "hit").attr("d", path)
+  .on("mousemove", (ev, d) => tip.show(ev, `<b>${d.properties.name.replace("Roundout", "Rondout")}</b><span class="m">${d.properties.system} system</span>`))
+  .on("mouseleave", tip.hide);
+const resSel = svg.append("g").selectAll("path").data(D.reservoirs.features).join("path")
+  .attr("class", "res").attr("d", path)
+  .on("mousemove", (ev, d) => {
+    const p = d.properties, v = p.cap ? pctOf(p.key, current) : null;
+    tip.show(ev, `<b>${p.key} Reservoir</b>` + (p.cap
+      ? `${v == null ? "no data" : `${Math.min(v, 100).toFixed(0)}% full${v > 100 ? " (spilling)" : ""}`} on ${fmt(dateAt(current))}<br><span class="m">${p.system} system · holds ${p.cap} billion gallons</span>`
+      : `<span class="m">${p.system === "Croton" ? "Croton system" : "Balancing reservoir"} · no daily data</span>`));
+  })
+  .on("mouseleave", tip.hide);
+
+// HTML labels pinned to map positions, so they stay 14px however the map scales
+const LABELS = { Cannonsville: [0, 14, "c"], Pepacton: [0, 14, "c"], Neversink: [-10, 0, "r"],
+  Rondout: [10, 4, "l"], Ashokan: [14, 0, "l"], Schoharie: [10, 0, "l"], Kensico: [10, 0, "l"] };
+const labelData = D.reservoirs.features.filter(f => LABELS[f.properties.key])
+  .map(f => ({ key: f.properties.key, xy: path.centroid(f), cap: f.properties.cap }));
+const nb = path.bounds(D.nyc.features[0]);
+labelData.push({ key: "New York City", xy: [nb[1][0], (nb[0][1] + nb[1][1]) / 2], off: [8, 0, "l"] });
+const lab = d3.select("#labels").selectAll("div").data(labelData).join("div");
+function placeLabels() {
+  const node = svg.node(), r = node.getBoundingClientRect(), h = node.parentNode.getBoundingClientRect();
+  const s = Math.min(r.width / W, r.height / H);
+  const ox = r.left - h.left + (r.width - W * s) / 2, oy = r.top - h.top + (r.height - H * s) / 2;
+  lab.each(function (d) {
+    const [dx, dy, a] = d.off || LABELS[d.key];
+    const el = this, x = ox + d.xy[0] * s + dx, y = oy + d.xy[1] * s + dy;
+    el.style.left = x + "px"; el.style.top = y + "px";
+    el.style.transform = `translate(${a === "r" ? "-100%" : a === "c" ? "-50%" : "0"}, ${dy > 0 ? "0" : "-50%"})`;
+  });
+}
+new ResizeObserver(placeLabels).observe(svg.node());
+
+MapKit.legend(svg, {
+  x: 10, y: H - 60, anchor: "bottom", width: 190,
+  title: "% full on this day",
+  stops: [[0, D.seq[0]], [50, D.seq[3]], [100, D.seq[6]]],
+  ticks: [[0, "0%"], [50, "50%"], [100, "100%"]],
+  keys: [{ draw: g => g.append("rect").attr("x", -6).attr("y", -5).attr("width", 12).attr("height", 10)
+    .attr("fill", "var(--closed)"), label: "No daily data" }],
+});
+
+// ---- storage chart ----
+const M = { t: 8, r: 8, b: 26, l: 46 };
+const sHost = d3.select("#storage"), uHost = d3.select("#use");
+const sSvg = sHost.append("svg"), uSvg = uHost.append("svg");
+const total = D.total.map(v => (v == null ? null : v / 10));
+let x, y, cursor, xu;
+
+function drawStorage() {
+  const w = sHost.node().clientWidth, h = sHost.node().clientHeight;
+  sSvg.selectAll("*").remove();
+  x = d3.scaleTime().domain([t0, dateAt(N - 1)]).range([M.l, w - M.r]);
+  y = d3.scaleLinear().domain([0, 105]).range([h - M.b, M.t]);
+  const step = Math.max(1, Math.floor(N / (w * 2)));   // ~2 samples per pixel
+  const idx = d3.range(0, N, step).filter(i => total[i] != null);
+  sSvg.append("path").attr("class", "line").attr("d", d3.line().x(i => x(dateAt(i))).y(i => y(total[i]))(idx));
+  sSvg.append("path").attr("class", "below")   // on top of the line so short dips still read
+    .attr("d", d3.area().defined(i => total[i] < 50).x(i => x(dateAt(i))).y0(y(50)).y1(i => y(total[i]))(idx));
+  sSvg.append("line").attr("class", "half").attr("x1", M.l).attr("x2", w - M.r).attr("y1", y(50)).attr("y2", y(50));
+  sSvg.append("text").attr("class", "half-lbl").attr("x", w - M.r).attr("y", y(50) - 5).attr("text-anchor", "end").text("half full");
+  sSvg.append("g").attr("class", "axis").attr("transform", `translate(0,${h - M.b})`)
+    .call(d3.axisBottom(x).ticks(w < 500 ? 5 : 9).tickSizeOuter(0));
+  sSvg.append("g").attr("class", "axis").attr("transform", `translate(${M.l},0)`)
+    .call(d3.axisLeft(y).tickValues([0, 50, 100]).tickFormat(d => d + "%").tickSizeOuter(0));
+  // record lows
+  const mk = sSvg.append("g").selectAll("g").data(D.marks).join("g")
+    .attr("transform", d => `translate(${x(new Date(d.date + "T00:00:00"))},${y(d.v)})`);
+  mk.append("circle").attr("r", 3).attr("fill", "var(--ink)");
+  cursor = sSvg.append("line").attr("class", "cursor").attr("y1", M.t).attr("y2", h - M.b);
+  sSvg.append("rect").attr("x", M.l).attr("y", 0).attr("width", w - M.l - M.r).attr("height", h)
+    .attr("fill", "transparent").style("cursor", "crosshair")
+    .on("pointermove", ev => {
+      const i = Math.max(0, Math.min(N - 1, Math.round((x.invert(d3.pointer(ev)[0]) - t0) / 864e5)));
+      setDate(i);
+      tip.show(ev, `<b>${fmt(dateAt(i))}</b>${total[i] == null ? "no data" : total[i].toFixed(0) + "% full"}<br><span class="m">Click to keep this day</span>`);
+    })
+    .on("pointerleave", () => { tip.hide(); setDate(pinned); })
+    .on("click", () => { pinned = current; d3.selectAll("#toggle button").attr("aria-pressed", false); });
+}
+
+function drawUse() {
+  const w = uHost.node().clientWidth, h = uHost.node().clientHeight;
+  uSvg.selectAll("*").remove();
+  xu = x.copy();
+  const yu = d3.scaleLinear().domain([0, 1600]).range([h - M.b, M.t]);
+  const bw = Math.max(2, xu(new Date(2001, 0, 1)) - xu(new Date(2000, 0, 1)) - 2);
+  uSvg.append("g").selectAll("rect").data(D.use).join("rect").attr("class", "bar")
+    .attr("x", d => xu(new Date(d[0], 0, 1)) + 1).attr("width", bw)
+    .attr("y", d => yu(d[1])).attr("height", d => yu(0) - yu(d[1]))
+    .on("mousemove", (ev, d) => tip.show(ev, `<b>${d[0]}</b>${d3.format(",")(d[1])} million gallons a day`))
+    .on("mouseleave", tip.hide);
+  uSvg.append("g").attr("class", "axis").attr("transform", `translate(0,${h - M.b})`)
+    .call(d3.axisBottom(xu).ticks(w < 500 ? 5 : 9).tickSizeOuter(0));
+  uSvg.append("g").attr("class", "axis").attr("transform", `translate(${M.l},0)`)
+    .call(d3.axisLeft(yu).tickValues([0, 500, 1000, 1500]).tickFormat(d3.format(",")).tickSizeOuter(0));
+}
+
+function setDate(i) {
+  current = i;
+  resSel.attr("fill", d => {
+    const p = d.properties;
+    if (!p.cap) return "var(--closed)";
+    const v = pctOf(p.key, i);
+    return v == null ? "var(--closed)" : color(v);
+  });
+  lab.html(d => d.cap ? `${d.key} <span>${Math.min(pctOf(d.key, i) ?? 0, 100).toFixed(0)}%</span>` : d.key);
+  if (cursor) cursor.attr("x1", x(dateAt(i))).attr("x2", x(dateAt(i)));
+  const yr = dateAt(i).getFullYear();
+  uSvg.selectAll(".bar").classed("on", d => d[0] === yr);
+  d3.select("#date").text(fmt(dateAt(i)));
+  const u = D.use.find(d => d[0] === yr);
+  d3.select("#stat").text(`${total[i] == null ? "–" : total[i].toFixed(0)}% full` +
+    (u ? ` · the city used ${d3.format(",")(u[1])} million gallons a day that year` : ""));
+}
+
+const opts = [...D.marks.map(m => ({ value: m.date, label: `${m.label} (${m.date.slice(0, 4)})` })),
+              { value: "latest", label: "Latest" }];
+const seg = MapKit.segmented("#toggle", opts, v => {
+  pinned = v === "latest" ? N - 1 : indexOf(v); setDate(pinned);
+}, D.default);
+
+function drawAll() { drawStorage(); drawUse(); setDate(current); }
+new ResizeObserver(drawAll).observe(document.querySelector(".charts"));
+drawAll();
+</script>
+</body>
+</html>

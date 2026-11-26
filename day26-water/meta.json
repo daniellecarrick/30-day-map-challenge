@@ -1,0 +1,9 @@
+{
+  "day": 26,
+  "theme": "Water",
+  "title": "One day of New York's water",
+  "description": "New York uses about a billion gallons of water a day, enough to flood Central Park more than 3½ feet deep. This 3D map of Midtown pours one day of it into the skyline's landmarks in turn: the Empire State Building is full by 5:42 am, then the Chrysler Building, One Vanderbilt and 30 Rock, with the Bank of America Tower 44% full at midnight. Switch to 1991, when the city used 47% more, and the water gets through the MetLife Building into 432 Park Avenue. Tower volumes come from each building's 3D shape in OpenStreetMap; water use from NYC Open Data.",
+  "html": "out/one_day_of_water.html",
+  "png": "out/one_day_of_water.png",
+  "published": "2026-11-26"
+}

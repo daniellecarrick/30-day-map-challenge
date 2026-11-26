@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYC Reservoirs 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .now { display: flex; align-items: baseline; justify-content: center; gap: 12px; margin: 2px 0 4px; }
+  .now .readout { min-width: 9.5ch; text-align: right; font-size: 22px; }
+  .map-wrap { margin-top: 2px; }
+  .map-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .labels { position: absolute; inset: 0; pointer-events: none; }
+  .labels div { position: absolute; text-align: center; white-space: nowrap;
+                font-size: 14px; line-height: 1.2; font-weight: 600;
+                text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 3px var(--bg); }
+  .labels div .p { display: block; font: 700 16px/1.2 var(--font-head); }
+  .labels div .d { display: block; font-weight: 400; color: var(--muted); }
+  .labels div.low .p, .labels div.low .d { color: var(--div-4); }
+  .labels .city { font-weight: 600; text-align: left; }
+  .labels .city .m { display: block; font-weight: 400; color: var(--muted); }
+  .timeline { flex: none; height: 104px; position: relative; margin-top: 6px; touch-action: none; }
+  .timeline svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .axis text { font: 14px var(--font); fill: var(--muted); }
+  .axis path, .axis line { stroke: var(--muted); stroke-width: .6; }
+  .line { fill: none; stroke: var(--seq-6); stroke-width: 1; }
+  .band { fill: var(--other); }
+  .below { fill: var(--div-4); stroke: var(--div-4); stroke-width: 1.2; stroke-linejoin: round; }
+  .tl-lbl { font: 14px var(--font); fill: var(--ink); }
+  .cursor { stroke: var(--ink); stroke-width: 1.5; }
+  .knob { fill: var(--bg); stroke: var(--ink); stroke-width: 1.5; }
+  @media (max-width: 640px), (max-height: 520px) { .map-wrap { height: 72vw; flex: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">Each reservoir, drawn 2.2× life size, rises out of the ground as it fills and sinks as it empties. Amber is water that’s normally there on that date but missing. Press play or drag the timeline.</p>
+    <div class="controls">
+      <button class="play" id="play" type="button"><svg width="12" height="12" viewBox="0 0 12 12"><path id="icon" d="M2 1l9 5-9 5z"/></svg><span id="playlbl">Play</span></button>
+      <div class="now"><span class="readout" id="date"></span><span class="stat" id="stat"></span></div>
+    </div>
+  </header>
+  <div class="map-wrap" id="map"><div class="labels" id="labels"></div></div>
+  <div class="timeline" id="tl"></div>
+  <footer>Height = share of usable storage (DEP daily data); a full reservoir stands at full height. Normal = median for the date, 1991–2020. <span id="source"></span> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="mock.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const tip = MapKit.tooltip();
+d3.select("#title").html(D.title);
+d3.select("#source").html(D.source);
+d3.select("#day").text(D.day);
+
+const t0 = new Date(D.start + "T00:00:00"), N = D.total.length;
+const dateAt = i => new Date(t0.getTime() + i * 864e5);
+const fmt = d3.timeFormat("%b %Y"), fmtLong = d3.timeFormat("%b %-d, %Y"), fmtDay = d3.timeFormat("%b %-d");
+const pctOf = (k, i) => { const v = D.pct[k][i]; return v == null ? null : v / 10; };
+const total = D.total.map(v => (v == null ? null : v / 10));
+const doy = i => { const d = dateAt(i); return d3.timeDay.count(d3.timeYear(d), d) + 1; };
+const normOf = (k, i) => D.norm[k][doy(i) - 1] / 10, lowOf = (k, i) => D.normLow[k][doy(i) - 1] / 10;
+const tn = j => ({ lo: D.tnorm.lo[j] / 10, mid: D.tnorm.mid[j] / 10, hi: D.tnorm.hi[j] / 10 });
+
+// ---- 3D scene: x east, y north, z up; 1 unit = 1 km ----
+const ext = d3.geoPath().bounds(D.glass);           // planar metres
+const cx = (ext[0][0] + ext[1][0]) / 2, cy = (ext[0][1] + ext[1][1]) / 2;
+const X = x => (x - cx) / 1000, Y = y => (y - cy) / 1000;
+const SPAN = (ext[1][0] - ext[0][0]) / 1000, DEPTH = (ext[1][1] - ext[0][1]) / 1000;
+const HMAX = 8;                                      // km tall when 100% full
+// context lines are cut to a box a little bigger than the reservoirs; the aqueducts run off its south edge
+const BOX = { x0: -SPAN * .62, x1: SPAN * .62, y0: -DEPTH * .5 - 22, y1: DEPTH * .62 };
+const inBox = ([x, y]) => x >= BOX.x0 && x <= BOX.x1 && y >= BOX.y0 && y <= BOX.y1;
+
+const mapEl = document.getElementById("map");
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+mapEl.insertBefore(renderer.domElement, mapEl.firstChild);
+renderer.domElement.setAttribute("role", "img");
+renderer.domElement.setAttribute("aria-label", D.title);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(28, 1, 1, 2000);
+camera.up.set(0, 0, 1);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x888888, .75));
+const sun = new THREE.DirectionalLight(0xffffff, .55); sun.position.set(-60, -40, 120); scene.add(sun);
+
+const css = () => getComputedStyle(document.documentElement);
+const cvar = n => new THREE.Color(css().getPropertyValue(n).trim());
+const M = {
+  water: new THREE.MeshLambertMaterial(), wall: new THREE.MeshLambertMaterial(),
+  missWall: new THREE.MeshLambertMaterial({ transparent: true, opacity: .6, depthWrite: false, side: THREE.DoubleSide }),
+  plane: new THREE.MeshBasicMaterial(),
+  ground: new THREE.MeshBasicMaterial(),
+  other: new THREE.MeshBasicMaterial(),
+  missing: new THREE.MeshBasicMaterial({ visible: false }),   // no lid: the water surface shows through
+  missLine: new THREE.LineBasicMaterial(),
+  ink: new THREE.LineBasicMaterial(), edge: new THREE.LineBasicMaterial(),
+  conduit: new THREE.LineBasicMaterial(), state: new THREE.LineBasicMaterial(),
+};
+function paint() {
+  M.water.color = cvar("--seq-3"); M.wall.color = cvar("--seq-5"); M.missWall.color = cvar("--div-4"); M.missLine.color = cvar("--div-4");
+  M.plane.color = cvar("--ctl"); M.ground.color = cvar("--other"); M.other.color = cvar("--closed");
+  M.missing.color = cvar("--div-4"); M.ink.color = cvar("--ink"); M.edge.color = cvar("--seq-6");
+  M.conduit.color = cvar("--muted"); M.state.color = cvar("--other");
+  render();
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paint);
+
+const ringsOf = g => (g.type === "Polygon" ? [g.coordinates] : g.coordinates);
+const v2 = ring => ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(X(x), Y(y)));
+function shapesOf(g) {
+  return ringsOf(g).map(rings => {
+    const s = new THREE.Shape(v2(rings[0]));
+    rings.slice(1).forEach(h => s.holes.push(new THREE.Path(v2(h))));
+    return s;
+  });
+}
+function outline(g, z, mat) {
+  const grp = new THREE.Group();
+  ringsOf(g).flat().forEach(r => grp.add(new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints(r.slice(0, -1).map(([x, y]) => new THREE.Vector3(X(x), Y(y), z))), mat)));
+  return grp;
+}
+// lines (states, aqueducts) cut into the pieces that fall inside the box
+function lines(fc, mat, z) {
+  const grp = new THREE.Group();
+  fc.features.forEach(f => {
+    const g = f.geometry, parts = g.type === "LineString" ? [g.coordinates] : g.type === "MultiLineString" ? g.coordinates : ringsOf(g).flat();
+    parts.forEach(p => {
+      let run = [];
+      const flush = () => { if (run.length > 1) grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(run), mat)); run = []; };
+      p.forEach(([x, y]) => { const q = [X(x), Y(y)]; if (inBox(q)) run.push(new THREE.Vector3(q[0], q[1], z)); else flush(); });
+      flush();
+    });
+  });
+  scene.add(grp);
+}
+// a pale ground plane under everything, so the water has something to rise out of
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(BOX.x1 - BOX.x0, BOX.y1 - BOX.y0), M.plane);
+plane.position.set((BOX.x0 + BOX.x1) / 2, (BOX.y0 + BOX.y1) / 2, -.02); scene.add(plane);
+lines(D.states, M.state, 0);
+lines(D.conduits, M.conduit, .05);
+D.other.features.forEach(f => {
+  if (!ringsOf(f.geometry).flat().flat().some(c => inBox([X(c[0]), Y(c[1])]))) return;
+  const m = new THREE.Mesh(new THREE.ShapeGeometry(shapesOf(f.geometry)), M.other);
+  m.userData = { other: f.properties.key }; scene.add(m);
+});
+
+// each reservoir: grey footprint (the empty valley), a water prism whose height is % full, and an
+// amber prism stacked on top up to the normal level when it's below normal
+const res = D.glass.features.map(f => {
+  const key = f.properties.key, shapes = shapesOf(f.geometry);
+  const ground = new THREE.Mesh(new THREE.ShapeGeometry(shapes), M.ground);
+  ground.position.z = .02;
+  const prism = new THREE.ExtrudeGeometry(shapes, { depth: 1, bevelEnabled: false });
+  const water = new THREE.Mesh(prism, [M.water, M.wall]), missing = new THREE.Mesh(prism, [M.missing, M.missWall]);
+  const top = outline(f.geometry, 1, M.edge);          // shoreline drawn on the water surface
+  const normTop = outline(f.geometry, 1, M.missLine);   // where the surface normally is
+  [ground, water, missing].forEach(m => (m.userData = { key }));
+  scene.add(ground, water, missing, top, normTop, outline(f.geometry, .03, M.ink));
+  return { key, f, water, missing, top, normTop };
+});
+const pick = [...res.flatMap(r => [r.water, r.missing]), ...scene.children.filter(c => c.userData.other)];
+res.forEach(r => pick.push(scene.children.find(c => c.isMesh && c.userData.key === r.key && c.geometry.type === "ShapeGeometry")));
+
+function setLevels(i) {
+  res.forEach(r => {
+    const v = Math.min(100, pctOf(r.key, i) ?? 0), n = Math.min(100, normOf(r.key, i));
+    const h = Math.max(.001, v / 100 * HMAX);
+    r.water.scale.z = h; r.top.position.z = h - 1 + .01;
+    r.missing.visible = r.normTop.visible = n > v + .5;
+    r.normTop.position.z = n / 100 * HMAX - 1;
+    r.missing.position.z = h; r.missing.scale.z = Math.max(.001, (n - v) / 100 * HMAX);
+  });
+}
+
+// ---- camera: from the south-southwest, looking down at ~42° ----
+const EL = 48 * Math.PI / 180, AZ = -12 * Math.PI / 180;
+function fitCamera(w, h) {
+  camera.aspect = w / h;
+  const vfov = camera.fov * Math.PI / 180, hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+  const need = Math.max((DEPTH * Math.sin(EL) + HMAX) / 2 / Math.tan(vfov / 2), SPAN * 1.04 / 2 / Math.tan(hfov / 2));
+  const R = need + DEPTH * .35;
+  camera.position.set(R * Math.cos(EL) * Math.sin(AZ), -R * Math.cos(EL) * Math.cos(AZ), R * Math.sin(EL));
+  camera.lookAt(0, -2, HMAX * .25);
+  camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+}
+const toScreen = (x, y, z) => {
+  const v = new THREE.Vector3(x, y, z).project(camera), w = mapEl.clientWidth, h = mapEl.clientHeight;
+  return [(v.x + 1) / 2 * w, (1 - v.y) / 2 * h];
+};
+
+// labels: placed from each reservoir's on-screen box at full height, so they never sit on a prism
+const SIDE = { Cannonsville: "below", Pepacton: "above", Schoharie: "right", Ashokan: "right",
+               Rondout: "right", Neversink: "left" };
+const lab = d3.select("#labels").selectAll("div.r").data(res).join("div").attr("class", "r");
+lab.append("span").attr("class", "n").text(d => d.key);
+lab.append("span").attr("class", "p");
+lab.append("span").attr("class", "d");
+let exit = null;
+D.conduits.features.filter(f => f.properties.system !== "Croton").forEach(f => {
+  const ls = f.geometry.type === "LineString" ? [f.geometry.coordinates] : f.geometry.coordinates;
+  ls.flat().forEach(c => { const q = [X(c[0]), Y(c[1])]; if (inBox(q) && (!exit || q[1] < exit.q[1])) exit = { q, c }; });
+});
+const nycC = d3.geoPath().centroid(D.nyc.features[0]);
+const miles = Math.round(Math.hypot(nycC[0] - exit.c[0], nycC[1] - exit.c[1]) / 1609 / 5) * 5;
+const city = d3.select("#labels").append("div").attr("class", "city")
+  .html(`↓ New York City<span class="m">${miles} more miles by tunnel</span>`);
+function placeLabels() {
+  lab.each(function (d) {
+    const pts = ringsOf(d.f.geometry).flat().flat().filter((_, j) => j % 3 === 0)
+      .flatMap(([x, y]) => [toScreen(X(x), Y(y), 0), toScreen(X(x), Y(y), HMAX)]);
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x0 = d3.min(xs), x1 = d3.max(xs), y0 = d3.min(ys), y1 = d3.max(ys), mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    const pos = { below: [mx, y1 + 4, "-50%", "0"], above: [mx, y0 - 4, "-50%", "-100%"],
+                  right: [x1 + 8, my, "0", "-50%"], left: [x0 - 8, my, "-100%", "-50%"] }[SIDE[d.key]];
+    Object.assign(this.style, { left: pos[0] + "px", top: pos[1] + "px", transform: `translate(${pos[2]}, ${pos[3]})` });
+  });
+  const [ex, ey] = toScreen(exit.q[0], exit.q[1], 0);
+  const W0 = mapEl.clientWidth, flip = ex > W0 - 190;
+  city.style("text-align", flip ? "right" : "left")
+    .style("left", Math.min(ex, W0 - 4) + (flip ? -10 : 10) + "px").style("top", Math.min(ey, mapEl.clientHeight) - 4 + "px").style("transform", `translate(${flip ? "-100%" : "0"}, -100%)`);
+}
+
+let pending = false;
+function render() {
+  if (pending) return; pending = true;
+  requestAnimationFrame(() => { pending = false; renderer.render(scene, camera); });
+}
+new ResizeObserver(() => {
+  const w = mapEl.clientWidth, h = mapEl.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false); fitCamera(w, h); placeLabels(); render();
+}).observe(mapEl);
+
+// hover
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+renderer.domElement.addEventListener("pointermove", ev => {
+  const r = renderer.domElement.getBoundingClientRect();
+  ptr.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(pick.filter(m => m && m.visible))[0];
+  if (!hit) return tip.hide();
+  const { key, other } = hit.object.userData;
+  if (other) return tip.show(ev, `<b>${other} Reservoir</b><span class="m">No daily data · true size</span>`);
+  const v = pctOf(key, current);
+  tip.show(ev, `<b>${key} Reservoir</b>${v == null ? "no data" : `${Math.min(v, 100).toFixed(0)}% full${v > 100 ? " (spilling)" : ""}`} on ${fmtLong(dateAt(current))}<br>normal for ${fmtDay(dateAt(current))}: ${normOf(key, current).toFixed(0)}%<br><span class="m">Holds ${D.cap[key]} billion gallons</span>`);
+});
+renderer.domElement.addEventListener("pointerleave", tip.hide);
+
+// ---- timeline ----
+const tl = d3.select("#tl"), tSvg = tl.append("svg");
+const TM = { t: 22, r: 10, b: 24, l: 44 };
+let x, y, cursor, knob;
+function drawTimeline() {
+  const w = tl.node().clientWidth, h = tl.node().clientHeight;
+  tSvg.selectAll("*").remove();
+  x = d3.scaleTime().domain([t0, dateAt(N - 1)]).range([TM.l, w - TM.r]);
+  y = d3.scaleLinear().domain([0, 105]).range([h - TM.b, TM.t]);
+  const idx = d3.range(0, N, Math.max(1, Math.floor(N / (w * 2)))).filter(i => total[i] != null);
+  const nb = idx.map(i => tn(doy(i) - 1));
+  tSvg.append("path").attr("class", "band")
+    .attr("d", d3.area().x((_, j) => x(dateAt(idx[j]))).y0((_, j) => y(nb[j].lo)).y1((_, j) => y(nb[j].hi))(idx));
+  tSvg.append("path").attr("class", "line").attr("d", d3.line().x(i => x(dateAt(i))).y(i => y(total[i]))(idx));
+  tSvg.append("path").attr("class", "below")
+    .attr("d", d3.area().defined((i, j) => total[i] < nb[j].lo).x(i => x(dateAt(i)))
+      .y0((_, j) => y(nb[j].lo)).y1(i => y(total[i]))(idx));
+  const key = tSvg.append("g").attr("transform", `translate(${TM.l},12)`);
+  [["band", "normal range for the date"], ["below", "unusually low (below the 10th percentile)"]].reduce((x0, [c, t]) => {
+    key.append("rect").attr("class", c).attr("x", x0).attr("y", -6).attr("width", 18).attr("height", 10);
+    const tx = key.append("text").attr("class", "tl-lbl").attr("x", x0 + 24).attr("y", 4).text(t);
+    return x0 + 24 + tx.node().getComputedTextLength() + 18;
+  }, 0);
+  tSvg.append("g").attr("class", "axis").attr("transform", `translate(0,${h - TM.b})`)
+    .call(d3.axisBottom(x).ticks(w < 500 ? 5 : 10).tickSizeOuter(0));
+  tSvg.append("g").attr("class", "axis").attr("transform", `translate(${TM.l},0)`)
+    .call(d3.axisLeft(y).tickValues([0, 50, 100]).tickFormat(d => d + "%").tickSizeOuter(0));
+  cursor = tSvg.append("line").attr("class", "cursor").attr("y1", TM.t).attr("y2", h - TM.b);
+  knob = tSvg.append("circle").attr("class", "knob").attr("r", 5);
+  const scrub = ev => { pause(); setDate(Math.round((x.invert(d3.pointer(ev, tSvg.node())[0]) - t0) / 864e5)); };
+  tSvg.append("rect").attr("x", TM.l).attr("width", w - TM.l - TM.r).attr("height", h).attr("fill", "transparent")
+    .style("cursor", "ew-resize")
+    .on("pointerdown", ev => { try { ev.target.setPointerCapture(ev.pointerId); } catch (e) {} scrub(ev); })
+    .on("pointermove", ev => { if (ev.buttons) scrub(ev); });
+  setDate(current);
+}
+
+// ---- state ----
+let current = 0;
+function setDate(i) {
+  current = Math.max(0, Math.min(N - 1, i));
+  setLevels(current); render();
+  lab.classed("low", d => { const v = pctOf(d.key, current); return v != null && v < lowOf(d.key, current); });
+  lab.select(".p").text(d => { const v = pctOf(d.key, current); return v == null ? "–" : `${Math.min(v, 100).toFixed(0)}%`; });
+  lab.select(".d").text(d => {
+    const v = pctOf(d.key, current); if (v == null) return "";
+    const diff = Math.round(Math.min(v, 100) - normOf(d.key, current));
+    return Math.abs(diff) < 3 ? "about normal" : `${Math.abs(diff)} ${diff < 0 ? "below" : "above"} normal`;
+  });
+  if (x) {
+    cursor.attr("x1", x(dateAt(current))).attr("x2", x(dateAt(current)));
+    knob.attr("cx", x(dateAt(current))).attr("cy", y(total[current] ?? 0));
+  }
+  const yr = dateAt(current).getFullYear(), u = D.use.find(d => d[0] === yr);
+  d3.select("#date").text(fmt(dateAt(current)));
+  d3.select("#stat").text(`all six ${total[current] == null ? "–" : total[current].toFixed(0)}% full (normal ${tn(doy(current) - 1).mid.toFixed(0)}%)` +
+    (u ? ` · city used ${d3.format(",")(u[1])} million gal a day` : ""));
+}
+
+// ---- play ----
+const DAYS_PER_SEC = 520;   // 44 years in about 30 s
+let raf = null, last = null;
+function frame(ts) {
+  if (last != null) setDate(current + Math.max(1, Math.round(((ts - last) / 1000) * DAYS_PER_SEC)));
+  last = ts;
+  if (current >= N - 1) return pause();
+  raf = requestAnimationFrame(frame);
+}
+function play() { if (current >= N - 1) current = 0; last = null; raf = requestAnimationFrame(frame); ui(true); }
+function pause() { if (raf) cancelAnimationFrame(raf); raf = null; ui(false); }
+function ui(on) {
+  d3.select("#icon").attr("d", on ? "M2 1h3v10H2zM7 1h3v10H7z" : "M2 1l9 5-9 5z");
+  d3.select("#playlbl").text(on ? "Pause" : current >= N - 1 ? "Replay" : "Play");
+}
+d3.select("#play").on("click", () => (raf ? pause() : play()));
+
+paint();
+new ResizeObserver(drawTimeline).observe(tl.node());
+drawTimeline();
+setDate(0);
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setTimeout(play, 600);
+else setDate(N - 1);
+</script>
+</body>
+</html>

@@ -40,3 +40,8 @@ day18-null/data/
 
 # Day 20: street-tree points (96 MB, near GitHub's limit); re-download with day20-hexagons/fetch.sh
 day20-hexagons/data/trees.csv
+
+# Day 26: OSM Midtown buildings and DEP reservoir operations (~26 MB); re-download with
+# day26-water/data_prep.py and day26-water/explore_reservoirs_data.py
+day26-water/data/midtown_osm.json
+day26-water/data/reservoir_ops.csv

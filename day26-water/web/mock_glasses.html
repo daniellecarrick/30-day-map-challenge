@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYC Reservoirs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .now { display: flex; align-items: baseline; justify-content: center; gap: 12px; margin: 2px 0 4px; }
+  .now .readout { min-width: 9.5ch; text-align: right; font-size: 22px; }
+  .map-wrap { margin-top: 2px; }
+  .state { fill: none; stroke: var(--other); stroke-width: .7; }
+  .nyc { fill: var(--other); stroke: var(--ink); stroke-width: .4; }
+  .conduit { fill: none; stroke: var(--muted); stroke-width: 1.1; }
+  .conduit.Croton { stroke-width: .7; }
+  .hit { fill: none; stroke: transparent; stroke-width: 12; }
+  .other { fill: var(--closed); stroke: none; }
+  .ground { fill: var(--other); stroke: var(--ink); stroke-width: .7; }
+  .water { fill: var(--seq-4); }
+  .missing { fill: var(--div-4); opacity: .55; }
+  .normal { stroke: var(--ink); stroke-width: 1.6; stroke-dasharray: 4 3; }
+  .glass:hover .ground { stroke-width: 1.6; }
+  .labels { position: absolute; inset: 0; pointer-events: none; }
+  .labels div { position: absolute; text-align: center; white-space: nowrap;
+                font-size: 14px; line-height: 1.2; font-weight: 600;
+                text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 3px var(--bg); }
+  .labels div .p { display: block; font: 700 16px/1.2 var(--font-head); }
+  .labels div .d { display: block; font-weight: 400; color: var(--muted); }
+  .labels div.low .p, .labels div.low .d { color: var(--div-4); }
+  .labels .city { font-weight: 600; text-align: left; }
+  .labels .city .m { display: block; font-weight: 400; color: var(--muted); }
+  .timeline { flex: none; height: 104px; position: relative; margin-top: 6px; touch-action: none; }
+  .timeline svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .axis text { font: 14px var(--font); fill: var(--muted); }
+  .axis path, .axis line { stroke: var(--muted); stroke-width: .6; }
+  .line { fill: none; stroke: var(--seq-6); stroke-width: 1; }
+  .band { fill: var(--other); }
+  .below { fill: var(--div-4); stroke: var(--div-4); stroke-width: 1.2; stroke-linejoin: round; }
+  .tl-lbl { font: 14px var(--font); fill: var(--ink); }
+  .cursor { stroke: var(--ink); stroke-width: 1.5; }
+  .knob { fill: var(--bg); stroke: var(--ink); stroke-width: 1.5; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">Each reservoir, drawn 2.2× life size, fills from its west or south end like a gauge. Amber is water that’s normally there on that date but missing. Press play or drag the timeline.</p>
+    <div class="controls">
+      <button class="play" id="play" type="button"><svg width="12" height="12" viewBox="0 0 12 12"><path id="icon" d="M2 1l9 5-9 5z"/></svg><span id="playlbl">Play</span></button>
+      <div class="now"><span class="readout" id="date"></span><span class="stat" id="stat"></span></div>
+    </div>
+  </header>
+  <div class="map-wrap" id="map"><div class="labels" id="labels"></div></div>
+  <div class="timeline" id="tl"></div>
+  <footer>Normal = median for the date, 1991–2020. Water fills the same share of each reservoir’s length, from the west (or south, if it runs north–south), as its share of usable storage (DEP daily data); real shorelines differ. <span id="source"></span> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="mock.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script>
+const D = window.DATA;
+const tip = MapKit.tooltip();
+d3.select("#title").html(D.title);
+d3.select("#source").html(D.source);
+d3.select("#day").text(D.day);
+
+const t0 = new Date(D.start + "T00:00:00"), N = D.total.length;
+const dateAt = i => new Date(t0.getTime() + i * 864e5);
+const fmt = d3.timeFormat("%b %Y"), fmtLong = d3.timeFormat("%b %-d, %Y");
+const pctOf = (k, i) => { const v = D.pct[k][i]; return v == null ? null : v / 10; };
+const total = D.total.map(v => (v == null ? null : v / 10));
+// normals are indexed by day of the year (1..366)
+const doy = i => { const d = dateAt(i); return d3.timeDay.count(d3.timeYear(d), d) + 1; };
+const normOf = (k, i) => D.norm[k][doy(i) - 1] / 10, lowOf = (k, i) => D.normLow[k][doy(i) - 1] / 10;
+const tn = j => ({ lo: D.tnorm.lo[j] / 10, mid: D.tnorm.mid[j] / 10, hi: D.tnorm.hi[j] / 10 });
+const fmtDay = d3.timeFormat("%b %-d");
+
+// ---- map ----
+const W = 900, H = 560;
+// crop to the reservoirs; the aqueducts run off the bottom edge toward the city
+const proj = d3.geoIdentity().reflectY(true).fitExtent([[30, 30], [W - 30, H - 90]], D.glass);
+const path = d3.geoPath(proj), k = proj.scale();
+const svg = d3.select("#map").insert("svg", ":first-child").attr("viewBox", `0 0 ${W} ${H}`).style("overflow", "hidden")
+  .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img").attr("aria-label", D.title);
+const defs = svg.append("defs");
+svg.append("g").selectAll("path").data(D.states.features).join("path").attr("class", "state").attr("d", path);
+svg.append("g").selectAll("path").data(D.nyc.features).join("path").attr("class", "nyc").attr("d", path);
+svg.append("g").selectAll("path").data(D.conduits.features).join("path")
+  .attr("class", d => `conduit ${d.properties.system}`).attr("d", path);
+svg.append("g").selectAll("path").data(D.conduits.features).join("path").attr("class", "hit").attr("d", path)
+  .on("mousemove", (ev, d) => tip.show(ev, `<b>${d.properties.name.replace("Roundout", "Rondout")}</b><span class="m">${d.properties.system} system</span>`))
+  .on("mouseleave", tip.hide);
+svg.append("g").selectAll("path").data(D.other.features).join("path").attr("class", "other").attr("d", path)
+  .on("mousemove", (ev, d) => tip.show(ev, `<b>${d.properties.key} Reservoir</b><span class="m">No daily data · true size</span>`))
+  .on("mouseleave", tip.hide);
+
+// each enlarged reservoir: exposed ground underneath, water clipped to a band starting at the dam
+const glass = svg.append("g").selectAll("g").data(D.glass.features).join("g").attr("class", "glass");
+glass.append("path").attr("class", "ground").attr("d", path);
+const clips = glass.each(function (d, i) {
+  const f = D.fill[d.properties.key], [ox, oy] = proj(f.origin);
+  const cp = defs.append("clipPath").attr("id", `c${i}`);
+  cp.append("rect").attr("transform", `translate(${ox},${oy}) rotate(${-f.angle})`)
+    .attr("x", -2).attr("y", -2000).attr("height", 4000).attr("width", 0);
+  d.clipRect = cp.select("rect");
+});
+glass.each(function (d, i) {
+  const f = D.fill[d.properties.key], [ox, oy] = proj(f.origin);
+  d.normRect = defs.append("clipPath").attr("id", `n${i}`).append("rect")
+    .attr("transform", `translate(${ox},${oy}) rotate(${-f.angle})`).attr("x", -2).attr("y", -2000).attr("height", 4000).attr("width", 0);
+});
+// amber = water that's normally there on this date but isn't; the blue water covers it up to the actual level
+glass.append("path").attr("class", "missing").attr("d", path).attr("clip-path", (_, i) => `url(#n${i})`)
+  .style("pointer-events", "none");
+glass.append("path").attr("class", "water").attr("d", path).attr("clip-path", (_, i) => `url(#c${i})`)
+  .style("pointer-events", "none");
+// dashed line across each reservoir where the water normally reaches on this date, clipped to the shape
+glass.each(function (d, i) {
+  const f = D.fill[d.properties.key], [ox, oy] = proj(f.origin);
+  defs.append("clipPath").attr("id", `s${i}`).append("path").attr("d", path(d));
+  d.normLine = d3.select(this).append("g").attr("clip-path", `url(#s${i})`).style("pointer-events", "none")
+    .append("line").attr("class", "normal").attr("transform", `translate(${ox},${oy}) rotate(${-f.angle})`)
+    .attr("y1", -2000).attr("y2", 2000);
+});
+glass.on("mousemove", (ev, d) => {
+  const key = d.properties.key, v = pctOf(key, current);
+  tip.show(ev, `<b>${key} Reservoir</b>${v == null ? "no data" : `${Math.min(v, 100).toFixed(0)}% full${v > 100 ? " (spilling)" : ""}`} on ${fmtLong(dateAt(current))}<br>normal for ${fmtDay(dateAt(current))}: ${normOf(key, current).toFixed(0)}%<br><span class="m">Holds ${D.cap[key]} billion gallons</span>`);
+}).on("mouseleave", tip.hide);
+
+// label side for each reservoir, so names sit in open space
+const SIDE = { Cannonsville: "below", Pepacton: "above", Schoharie: "right", Ashokan: "right",
+               Rondout: "below", Neversink: "left" };
+const labelData = D.glass.features.map(f => ({ key: f.properties.key, b: path.bounds(f), side: SIDE[f.properties.key] }));
+const lab = d3.select("#labels").selectAll("div.r").data(labelData).join("div").attr("class", "r");
+lab.append("span").attr("class", "n").text(d => d.key);
+lab.append("span").attr("class", "p");
+lab.append("span").attr("class", "d");
+// where the Catskill/Delaware aqueducts leave the frame, and how far the city still is
+let exit = null;
+D.conduits.features.filter(f => f.properties.system !== "Croton").forEach(f => {
+  const lines = f.geometry.type === "LineString" ? [f.geometry.coordinates] : f.geometry.coordinates;
+  lines.flat().forEach(c => { const p = proj(c); if (p[1] <= H && (!exit || p[1] > exit.p[1])) exit = { p, c }; });
+});
+const nycC = d3.geoPath().centroid(D.nyc.features[0]);   // planar, metres
+const miles = Math.round(Math.hypot(nycC[0] - exit.c[0], nycC[1] - exit.c[1]) / 1609 / 5) * 5;
+const city = d3.select("#labels").append("div").attr("class", "city")
+  .html(`↓ New York City<span class="m">${miles} more miles by tunnel</span>`);
+function placeLabels() {
+  const node = svg.node(), r = node.getBoundingClientRect(), h = node.parentNode.getBoundingClientRect();
+  const s = Math.min(r.width / W, r.height / H);
+  const ox = r.left - h.left + (r.width - W * s) / 2, oy = r.top - h.top + (r.height - H * s) / 2;
+  lab.each(function (d) {
+    const [[x0, y0], [x1, y1]] = d.b, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const pos = { below: [cx, y1 + 4, "-50%", "0"], above: [cx, y0 - 4, "-50%", "-100%"],
+                  right: [x1 + 8, cy, "0", "-50%"], left: [x0 - 8, cy, "-100%", "-50%"] }[d.side];
+    this.style.left = ox + pos[0] * s + "px"; this.style.top = oy + pos[1] * s + "px";
+    this.style.transform = `translate(${pos[2]}, ${pos[3]})`;
+  });
+  city.style("left", ox + exit.p[0] * s + 10 + "px").style("top", oy + (H - 8) * s + "px")
+    .style("transform", "translate(0, -100%)");
+}
+new ResizeObserver(placeLabels).observe(svg.node());
+
+// ---- timeline ----
+const tl = d3.select("#tl"), tSvg = tl.append("svg");
+const M = { t: 22, r: 10, b: 24, l: 44 };
+let x, y, cursor, knob;
+function drawTimeline() {
+  const w = tl.node().clientWidth, h = tl.node().clientHeight;
+  tSvg.selectAll("*").remove();
+  x = d3.scaleTime().domain([t0, dateAt(N - 1)]).range([M.l, w - M.r]);
+  y = d3.scaleLinear().domain([0, 105]).range([h - M.b, M.t]);
+  const idx = d3.range(0, N, Math.max(1, Math.floor(N / (w * 2)))).filter(i => total[i] != null);
+  const nb = idx.map(i => tn(doy(i) - 1));
+  tSvg.append("path").attr("class", "band")
+    .attr("d", d3.area().x((_, j) => x(dateAt(idx[j]))).y0((_, j) => y(nb[j].lo)).y1((_, j) => y(nb[j].hi))(idx));
+  tSvg.append("path").attr("class", "line").attr("d", d3.line().x(i => x(dateAt(i))).y(i => y(total[i]))(idx));
+  tSvg.append("path").attr("class", "below")
+    .attr("d", d3.area().defined((i, j) => total[i] < nb[j].lo).x(i => x(dateAt(i)))
+      .y0((_, j) => y(nb[j].lo)).y1(i => y(total[i]))(idx));
+  // key, above the plot: grey swatch = normal range, amber = unusually low
+  const key = tSvg.append("g").attr("transform", `translate(${M.l},12)`);
+  [["band", "normal range for the date"], ["below", "unusually low (below the 10th percentile)"]].reduce((x0, [c, t]) => {
+    key.append("rect").attr("class", c).attr("x", x0).attr("y", -6).attr("width", 18).attr("height", 10);
+    const tx = key.append("text").attr("class", "tl-lbl").attr("x", x0 + 24).attr("y", 4).text(t);
+    return x0 + 24 + tx.node().getComputedTextLength() + 18;
+  }, 0);
+  tSvg.append("g").attr("class", "axis").attr("transform", `translate(0,${h - M.b})`)
+    .call(d3.axisBottom(x).ticks(w < 500 ? 5 : 10).tickSizeOuter(0));
+  tSvg.append("g").attr("class", "axis").attr("transform", `translate(${M.l},0)`)
+    .call(d3.axisLeft(y).tickValues([0, 50, 100]).tickFormat(d => d + "%").tickSizeOuter(0));
+  cursor = tSvg.append("line").attr("class", "cursor").attr("y1", M.t).attr("y2", h - M.b);
+  knob = tSvg.append("circle").attr("class", "knob").attr("r", 5);
+  const scrub = ev => { pause(); setDate(Math.round((x.invert(d3.pointer(ev, tSvg.node())[0]) - t0) / 864e5)); };
+  tSvg.append("rect").attr("x", M.l).attr("width", w - M.l - M.r).attr("height", h).attr("fill", "transparent")
+    .style("cursor", "ew-resize")
+    .on("pointerdown", ev => { ev.target.setPointerCapture(ev.pointerId); scrub(ev); })
+    .on("pointermove", ev => { if (ev.buttons) scrub(ev); });
+  setDate(current);
+}
+
+// ---- state ----
+let current = 0;
+function setDate(i) {
+  current = Math.max(0, Math.min(N - 1, i));
+  glass.each(d => {
+    const f = D.fill[d.properties.key], v = pctOf(d.properties.key, current);
+    // water reaches this share of the way from the dam to the far end of the reservoir
+    d.clipRect.attr("width", (Math.max(0, Math.min(100, v ?? 0)) / 100) * f.length * k + 2);
+    const nx = (Math.min(100, normOf(d.properties.key, current)) / 100) * f.length * k;
+    d.normLine.attr("x1", nx).attr("x2", nx);
+    d.normRect.attr("width", nx + 2);
+  });
+  lab.classed("low", d => { const v = pctOf(d.key, current); return v != null && v < lowOf(d.key, current); });
+  lab.select(".p").text(d => { const v = pctOf(d.key, current); return v == null ? "–" : `${Math.min(v, 100).toFixed(0)}%`; });
+  lab.select(".d").text(d => {
+    const v = pctOf(d.key, current); if (v == null) return "";
+    const diff = Math.round(Math.min(v, 100) - normOf(d.key, current));
+    return Math.abs(diff) < 3 ? "about normal" : `${Math.abs(diff)} ${diff < 0 ? "below" : "above"} normal`;
+  });
+  if (x) {
+    cursor.attr("x1", x(dateAt(current))).attr("x2", x(dateAt(current)));
+    knob.attr("cx", x(dateAt(current))).attr("cy", y(total[current] ?? 0));
+  }
+  const yr = dateAt(current).getFullYear(), u = D.use.find(d => d[0] === yr);
+  d3.select("#date").text(fmt(dateAt(current)));
+  d3.select("#stat").text(`all six ${total[current] == null ? "–" : total[current].toFixed(0)}% full (normal ${tn(doy(current) - 1).mid.toFixed(0)}%)` +
+    (u ? ` · city used ${d3.format(",")(u[1])} million gal a day` : ""));
+}
+
+// ---- play ----
+const DAYS_PER_SEC = 520;   // 44 years in about 30 s
+let raf = null, last = null;
+function frame(ts) {
+  if (last != null) setDate(current + Math.max(1, Math.round(((ts - last) / 1000) * DAYS_PER_SEC)));
+  last = ts;
+  if (current >= N - 1) return pause();
+  raf = requestAnimationFrame(frame);
+}
+function play() { if (current >= N - 1) current = 0; last = null; raf = requestAnimationFrame(frame); ui(true); }
+function pause() { if (raf) cancelAnimationFrame(raf); raf = null; ui(false); }
+function ui(on) {
+  d3.select("#icon").attr("d", on ? "M2 1h3v10H2zM7 1h3v10H7z" : "M2 1l9 5-9 5z");
+  d3.select("#playlbl").text(on ? "Pause" : current >= N - 1 ? "Replay" : "Play");
+}
+d3.select("#play").on("click", () => (raf ? pause() : play()));
+
+new ResizeObserver(drawTimeline).observe(tl.node());
+drawTimeline();
+setDate(0);
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setTimeout(play, 600);
+else setDate(N - 1);
+</script>
+</body>
+</html>
