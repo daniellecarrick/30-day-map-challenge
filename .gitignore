@@ -45,3 +45,6 @@ day20-hexagons/data/trees.csv
 # day26-water/data_prep.py and day26-water/explore_reservoirs_data.py
 day26-water/data/midtown_osm.json
 day26-water/data/reservoir_ops.csv
+
+# Too big for GitHub (330 MB); re-download with day27-new-tool/fetch.sh
+day27-new-tool/data/tabblock20.zip

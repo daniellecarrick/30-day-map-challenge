@@ -1,0 +1,9 @@
+{
+  "day": 27,
+  "theme": "A new tool",
+  "title": "Within half a mile of Tribeca, the typical household makes $200,000 or more. In Mott Haven, $23,000",
+  "description": "A household-income lens over New York City. Move a half-mile circle anywhere and DuckDB, a full SQL database running inside the browser (DuckDB-WASM), sorts every household inside it into six income groups, the same six the map is colored by, and works out the median. Compare it with the whole city or pin a circle to compare two places, and open the SQL behind each number. The richest half mile is around Tribeca, where 64% of households make $200,000 or more; eight miles north, around Mott Haven, the typical household makes about $23,000 and 53% make under $25,000. American Community Survey 2020–24 block-group estimates, spread over 2020 census blocks by housing units; medians are interpolated from the summed brackets.",
+  "html": "out/nyc_lens.html",
+  "png": "out/nyc_lens.png",
+  "published": "2026-11-27"
+}

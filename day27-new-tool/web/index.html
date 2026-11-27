@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYC Lens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- build.py inlines these so out/nyc_lens.html is a single file (DuckDB-WASM itself loads from jsDelivr) -->
+<link rel="stylesheet" href="../../shared/theme.css">
+<style>
+  .map-wrap { display: flex; gap: 18px; }
+  #view { position: relative; flex: 1 1 auto; min-width: 0; touch-action: none; cursor: crosshair; outline: none; }
+  #view:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 6px; }
+  #view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted);
+             font-size: 15px; pointer-events: none; text-align: center; padding: 0 20px; }
+  .key { left: 12px; bottom: 12px; width: auto; padding: 8px 10px; border-radius: 6px;
+         background: color-mix(in srgb, var(--bg) 88%, transparent); }
+  .key .lg-key i { display: inline-block; width: 14px; height: 14px; border-radius: 2px; flex: none; }
+
+  /* side panel: the lens readout */
+  aside { flex: none; width: 344px; overflow-y: auto; overflow-x: hidden; padding-top: 2px; }
+  aside .where { font: 700 19px/1.2 var(--font-head); margin: 0 0 8px; }
+  /* fixed value columns + no wrapping, so the row never reflows (or jitters) as the numbers change */
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 74px 70px; column-gap: 8px; align-items: baseline; }
+  .grid .h { color: var(--muted); font-weight: 600; text-align: right; }
+  .grid .h:first-child { text-align: left; }
+  .grid .lb { padding-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .grid .v { padding-top: 5px; text-align: right; font-weight: 700; font-variant-numeric: lining-nums tabular-nums; }
+  .grid .v.m { color: var(--muted); font-weight: 400; }
+
+  /* income bar chart: same six groups and colors as the map legend */
+  .chart { margin-top: 16px; }
+  .chart .bt { font-weight: 600; margin-bottom: 6px; }
+  .hrow { display: grid; grid-template-columns: 84px 1fr auto; gap: 8px; align-items: center; height: 26px; }
+  .hrow.two { grid-template-columns: 84px 1fr 38px 38px; }
+  .hrow .lab { white-space: nowrap; }
+  .hrow .pct { text-align: right; font-weight: 700; font-variant-numeric: lining-nums tabular-nums; min-width: 38px; }
+  .hrow .pct.m { color: var(--muted); font-weight: 400; }
+  /* fixed 0–100% scale (it never rescales as the circle moves); faint gridlines at 25, 50 and 75% */
+  .track { position: relative; height: 18px;
+           background: linear-gradient(to right, transparent calc(25% - .5px), var(--other) 0 calc(25% + .5px), transparent 0 calc(50% - .5px),
+                       var(--other) 0 calc(50% + .5px), transparent 0 calc(75% - .5px), var(--other) 0 calc(75% + .5px), transparent 0); }
+  .axis { position: relative; height: 20px; color: var(--muted); }
+  .axis span { position: absolute; top: 2px; transform: translateX(-50%); }
+  .axis span:first-child { transform: none; }
+  .axis span:last-child { transform: translateX(-100%); }
+  .track .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; }
+  .track .pin { position: absolute; left: 0; top: -2px; bottom: -2px; border: 1.5px dashed var(--ink); border-radius: 2px; }
+  .track .city { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); }
+  .ckey { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); margin-top: 8px; align-items: center; }
+  .ckey span { display: inline-flex; align-items: center; gap: 6px; }
+  .ckey .s-city { width: 2px; height: 14px; background: var(--ink); }
+  .ckey .s-pin { width: 16px; height: 12px; border: 1.5px dashed var(--ink); border-radius: 2px; }
+  .ckey .s-here { width: 16px; height: 12px; border-radius: 2px; background: linear-gradient(to right, var(--div-5), var(--div-1)); }
+
+  .actions { display: flex; gap: 8px; margin: 14px 0 4px; flex-wrap: wrap; }
+  .hint { color: var(--muted); margin-top: 8px; }
+  /* loading checklist shown in the panel until DuckDB answers its first query */
+  .steps { list-style: none; padding: 0; margin: 4px 0 0; color: var(--muted); }
+  .steps li { padding: 3px 0 3px 22px; position: relative; }
+  .steps li::before { content: "✓"; position: absolute; left: 2px; color: var(--ink); font-weight: 700; }
+  .steps li.now { color: var(--ink); font-weight: 600; }
+  .steps li.now::before { content: ""; width: 10px; height: 10px; top: 8px; border-radius: 50%;
+                          border: 2px solid var(--muted); border-top-color: transparent; animation: spin .8s linear infinite; }
+  .steps li.err { color: var(--ink); }
+  .steps li.err::before { content: "!"; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .steps li.now::before { animation: none; } }
+  details.sql { margin-top: 12px; }
+  details.sql summary { cursor: pointer; font-weight: 600; }
+  details.sql summary .m { color: var(--muted); font-weight: 400; }
+  details.sql pre { font: 14px/1.45 var(--font-mono); background: var(--ctl); border-radius: 6px;
+                    padding: 10px 12px; margin: 8px 0 0; white-space: pre; overflow-x: auto; }
+  details.sql pre .n { color: var(--accent); font-weight: 600; }
+  @media (max-width: 640px), (max-height: 520px) {
+    .map-wrap { flex-direction: column; }
+    #view { flex: none; height: 70vh; }
+    aside { width: auto; }
+    .key { position: absolute; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1 id="title"></h1>
+    <p class="lede">Move the half-mile circle anywhere in New York and DuckDB, a database running in your browser, sorts every household inside it by income. Click to pin one and compare.</p>
+  </header>
+  <div class="map-wrap" id="map">
+    <div id="view" tabindex="0" role="application" aria-label="Map of New York City colored by median household income, with a movable half-mile circle. Arrow keys move it, Enter pins it.">
+      <canvas id="cv"></canvas>
+      <div id="loading">Starting DuckDB in your browser…</div>
+    </div>
+    <aside id="panel" aria-live="polite">
+      <div class="where">Within half a mile of here</div>
+      <ol class="steps"><li class="now">Starting DuckDB in your browser…</li></ol>
+    </aside>
+  </div>
+  <footer>American Community Survey household-income estimates for each block group, spread over its census blocks by 2020 housing units and summed for every block inside the circle; the median is interpolated from the summed income brackets. <a id="source" target="_blank" rel="noopener"></a> · #30DayMapChallenge <span id="day"></span></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="../../shared/components.js"></script>
+<script type="module">
+import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm";
+
+const D = window.DATA, C = D.city, R = D.halfMile, B = D.buckets;
+d3.select("#title").text(D.title);
+d3.select("#source").text(D.source).attr("href", D.sourceUrl);
+d3.select("#day").text(D.day);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = d3.format(",.0f");
+const money = v => v >= 200000 ? "$200,000+" : "$" + d3.format(",")(Math.round(v / 100) * 100);
+
+// ---------------- income groups (same six as the PNG; colors from build.py) ----------------
+function median(counts, edges) {           // Census-style interpolation, as in build.py
+  const tot = d3.sum(counts); if (!(tot > 0)) return NaN;
+  let cum = 0;
+  for (let k = 0; k < counts.length; k++) {
+    if (cum + counts[k] >= tot / 2) {
+      const lo = edges[k], hi = edges[k + 1];
+      return hi == null ? lo : lo + (tot / 2 - cum) / counts[k] * (hi - lo);
+    }
+    cum += counts[k];
+  }
+  return NaN;
+}
+const bucketOf = v => { let k = 0; while (k + 1 < B.length && v >= B[k + 1].low) k++; return k; };
+const shares = inc => { const t = d3.sum(inc) || 1; return B.map(b => d3.sum(inc.slice(b.a, b.b)) / t); };
+const cityShares = C.shares;
+
+// ---------------- state ----------------
+let lens = { x: D.start[0], y: D.start[1] }, pin = null, hereStats = null, pinStats = null;
+const view = document.getElementById("view"), cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+
+// ---------------- geometry: data metres -> screen px ----------------
+const bounds = d3.geoPath(d3.geoIdentity()).bounds(D.outline);
+let W = 0, H = 0, DPR = 1, k0 = 1, ox = 0, oy = 0, T = d3.zoomIdentity;
+const sx = x => T.x + T.k * (ox + x * k0);
+const sy = y => T.y + T.k * (oy + (bounds[1][1] - y) * k0);
+const ix = px => ((px - T.x) / T.k - ox) / k0;
+const iy = py => bounds[1][1] - ((py - T.y) / T.k - oy) / k0;
+function resize() {
+  const r = view.getBoundingClientRect();
+  W = r.width; H = r.height; DPR = window.devicePixelRatio || 1;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  const dx = bounds[1][0] - bounds[0][0], dy = bounds[1][1] - bounds[0][1];
+  k0 = Math.max(1e-4, Math.min((W - 16) / dx, (H - 16) / dy));
+  ox = (W - dx * k0) / 2 - bounds[0][0] * k0; oy = (H - dy * k0) / 2;
+}
+
+// ---------------- DuckDB ----------------
+let conn = null;
+const STEPS = [];
+function step(text) {                       // finish the current loading step, start the next
+  STEPS.push(text);
+  if (!hereStats) d3.select("#panel").html("").call(p => {
+    p.append("div").attr("class", "where").text("Within half a mile of here");
+    p.append("ol").attr("class", "steps").selectAll("li").data(STEPS).join("li")
+      .attr("class", (d, i) => i === STEPS.length - 1 ? "now" : null).text(d => d);
+  });
+  const ov = document.getElementById("loading"); if (ov) ov.textContent = text;
+}
+async function startDuckDB() {
+  step("Downloading DuckDB, a database that runs in the browser (about 7 MB)…");
+  const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
+  const url = URL.createObjectURL(new Blob([`importScripts("${bundle.mainWorker}");`], { type: "text/javascript" }));
+  const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), new Worker(url));
+  await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+  URL.revokeObjectURL(url);
+  conn = await db.connect();
+  step(`Loading ${d3.format(",")(D.nBlocks)} census blocks into DuckDB…`);
+  for (const [name, b64] of Object.entries(D.tables)) {
+    const buf = new Uint8Array(await (await fetch(`data:application/octet-stream;base64,${b64}`)).arrayBuffer());
+    await db.registerFileBuffer(`${name}.parquet`, buf);
+    // stored as uint16 to keep the page small; widen so the circle maths can go negative
+    await conn.query(`CREATE TABLE ${name} AS SELECT * REPLACE (x::INTEGER AS x, y::INTEGER AS y) FROM '${name}.parquet'`);
+  }
+  await conn.query(`CREATE MACRO in_lens(x, y, cx, cy, r) AS
+    x BETWEEN cx - r AND cx + r AND y BETWEEN cy - r AND cy + r
+    AND (x - cx) ^ 2 + (y - cy) ^ 2 <= r * r`);
+  step("Adding up the households inside the circle…");
+}
+const f0 = Math.round;
+const sqlFor = (cx, cy) => `SELECT sum(pop) AS residents,
+       sum(hh)  AS households,
+       sum(COLUMNS('^inc_'))  -- households in 16 income brackets
+FROM blocks
+WHERE in_lens(x, y, ${f0(cx)}, ${f0(cy)}, ${f0(R)})`;
+let busy = false, queued = null, lastMs = 0, lastSql = "";
+async function run(cx, cy) {
+  const sql = sqlFor(cx, cy), t0 = performance.now();
+  const row = (await conn.query(sql)).toArray()[0].toJSON();
+  lastMs = performance.now() - t0; lastSql = sql;
+  const inc = D.incCols.map(c => +(row[c] ?? row[`sum(${c})`] ?? 0));   // COLUMNS() keeps each column's name
+  return { pop: +(row.residents ?? 0), hh: +(row.households ?? 0), inc, shares: shares(inc), inc_med: median(inc, D.incEdges) };
+}
+function requestHere() {
+  if (!conn) return;
+  queued = { x: lens.x, y: lens.y };
+  if (busy) return;
+  (async () => {
+    busy = true;
+    while (queued) { const q = queued; queued = null; hereStats = await run(q.x, q.y); }
+    busy = false; renderPanel();
+  })();
+}
+async function requestPin() { if (conn && pin) { pinStats = await run(pin.x, pin.y); renderPanel(); } }
+
+// ---------------- drawing ----------------
+// The choropleth is painted once into an offscreen canvas per zoom level, then reused: faded
+// everywhere, full strength inside the circle. While zooming, the cached image is scaled.
+const off = document.createElement("canvas"), octx = off.getContext("2d");
+let offT = null, redrawTimer = null;
+function ringPath(c, geom) {
+  const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
+  for (const poly of polys) for (const ring of poly) {
+    ring.forEach(([x, y], i) => (i ? c.lineTo(sx(x), sy(y)) : c.moveTo(sx(x), sy(y))));
+    c.closePath();
+  }
+}
+function paintLayer() {
+  off.width = cv.width; off.height = cv.height;
+  octx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  octx.clearRect(0, 0, W, H);
+  const other = css("--other");
+  for (const f of D.bgs.features) {
+    const p = f.properties, ok = p.hh >= 20 && p.inc_med != null;
+    octx.beginPath(); ringPath(octx, f.geometry);
+    octx.fillStyle = ok ? B[bucketOf(p.inc_med)].color : other; octx.fill("evenodd");
+  }
+  octx.strokeStyle = css("--edge"); octx.lineWidth = Math.min(0.6, 0.15 * T.k);
+  for (const f of D.bgs.features) { octx.beginPath(); ringPath(octx, f.geometry); octx.stroke(); }
+}
+function landPath(c) { c.beginPath(); for (const f of D.outline.features) ringPath(c, f.geometry); }
+function drawLayerImage(alpha) {
+  const q = T.k / offT.k;
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(off, T.x - q * offT.x, T.y - q * offT.y, W * q, H * q);
+  ctx.globalAlpha = 1;
+}
+function circle(c, x, y) { c.beginPath(); c.arc(sx(x), sy(y), Math.max(0, R * T.k * k0), 0, 2 * Math.PI); }
+function base(alpha) {
+  landPath(ctx); ctx.fillStyle = css("--ctl"); ctx.fill("evenodd");
+  drawLayerImage(alpha);
+  ctx.strokeStyle = css("--ink"); ctx.lineWidth = 0.6; landPath(ctx); ctx.stroke();
+}
+function draw() {
+  if (offT === null) { paintLayer(); offT = T; }
+  else if (offT.k !== T.k || offT.x !== T.x || offT.y !== T.y) {
+    clearTimeout(redrawTimer); redrawTimer = setTimeout(() => { paintLayer(); offT = T; draw(); }, 120);
+  }
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = css("--bg"); ctx.fillRect(0, 0, W, H);
+  base(0.35);
+  for (const [c, live] of [[pin, false], [lens, true]]) {
+    if (!c) continue;
+    ctx.save(); circle(ctx, c.x, c.y); ctx.clip();
+    ctx.fillStyle = css("--bg"); ctx.fillRect(0, 0, W, H); base(1);
+    ctx.restore();
+    circle(ctx, c.x, c.y);
+    ctx.lineWidth = live ? 2 : 1.6; ctx.strokeStyle = css("--ink");
+    ctx.setLineDash(live ? [] : [5, 4]); ctx.stroke(); ctx.setLineDash([]);
+    if (pin) tag(c, live ? "Here" : "Pinned");
+  }
+}
+function tag(c, text) {
+  const x = sx(c.x), y = sy(c.y) - R * T.k * k0 - 8;
+  ctx.font = `600 14px ${css("--font")}`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+  ctx.lineWidth = 4; ctx.strokeStyle = css("--bg"); ctx.strokeText(text, x, y);
+  ctx.fillStyle = css("--ink"); ctx.fillText(text, x, y);
+}
+
+// ---------------- panel ----------------
+const pct = v => `${Math.round(100 * v)}%`;
+let sqlOpen = false;
+function renderPanel() {
+  const h = hereStats;
+  if (!h) return;                           // the loading checklist stays until the first answer
+  const p = d3.select("#panel").html("");
+  const two = !!(pin && pinStats), A = two ? [pinStats, h] : [h];
+  p.append("div").attr("class", "where").text(two ? "Pinned circle vs. here" : "Within half a mile of here");
+  const g = p.append("div").attr("class", "grid");
+  g.append("div").attr("class", "h");
+  g.append("div").attr("class", "h").text(two ? "Pinned" : "Here");
+  g.append("div").attr("class", "h").text(two ? "Here" : "City");
+  const rows = [["Median household income", s => s.hh >= 20 ? money(s.inc_med) : "–", money(C.inc_med)]];
+  for (const [label, f, cityV] of rows) {
+    g.append("div").attr("class", "lb").text(label);
+    for (const s of A) g.append("div").attr("class", "v").text(f(s));
+    if (!two) g.append("div").attr("class", "v m").text(cityV);
+  }
+
+  // bar chart: share of households in each income group, highest group first (as in the map legend)
+  const ch = p.append("div").attr("class", "chart");
+  ch.append("div").attr("class", "bt").text("Households by income");
+  const w = v => `${100 * Math.min(1, v)}%`;   // fixed 0–100% of the circle's households
+  for (let k = B.length - 1; k >= 0; k--) {
+    const r = ch.append("div").attr("class", "hrow" + (two ? " two" : ""));
+    r.append("span").attr("class", "lab").text(B[k].label);
+    const t = r.append("div").attr("class", "track");
+    t.append("div").attr("class", "fill").style("width", w(h.shares[k])).style("background", B[k].color);
+    if (two) t.append("div").attr("class", "pin").style("width", w(pinStats.shares[k]));
+    else t.append("div").attr("class", "city").style("left", w(cityShares[k]));
+    if (two) r.append("span").attr("class", "pct m").text(pct(pinStats.shares[k]));
+    r.append("span").attr("class", "pct").text(pct(h.shares[k]));
+  }
+  const ax = ch.append("div").attr("class", "hrow" + (two ? " two" : "")).style("height", "auto");
+  ax.append("span");
+  ax.append("div").attr("class", "axis").selectAll("span").data([0, 0.5, 1]).join("span")
+    .style("left", d => `${100 * d}%`).text(d => `${100 * d}%`);
+  const key = ch.append("div").attr("class", "ckey");
+  key.append("span").html(`<i class="s-here"></i>${two ? "Here" : "This circle"}`);
+  key.append("span").html(two ? `<i class="s-pin"></i>Pinned` : `<i class="s-city"></i>All of New York City`);
+
+  if (pin) p.append("div").attr("class", "actions").append("button").attr("class", "play").attr("type", "button")
+    .text("Clear pin").on("click", () => setPin(null));
+  p.append("div").attr("class", "hint").text(pin
+    ? "Move the circle to compare. Click to pin somewhere else; Esc clears the pin."
+    : "Hover to move the circle (tap on a phone), click to pin it. Drag to pan, scroll or pinch to zoom.");
+  const d = p.append("details").attr("class", "sql").property("open", sqlOpen).on("toggle", e => (sqlOpen = e.target.open));
+  d.append("summary").html(`The SQL behind these numbers <span class="m">· ran in ${lastMs < 1 ? "<1" : Math.round(lastMs)} ms</span>`);
+  d.append("pre").html(lastSql.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))
+    .replace(/in_lens\(x, y, (\d+), (\d+), (\d+)\)/, 'in_lens(x, y, <span class="n">$1</span>, <span class="n">$2</span>, <span class="n">$3</span>)'));
+  d.append("div").attr("class", "hint").text("x and y are metres from the city's southwest corner; 805 m is half a mile. in_lens() is a macro: a bounding-box check, then the true circle. The six income groups and the median are worked out from the 16 bracket sums.");
+}
+function setPin(c) { pin = c; pinStats = null; if (pin) requestPin(); else renderPanel(); draw(); }
+
+// ---------------- legend (in the map's empty corner): the same six groups, highest first ----------------
+const key = d3.select("#view").append("div").attr("class", "legend key");
+function renderKey() {
+  key.html("");
+  key.append("div").attr("class", "lg-title").text("Median household income");
+  for (let k = B.length - 1; k >= 0; k--) {
+    const r = key.append("div").attr("class", "lg-key");
+    r.append("i").style("background", B[k].color);
+    r.append("span").text(B[k].label);
+  }
+  const r = key.append("div").attr("class", "lg-key");
+  r.append("i").style("background", css("--other"));
+  r.append("span").attr("class", "lg-muted").text("Under 20 households");
+}
+
+// ---------------- controls + interaction ----------------
+let userMoved = false;   // until the reader pans or zooms, keep the opening circle centred through layout shifts
+const zoom = d3.zoom().scaleExtent([0.9, 60]).clickDistance(4)
+  .on("zoom", e => { T = e.transform; if (e.sourceEvent) userMoved = true; draw(); });
+const sel = d3.select(view).call(zoom).on("dblclick.zoom", null);
+view.addEventListener("pointermove", e => {
+  if (e.pointerType === "touch" || e.buttons) return;
+  const [px, py] = d3.pointer(e, view);
+  lens = { x: ix(px), y: iy(py) }; draw(); requestHere();
+});
+view.addEventListener("click", e => {
+  const [px, py] = d3.pointer(e, view), at = { x: ix(px), y: iy(py) };
+  if (e.pointerType === "touch") { lens = at; draw(); requestHere(); } else setPin(at);
+});
+view.addEventListener("keydown", e => {
+  const step = R / 2, mv = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key];
+  if (mv) { lens = { x: lens.x + mv[0], y: lens.y + mv[1] }; draw(); requestHere(); e.preventDefault(); }
+  if (e.key === "Enter") setPin({ ...lens });
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && pin) setPin(null); });
+
+function goTo(x, y, animate = true, query = true) {
+  // centre (x, y), zoomed so half a mile is ~70 px; the circle moves there too
+  const k = Math.max(1, 70 / (R * k0));
+  const px = ox + x * k0, py = oy + (bounds[1][1] - y) * k0;
+  const t = d3.zoomIdentity.translate(W * 0.5 - k * px, H * 0.5 - k * py).scale(k);
+  lens = { x, y };
+  (animate ? sel.transition().duration(700) : sel).call(zoom.transform, t);
+  if (query) requestHere();
+}
+new ResizeObserver(() => {
+  resize(); offT = null;
+  if (!userMoved) goTo(lens.x, lens.y, false, false);
+  draw();
+}).observe(view);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { offT = null; renderKey(); draw(); renderPanel(); });
+
+resize(); renderKey(); goTo(D.start[0], D.start[1], false, false);
+const slow = setTimeout(() => { if (!hereStats) d3.select("#panel .steps").append("li").attr("class", "err")
+  .text("This is taking a while. DuckDB downloads from cdn.jsdelivr.net, so a slow or blocked connection holds it up."); }, 15000);
+try {
+  await startDuckDB();
+  document.getElementById("loading")?.remove();
+  offT = null; draw(); requestHere();
+} catch (err) {
+  clearTimeout(slow);
+  console.error(err);
+  const msg = `DuckDB couldn't start here (${err.message}). It needs a web page served over http(s), with access to cdn.jsdelivr.net; opened straight from a file, some browsers block it.`;
+  d3.select("#panel .steps").selectAll("li.now").attr("class", "err").text(msg);
+  const ov = document.getElementById("loading"); if (ov) ov.textContent = "DuckDB couldn't start. See the note beside the map.";
+}
+</script>
+</body>
+</html>
