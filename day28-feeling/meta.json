@@ -2,7 +2,7 @@
   "day": 28,
   "theme": "Senses: Feeling",
   "title": "Feeling place names",
-  "description": "About 3,400 US lakes, creeks, peaks and towns are named for an emotion, from Mount Pleasant to Lake Desolation. The West has 22% of the good-feeling names but 47% of the bad ones: settlers back east chose Pleasant and Hope, while the prospectors and surveyors out West named things Lonesome, Misery and Disappointment. Names from the USGS Geographic Names Information System.",
+  "description": "About 3,400 US lakes, creeks, peaks and towns are named for an emotion, from Mount Pleasant to Lake Desolation. For every one named for a bad feeling, four are named for a good one. Pleasant alone appears 1,334 times, then Hope and Happy; on the gloomy side Lonesome leads, then Dismal and Mad, with Disappointment Peak, Mount Despair and a place in Idaho called Good Grief. Hover any dot for its name. Names from the USGS Geographic Names Information System.",
   "html": "out/feeling_places.html",
   "png": "out/feeling_places.png",
   "published": "2026-11-28"

@@ -122,6 +122,61 @@ def png(d, states, s, view, title, lede, fname):
     fig.savefig(OUT / fname, dpi=200)
 
 
+LABELS = [  # (name, state) of a few standout names to label on the LinkedIn image
+    # (name, state, label offset in points)
+    ("Disappointment Peak", "WY", (4, 3)), ("Mount Despair", "WA", (4, 3)), ("Good Grief", "ID", (4, -8)),
+    ("Confusion Range", "UT", (4, 3)), ("Mount Misery", "CT", (-4, 4)), ("Delight", "MD", (4, 3)),
+    ("Happy Hollow", "AR", (4, 3)),
+]
+
+
+def linkedin(d, states, s):
+    """4:5 portrait (1080x1350) for LinkedIn, type sized for a phone."""
+    from matplotlib import patheffects
+    e = s["emotion"]
+    v = d[(d.view == "emotion") & ~d.STUSPS.isin(LOWER48_DROP)]
+    pts = gpd.GeoDataFrame(v, geometry=gpd.points_from_xy(v.prim_long_dec, v.prim_lat_dec), crs=4326).to_crs(5070)
+    lo, hi = pts[pts.side == "lo"], pts[pts.side == "hi"]
+    blue, brown = S.DIVERGING[0], S.DIVERGING[3]
+    fig = plt.figure(figsize=(5.4, 6.75))
+    ax = fig.add_axes([0.01, 0.25, 0.98, 0.53])
+    states.plot(ax=ax, color=S.C["ctl"], edgecolor=S.BG, linewidth=0.4)
+    lo.plot(ax=ax, color=blue, markersize=1.1, alpha=0.85, linewidth=0)
+    hi.plot(ax=ax, color=brown, markersize=1.6, alpha=0.95, linewidth=0)
+    halo = [patheffects.withStroke(linewidth=2.2, foreground=S.BG)]
+    for name, st, off in LABELS:
+        m = pts[(pts.feature_name == name) & (pts.STUSPS == st)]
+        if m.empty:
+            continue
+        p = m.geometry.iloc[0]
+        ax.plot(p.x, p.y, "o", ms=3.2, mfc=blue if m.side.iloc[0] == "lo" else brown, mec=S.INK, mew=0.6, zorder=5)
+        ax.annotate(name, (p.x, p.y), xytext=off, textcoords="offset points", fontsize=6.2,
+                    ha="right" if off[0] < 0 else "left",
+                    fontweight="semibold", color=S.INK, path_effects=halo, zorder=6)
+    ax.set_axis_off()
+    ax.set_aspect("equal")
+    ratio = e["lo"] / e["hi"]
+    fig.text(0.5, 0.972, f"For every American place named\nfor a bad feeling, there are\n{ratio:.0f} named for a good one",
+             ha="center", va="top", fontsize=19, fontweight="bold", fontfamily=S.HEAD_FONT, color=S.INK,
+             linespacing=1.15)
+    fig.text(0.5, 0.815, "Every US lake, creek, peak and town named for a feeling",
+             ha="center", va="center", fontsize=8.6, color=S.MUTED)
+    # two big counts under the map, in each side's color, with each side's top words
+    top = lambda d_: ", ".join(f"{w.title()} {n:,}" for w, n in d_.items())
+    for x, n, color, label, words in ((0.27, e["lo"], blue, "named for a good feeling", top(e["top_lo"])),
+                                      (0.73, e["hi"], brown, "named for a bad feeling", top(e["top_hi"]))):
+        fig.text(x, 0.205, f"{n:,}", ha="center", va="top", fontsize=30, fontweight="bold",
+                 fontfamily=S.HEAD_FONT, color=color)
+        fig.text(x, 0.135, f"places {label}\n{words}", ha="center", va="top", fontsize=7.6, color=S.INK,
+                 linespacing=1.45)
+    fig.text(0.5, 0.018, "Names from the USGS Geographic Names Information System; lower 48 shown, counts are all 50 states\n"
+             f"#30DayMapChallenge {DAY}  ·  daniellecarrick.github.io/30-day-map-challenge/day28",
+             ha="center", va="bottom", fontsize=6.2, color=S.MUTED, linespacing=1.4)
+    fig.savefig(OUT / "feeling_places_linkedin.png", dpi=200)
+    plt.close(fig)
+    print("wrote out/feeling_places_linkedin.png")
+
+
 def main():
     S.apply()
     d = load()
@@ -134,7 +189,7 @@ def main():
     e = s["emotion"]
     T = {
         "emotion": {
-            "title": f"The West has {e['lo_in_west']}% of America's good-feeling place names, but {e['hi_in_west']}% of the bad ones",
+            "title": f"For every American place named for a bad feeling, there are {e['lo'] / e['hi']:.0f} named for a good one",
             "lede": ("Every US lake, creek, peak and town named for a feeling: blue for good ones like Pleasant "
                      "and Hope, brown for bad ones like Lonesome and Misery. Hover a dot for its name."),
         },
@@ -142,6 +197,7 @@ def main():
     for view, fname in (("emotion", "feeling_places.png"),):
         lede = T[view]["lede"].replace(" Hover a dot for its name.", "").replace(": blue", ":\nblue")
         png(d, l48, s, view, T[view]["title"], lede, fname)
+    linkedin(d, l48, s)
 
     # ---- interactive page: points in lon/lat, projected in the browser with d3.geoAlbersUsa ----
     cls = sorted(d.feature_class.unique())

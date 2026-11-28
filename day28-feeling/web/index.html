@@ -16,12 +16,27 @@
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --lo: var(--div-2); } }
   :root[data-theme="dark"] { --lo: var(--div-2); }
 
-  .land { fill: var(--ctl); stroke: var(--bg); stroke-width: 0.8; }
-  .dot { stroke: var(--bg); stroke-width: 0.4; pointer-events: none; transition: opacity .15s; }
+  .land { fill: var(--ctl); stroke: var(--bg); stroke-width: 0.8; vector-effect: non-scaling-stroke; }
+  .dot { stroke: var(--bg); stroke-width: 0.4; pointer-events: none; transition: opacity .15s;
+         vector-effect: non-scaling-stroke; }
+  .map-wrap > svg { cursor: grab; }
+  .map-wrap > svg:active { cursor: grabbing; }
+  /* when zoomed, dots slide under the legend and the zoom control, so both get a paper backing */
+  .legend { background: color-mix(in srgb, var(--bg) 90%, transparent); padding: 6px 10px 8px; border-radius: 6px; }
+  .zoom-ctl { position: absolute; right: 6px; top: 4px; z-index: 3; display: flex; align-items: center; gap: 8px; }
+  .zoom-hint { color: var(--muted); pointer-events: none; background: color-mix(in srgb, var(--bg) 90%, transparent);
+               padding: 2px 6px; border-radius: 4px; }
+  .zoom-reset { font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: var(--ctl);
+                border: 0; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  .zoom-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  @media (max-width: 640px) {
+    .legend { background: none; padding: 0; }
+    .zoom-ctl { position: static; justify-content: flex-end; margin-bottom: 4px; }
+  }
   .lo { fill: var(--lo); }
   .hi { fill: var(--hi); }
   .dots.focus .dot:not(.on) { opacity: .25; }
-  .ring { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+  .ring { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; vector-effect: non-scaling-stroke; }
   .tip .word { font-weight: 600; }
   .tip .bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin: 6px 0 3px; }
   .tip .bar span { display: block; }
@@ -34,8 +49,8 @@
     <h1 id="title"></h1>
     <p class="lede" id="lede"></p>
   </header>
-  <div class="map-wrap" id="map"></div>
-  <footer>Whole-word match on feeling words (Pleasant, Hope, Lonesome, Misery…) in the names of every lake, stream, spring, peak, valley and town; places marked historical left out. West = Census West region.
+  <div class="map-wrap" id="map"><div class="zoom-ctl"><span class="zoom-hint" id="zoom-hint">Scroll or pinch to zoom</span><button type="button" class="zoom-reset" id="zoom-reset" hidden>Reset zoom</button></div></div>
+  <footer>Whole-word match on feeling words (Pleasant, Hope, Lonesome, Misery…) in the names of every lake, stream, spring, peak, valley and town; places marked historical left out.
     Data: <a id="src">USGS Geographic Names Information System</a> (Nov 2026) · #30DayMapChallenge <span id="day"></span></footer>
 </div>
 
@@ -61,9 +76,34 @@ const pts = D.points.map(p => {
 
 const svg = d3.select("#map").append("svg").attr("viewBox", `0 0 ${W} ${H}`)
   .attr("preserveAspectRatio", "xMidYMid meet").attr("role", "img");
-svg.append("g").selectAll("path").data(D.states.features).join("path").attr("class", "land").attr("d", path);
-const gDots = svg.append("g").attr("class", "dots");
-const ring = svg.append("circle").attr("class", "ring").attr("r", 5).style("display", "none");
+const gZoom = svg.append("g");
+gZoom.append("g").selectAll("path").data(D.states.features).join("path").attr("class", "land").attr("d", path);
+const gDots = gZoom.append("g").attr("class", "dots");
+const ring = gZoom.append("circle").attr("class", "ring").attr("r", 5).style("display", "none");
+
+// ---- zoom: wheel / trackpad / pinch; on phones one finger still scrolls the page ----
+const R = 2.6;
+let zt = d3.zoomIdentity;
+const dotR = k => (R * Math.pow(k, 0.35)) / k;   // dots grow a little as you zoom in, not with the map
+const zoom = d3.zoom().scaleExtent([1, 12]).translateExtent([[0, 0], [W, H]])
+  .filter(ev => (!ev.touches || ev.touches.length > 1) && !ev.button)
+  .on("zoom", ev => {
+    const kChanged = ev.transform.k !== zt.k;
+    zt = ev.transform;
+    gZoom.attr("transform", zt);
+    if (kChanged) { gDots.selectAll("circle").attr("r", dotR(zt.k)); ring.attr("r", 5 / zt.k); }
+    tip.hide(); ring.style("display", "none");
+    d3.select("#zoom-reset").property("hidden", zt.k <= 1.01);
+    d3.select("#zoom-hint").style("display", zt.k <= 1.01 ? null : "none");
+  });
+d3.select("#zoom-reset").on("click", () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity));
+svg.call(zoom).style("touch-action", "pan-y pinch-zoom").on("dblclick.zoom", null);
+// double-click zooms in on the spot; double-click when zoomed all the way out does nothing
+svg.on("dblclick", ev => {
+  const [x, y] = d3.pointer(ev, svg.node());
+  svg.transition().duration(350).call(zoom.scaleBy, 2, [x, y]);
+});
+if (matchMedia("(pointer: coarse)").matches) d3.select("#zoom-hint").text("Pinch to zoom");
 
 const clsName = c => ({ "Populated Place": "town", "Locale": "place" }[c] || c.toLowerCase());
 function tipHtml(p, v) {
@@ -86,9 +126,9 @@ function render(v) {
   const topSide = V.hi_n <= V.lo_n ? "hi" : "lo";
   const shown = pts.slice().sort((a, b) => (a.side === topSide) - (b.side === topSide));
   gDots.selectAll("circle").data(shown).join("circle")
-    .attr("class", p => `dot ${p.side}`).attr("cx", p => p.x).attr("cy", p => p.y).attr("r", 2.6);
+    .attr("class", p => `dot ${p.side}`).attr("cx", p => p.x).attr("cy", p => p.y).attr("r", dotR(zt.k));
   MapKit.nearestHover(svg, shown, {
-    x: p => p.x, y: p => p.y, radius: 15,
+    x: p => p.x, y: p => p.y, radius: 15, transform: () => zt,
     onEnter: (ev, p) => { tip.show(ev, tipHtml(p, v)); ring.style("display", null).attr("cx", p.x).attr("cy", p.y); },
     onLeave: () => { tip.hide(); ring.style("display", "none"); },
   });
